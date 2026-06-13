@@ -455,21 +455,25 @@ export const deleteOrder = async (req: Request, res: Response) => {
     });
 
     // 更新任务已接人数
-    await prisma.task.update({
-      where: { id: existingOrder.taskId },
-      data: {
-        currentOrders: { decrement: 1 },
-      },
-    });
+    if (existingOrder.taskId) {
+      await prisma.task.update({
+        where: { id: existingOrder.taskId },
+        data: {
+          currentOrders: { decrement: 1 },
+        },
+      });
+    }
 
     // 更新接单人统计
-    await prisma.orderTaker.update({
-      where: { id: existingOrder.takerId },
-      data: {
-        totalOrders: { decrement: 1 },
-        totalAmount: { decrement: existingOrder.actualPayment },
-      },
-    });
+    if (existingOrder.takerId) {
+      await prisma.orderTaker.update({
+        where: { id: existingOrder.takerId },
+        data: {
+          totalOrders: { decrement: 1 },
+          totalAmount: { decrement: existingOrder.actualPayment },
+        },
+      });
+    }
 
     // 先创建审计日志（在删除订单之前）
     await createAuditLog({

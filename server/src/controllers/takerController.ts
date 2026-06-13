@@ -56,11 +56,6 @@ export const getTakerById = async (req: Request, res: Response) => {
           take: 10,
           orderBy: { createdAt: 'desc' },
         },
-        taskAssignments: {
-          include: {
-            task: true,
-          },
-        },
       },
     });
 
