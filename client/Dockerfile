@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine as build
+FROM node:18-bullseye-slim as build
 
 ARG VITE_API_URL=/api
 
