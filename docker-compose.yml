@@ -3,8 +3,9 @@ version: '3.8'
 services:
   # Database
   db:
-    image: mariadb:10
+    image: mysql:8
     container_name: tmall-incentive-db
+    command: --default-authentication-plugin=mysql_native_password
     environment:
       MYSQL_DATABASE: tmall_incentive
       MYSQL_ROOT_PASSWORD: tmall2026
@@ -16,7 +17,7 @@ services:
       - db-data:/var/lib/mysql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
       timeout: 5s
       retries: 5
