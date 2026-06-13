@@ -1,9 +1,6 @@
-FROM node:20-slim
+FROM node:18-bullseye
 
 WORKDIR /app
-
-# Install OpenSSL (required by Prisma engine)
-RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
