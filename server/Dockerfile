@@ -12,7 +12,7 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Generate Prisma client
+# Generate Prisma client for MySQL
 RUN npx prisma generate
 
 # Build TypeScript
@@ -22,4 +22,4 @@ RUN npm run build
 EXPOSE 3001
 
 # Start command
-CMD ["npm", "start"]
+CMD ["sh", "-c", "npx prisma db push && node dist/index.js"]
