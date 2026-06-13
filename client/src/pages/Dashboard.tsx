@@ -6,11 +6,9 @@ import { Link } from 'react-router-dom';
 import {
   ShoppingCart,
   Users,
-  ClipboardList,
   TrendingUp,
   AlertCircle,
   Star,
-  Zap,
   ArrowRight,
   Calendar,
   DollarSign,
@@ -18,7 +16,6 @@ import {
   CheckCircle,
   Clock,
   Copy,
-  Download,
 } from 'lucide-react';
 
 export default function Dashboard() {

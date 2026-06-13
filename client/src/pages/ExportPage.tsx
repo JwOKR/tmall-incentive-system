@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Download, FileSpreadsheet, ChevronDown } from 'lucide-react';
+import { Download, FileSpreadsheet } from 'lucide-react';
 import { takersApi, tasksApi, ordersApi, logsApi } from '@/lib/api';
 import { takerColumns, taskColumns, orderColumns, logColumns, exportCombined } from '@/lib/export';
 
@@ -38,7 +38,7 @@ export default function ExportPage() {
     enabled: selectedSheets.logs,
   });
 
-  const handleToggleSheet = (sheet: string) => {
+  const handleToggleSheet = (sheet: keyof typeof selectedSheets) => {
     setSelectedSheets(prev => ({
       ...prev,
       [sheet]: !prev[sheet],
@@ -46,7 +46,7 @@ export default function ExportPage() {
   };
 
   const handleExport = () => {
-    const sheets = [];
+    const sheets: { name: string; columns: any[]; data: any[] }[] = [];
     
     if (selectedSheets.takers && takersData) {
       sheets.push({
@@ -144,7 +144,7 @@ export default function ExportPage() {
                       <input
                         type="checkbox"
                         checked={selectedSheets[sheet.key as keyof typeof selectedSheets]}
-                        onChange={() => handleToggleSheet(sheet.key)}
+                        onChange={() => handleToggleSheet(sheet.key as keyof typeof selectedSheets)}
                         className="rounded w-4 h-4"
                       />
                       <div>

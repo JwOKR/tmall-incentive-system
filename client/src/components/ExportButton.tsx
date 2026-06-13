@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, FileSpreadsheet, Check, ChevronDown } from 'lucide-react';
+import { Download, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { exportToExcel, ExportColumn } from '@/lib/export';
 
 interface ExportButtonProps {

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Download, FileSpreadsheet, ChevronDown, Check } from 'lucide-react';
+import { Download, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { exportCombined, ExportColumn } from '@/lib/export';
 
 interface SheetConfig {

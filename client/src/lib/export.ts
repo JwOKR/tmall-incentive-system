@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 
-interface ExportColumn {
+export interface ExportColumn {
   key: string;
   label: string;
   selected?: boolean;

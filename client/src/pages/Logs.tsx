@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { logsApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { Search, Filter } from 'lucide-react';
+import { Filter } from 'lucide-react';
 
 export default function Logs() {
   const [page, setPage] = useState(1);

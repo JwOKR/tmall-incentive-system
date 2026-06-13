@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi, takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Plus, Search, Zap, Copy, Upload, Save, Trash2, Download, CheckSquare, Square } from 'lucide-react';
+import { Plus, Search, Zap, Copy, Save, Trash2, CheckSquare, Square } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import { taskColumns } from '@/lib/export';
