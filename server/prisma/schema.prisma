@@ -1,0 +1,102 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// 接单人管理
+model OrderTaker {
+  id          String   @id @default(cuid())
+  wechatName  String   // 微信昵称
+  wechatId    String   @unique // 微信号
+  status      String   @default("active") // active, inactive, suspended
+  totalOrders Int      @default(0)
+  totalAmount Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  orders      Order[]
+  
+  @@map("order_takers")
+}
+
+// 任务管理（发布任务）
+model Task {
+  id              String   @id @default(cuid())
+  publishDate     DateTime @default(now()) // 发布日期
+  productId       String   // 商品ID
+  productCode     String   // 产品编号
+  taoToken        String   @unique // 淘口令（唯一）
+  price           Float    // 商品价格
+  baseCommission  Float    @default(5) // 基础佣金，默认5元
+  reviewReward    Float    @default(0) // 晒单奖励
+  maxOrders       Int      @default(1) // 限接人数，默认1人
+  currentOrders   Int      @default(0) // 已接人数
+  status          String   @default("active") // active, completed, cancelled
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  orders          Order[]
+  
+  @@map("tasks")
+}
+
+// 订单明细（接单后自动生成）
+model Order {
+  id                  String    @id @default(cuid())
+  orderDate           DateTime  @default(now()) // 接单日期
+  taskId              String?   // 关联任务（可选）
+  takerId             String?   // 接单人（可选）
+  
+  // 商品信息
+  productId           String    // 商品ID
+  productCode         String    // 产品编号
+  
+  // 订单信息
+  orderNo19           String?   @unique // 19订单号（公司内部订单号，唯一）
+  orderNo             String?   @unique // 订单编号（淘宝订单号，唯一）
+  orderLink           String?   // 订单链接
+  actualPayment       Float     @default(0) // 实付金额
+  
+  // 返款信息
+  totalRefund         Float     @default(0) // 总返款
+  isRefunded          Boolean   @default(false) // 是否已返款
+  refundDate          DateTime? // 返款日期
+  
+  // 好评信息
+  isGoodReview        Boolean   @default(false) // 是否好评
+  baseCommission      Float     @default(5) // 基础返佣，默认5元
+  reviewCommission    Float     @default(0) // 好评返佣
+  reviewCommissionDate DateTime? // 好评返佣日期
+  
+  remark              String?   // 备注
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  task                Task?     @relation(fields: [taskId], references: [id])
+  taker               OrderTaker? @relation(fields: [takerId], references: [id])
+  logs                Log[]
+  
+  @@map("orders")
+}
+
+// 操作日志
+model Log {
+  id          String   @id @default(cuid())
+  orderId     String?
+  userId      String?
+  action      String   // create, update, delete, status_change
+  detail      String
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+  
+  order       Order?   @relation(fields: [orderId], references: [id])
+  
+  @@map("logs")
+}

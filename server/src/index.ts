@@ -1,0 +1,83 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import morgan from 'morgan';
+import { createServer } from 'http';
+
+// Import routes
+import dashboardRoutes from './routes/dashboard';
+import takerRoutes from './routes/takers';
+import taskRoutes from './routes/tasks';
+import orderRoutes from './routes/orders';
+import logRoutes from './routes/logs';
+
+// Import utils
+import logger from './utils/logger';
+
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+// Middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  credentials: true,
+}));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
+
+// Logging
+app.use(morgan('combined', {
+  stream: {
+    write: (message: string) => logger.info(message.trim()),
+  },
+}));
+
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// API Routes
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/takers', takerRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/orders', orderRoutes);
+app.use('/api/logs', logRoutes);
+
+// Error handling middleware
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  logger.error('Unhandled error:', err);
+  res.status(500).json({
+    success: false,
+    message: '服务器内部错误',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+  });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    message: '接口不存在',
+  });
+});
+
+// Start server
+const server = createServer(app);
+
+server.listen(PORT, () => {
+  logger.info(`Server is running on port ${PORT}`);
+  logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received. Shutting down gracefully...');
+  server.close(() => {
+    logger.info('Process terminated');
+    process.exit(0);
+  });
+});
+
+export default app;

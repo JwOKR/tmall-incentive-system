@@ -1,0 +1,849 @@
+import { useState, useRef, useEffect } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { tasksApi, takersApi } from '@/lib/api';
+import { formatCurrency, formatDate } from '@/lib/utils';
+import { Plus, Search, Zap, Copy, Upload, Save, Trash2, Download, CheckSquare, Square } from 'lucide-react';
+import ExportDialog from '@/components/ExportDialog';
+import ImportDialog from '@/components/ImportDialog';
+import { taskColumns } from '@/lib/export';
+
+interface EditingCell {
+  taskId: string;
+  field: string;
+}
+
+export default function Tasks() {
+  const queryClient = useQueryClient();
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [showQuickOrder, setShowQuickOrder] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedTaker, setSelectedTaker] = useState('');
+  const [showBatchForm, setShowBatchForm] = useState(false);
+  const [batchProductCodes, setBatchProductCodes] = useState('');
+  const [addingNewRow, setAddingNewRow] = useState(false);
+  const [newRowData, setNewRowData] = useState({
+    productId: '',
+    productCode: '',
+    taoToken: '',
+    price: '',
+    baseCommission: '5',
+    reviewReward: '0',
+    maxOrders: '1',
+  });
+  const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
+  const [editValue, setEditValue] = useState<any>('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const inputRef = useRef<HTMLInputElement>(null);
+  const selectRef = useRef<HTMLSelectElement>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['tasks', page, search, statusFilter],
+    queryFn: () => tasksApi.getAll({ page, pageSize: 10, search, status: statusFilter }),
+  });
+
+  const { data: takersData } = useQuery({
+    queryKey: ['takers-list'],
+    queryFn: () => takersApi.getAll({ pageSize: 100 }),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: tasksApi.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      setAddingNewRow(false);
+      resetNewRow();
+    },
+    onError: (error: any) => {
+      alert(error?.response?.data?.message || '创建任务失败');
+    },
+  });
+
+  const batchCreateMutation = useMutation({
+    mutationFn: (tasks: any[]) => tasksApi.batchCreate(tasks),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      setShowBatchForm(false);
+      setBatchProductCodes('');
+      alert(data?.message || '批量创建成功');
+    },
+    onError: () => {
+      alert('批量创建失败');
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => tasksApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+    onError: (error: any) => {
+      alert(error?.response?.data?.message || '更新任务失败');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: tasksApi.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    },
+  });
+
+  const batchDeleteMutation = useMutation({
+    mutationFn: async (ids: string[]) => {
+      const results = await Promise.allSettled(ids.map(id => tasksApi.delete(id)));
+      const success = results.filter(r => r.status === 'fulfilled').length;
+      const failed = results.filter(r => r.status === 'rejected').length;
+      return { success, failed };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      setSelectedIds(new Set());
+      alert(`批量删除完成: 成功${result.success}条，失败${result.failed}条`);
+    },
+    onError: () => {
+      alert('批量删除失败');
+    },
+  });
+
+  const quickOrderMutation = useMutation({
+    mutationFn: tasksApi.quickOrder,
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      setShowQuickOrder(false);
+      setSelectedTask(null);
+      setSelectedTaker('');
+      alert(data?.message || '接单成功');
+    },
+    onError: (error: any) => {
+      const errorData = error?.response?.data;
+      const message = errorData?.message || '接单失败';
+      const code = errorData?.code;
+      
+      // 如果是7天间隔限制，显示二次确认
+      if (code === 'INTERVAL_LIMIT') {
+        const confirmed = confirm(`${message}\n\n是否强制接单？`);
+        if (confirmed) {
+          // 强制接单
+          quickOrderMutation.mutate({
+            taskId: selectedTask.id,
+            takerId: selectedTaker,
+            force: true,
+          });
+          return;
+        }
+      }
+      
+      alert(message);
+    },
+  });
+
+  useEffect(() => {
+    if (editingCell) {
+      if (inputRef.current) inputRef.current.focus();
+      if (selectRef.current) selectRef.current.focus();
+    }
+  }, [editingCell]);
+
+  const handleCellClick = (taskId: string, field: string, currentValue: any) => {
+    if (editingCell?.taskId === taskId && editingCell?.field === field) return;
+    setEditingCell({ taskId, field });
+    setEditValue(String(currentValue || ''));
+  };
+
+  const handleSave = (taskId: string) => {
+    if (!editingCell) return;
+    const { field } = editingCell;
+    let value = editValue;
+    
+    if (['price', 'baseCommission', 'reviewReward'].includes(field)) {
+      value = Number(value) || 0;
+    } else if (field === 'maxOrders') {
+      value = Math.max(0, Math.floor(Number(value) || 0));
+    }
+    
+    updateMutation.mutate({ id: taskId, data: { [field]: value } });
+    setEditingCell(null);
+    setEditValue('');
+  };
+
+  const handleCancel = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, taskId: string) => {
+    if (e.key === 'Enter') {
+      handleSave(taskId);
+    } else if (e.key === 'Escape') {
+      handleCancel();
+    }
+  };
+
+  const handleSelectChange = (taskId: string, field: string, value: string) => {
+    updateMutation.mutate({ id: taskId, data: { [field]: value } });
+    setEditingCell(null);
+  };
+
+  const isEditing = (taskId: string, field: string) => {
+    return editingCell?.taskId === taskId && editingCell?.field === field;
+  };
+
+  const renderEditableCell = (task: any, field: string, type: 'text' | 'number' | 'integer' = 'text') => {
+    const editing = isEditing(task.id, field);
+    const value = task[field];
+    
+    if (editing) {
+      return (
+        <div className="flex items-center gap-1">
+          <input
+            ref={inputRef}
+            type={type === 'integer' ? 'number' : type}
+            step={type === 'number' ? '0.01' : undefined}
+            min={type === 'integer' ? '0' : undefined}
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={() => handleSave(task.id)}
+            onKeyDown={(e) => handleKeyDown(e, task.id)}
+            className="w-full rounded border border-primary px-2 py-1 text-sm bg-white"
+          />
+          <button
+            onClick={() => handleSave(task.id)}
+            className="p-1 text-green-600 hover:bg-green-100 rounded"
+          >
+            <Save className="h-3 w-3" />
+          </button>
+        </div>
+      );
+    }
+    
+    const displayValue = () => {
+      if (type === 'number') return formatCurrency(value);
+      if (type === 'integer') return value || '0';
+      return value || '-';
+    };
+    
+    return (
+      <div
+        onClick={() => handleCellClick(task.id, field, value)}
+        className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded min-h-[28px] flex items-center"
+        title="点击编辑"
+      >
+        {displayValue()}
+      </div>
+    );
+  };
+
+  const renderStatusSelect = (task: any) => {
+    const editing = isEditing(task.id, 'status');
+    const statusOptions = [
+      { value: 'active', label: '进行中', color: 'bg-green-100 text-green-700' },
+      { value: 'completed', label: '已完成', color: 'bg-blue-100 text-blue-700' },
+      { value: 'cancelled', label: '已取消', color: 'bg-red-100 text-red-700' },
+    ];
+    const currentOption = statusOptions.find(opt => opt.value === task.status);
+    
+    if (editing) {
+      return (
+        <select
+          ref={selectRef}
+          value={editValue}
+          onChange={(e) => handleSelectChange(task.id, 'status', e.target.value)}
+          onBlur={() => setEditingCell(null)}
+          onKeyDown={(e) => e.key === 'Escape' && handleCancel()}
+          className="rounded border border-primary px-2 py-1 text-sm bg-white w-full"
+        >
+          {statusOptions.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      );
+    }
+    
+    return (
+      <div
+        onClick={() => handleCellClick(task.id, 'status', task.status)}
+        className={`cursor-pointer hover:opacity-80 px-2 py-1 rounded text-xs font-medium inline-flex items-center ${currentOption?.color || ''}`}
+        title="点击切换状态"
+      >
+        {currentOption?.label || '-'}
+      </div>
+    );
+  };
+
+  const resetNewRow = () => {
+    setNewRowData({
+      productId: '',
+      productCode: '',
+      taoToken: '',
+      price: '',
+      baseCommission: '5',
+      reviewReward: '0',
+      maxOrders: '1',
+    });
+  };
+
+  const handleAddNewRow = () => {
+    setAddingNewRow(true);
+    resetNewRow();
+  };
+
+  const handleSaveNewRow = () => {
+    createMutation.mutate(newRowData);
+  };
+
+  const handleCancelNewRow = () => {
+    setAddingNewRow(false);
+    resetNewRow();
+  };
+
+  const handleDelete = (taskId: string) => {
+    if (confirm('确定要删除这个任务吗？删除后关联的订单也会被删除。')) {
+      deleteMutation.mutate(taskId);
+    }
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === tasks.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(tasks.map((t: any) => t.id)));
+    }
+  };
+
+  const handleSelectOne = (taskId: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(taskId)) {
+      newSelected.delete(taskId);
+    } else {
+      newSelected.add(taskId);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleBatchDelete = () => {
+    if (selectedIds.size === 0) {
+      alert('请先选择要删除的任务');
+      return;
+    }
+    if (confirm(`确定要删除选中的 ${selectedIds.size} 个任务吗？删除后关联的订单也会被删除。此操作不可恢复！`)) {
+      batchDeleteMutation.mutate(Array.from(selectedIds));
+    }
+  };
+
+  const handleBatchCreate = () => {
+    const codes = batchProductCodes.split('\n').filter(code => code.trim());
+    if (codes.length === 0) {
+      alert('请输入商品编号');
+      return;
+    }
+    
+    const tasks = codes.map(code => ({
+      productId: code.trim(),
+      productCode: code.trim(),
+      taoToken: '',
+      price: 0,
+      baseCommission: 5,
+      reviewReward: 0,
+      maxOrders: 1,
+    }));
+    
+    batchCreateMutation.mutate(tasks);
+  };
+
+  const handleQuickOrder = (task: any) => {
+    setSelectedTask(task);
+    setShowQuickOrder(true);
+  };
+
+  const handleConfirmQuickOrder = () => {
+    if (!selectedTaker) {
+      alert('请选择接单人');
+      return;
+    }
+    quickOrderMutation.mutate({
+      taskId: selectedTask.id,
+      takerId: selectedTaker,
+    });
+  };
+
+  const handleCopyTaoToken = (taoToken: string) => {
+    navigator.clipboard.writeText(taoToken).then(() => {
+      alert('淘口令已复制');
+    });
+  };
+
+  const tasks = (data as any)?.data?.list || [];
+  const total = (data as any)?.data?.total || 0;
+  const takers = (takersData as any)?.data?.list || [];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight">任务管理</h2>
+          <p className="text-muted-foreground">点击单元格直接编辑，按 Enter 保存</p>
+        </div>
+        <div className="flex gap-2">
+          <ExportDialog
+            title="导出任务数据"
+            filename="任务数据"
+            columns={taskColumns}
+            data={tasks}
+            buttonLabel="导出"
+          />
+          <ImportDialog
+            title="导入任务数据"
+            templateFilename="任务导入模板"
+            columns={[
+              { key: 'publishDate', label: '发布日期' },
+              { key: 'productId', label: '商品ID', required: true },
+              { key: 'productCode', label: '产品编号', required: true },
+              { key: 'taoToken', label: '淘口令' },
+              { key: 'price', label: '商品价格' },
+              { key: 'baseCommission', label: '基础返佣' },
+              { key: 'reviewReward', label: '好评返佣' },
+              { key: 'maxOrders', label: '限接人数' },
+            ]}
+            onImport={async (data) => {
+              try {
+                const result = await tasksApi.batchCreate(data);
+                queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                return result.data || { success: data.length, failed: 0, duplicates: 0 };
+              } catch (error: any) {
+                console.error('Import error:', error);
+                const errorMessage = error?.response?.data?.message || error?.message || '导入失败';
+                alert(errorMessage);
+                return { success: 0, failed: data.length, duplicates: 0 };
+              }
+            }}
+            buttonLabel="导入"
+          />
+          <button
+            onClick={handleAddNewRow}
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="h-4 w-4" />
+            新增任务
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text"
+            placeholder="搜索商品ID、产品编号..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-md border border-input bg-background pl-10 pr-4 py-2 text-sm"
+          />
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+        >
+          <option value="">全部状态</option>
+          <option value="active">进行中</option>
+          <option value="completed">已完成</option>
+          <option value="cancelled">已取消</option>
+        </select>
+      </div>
+
+      {/* Batch Form Modal */}
+      {showBatchForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
+            <h3 className="text-lg font-semibold mb-4">批量新增任务</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">商品编号（每行一个）</label>
+                <textarea
+                  value={batchProductCodes}
+                  onChange={(e) => setBatchProductCodes(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  rows={10}
+                  placeholder="SKU-001&#10;SKU-002&#10;SKU-003"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                将根据商品编号创建任务，默认基础返佣5元，限接1人
+              </p>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBatchForm(false);
+                    setBatchProductCodes('');
+                  }}
+                  className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleBatchCreate}
+                  disabled={batchCreateMutation.isPending}
+                  className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {batchCreateMutation.isPending ? '创建中...' : '批量创建'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Order Modal */}
+      {showQuickOrder && selectedTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
+            <h3 className="text-lg font-semibold mb-4">快速接单</h3>
+            <div className="space-y-4">
+              <div className="rounded-lg border p-4 bg-muted/50">
+                <p className="font-medium">商品ID: {selectedTask.productId || '未填写'}</p>
+                <p className="text-sm text-muted-foreground">产品编号: {selectedTask.productCode || '未填写'}</p>
+                <p className="text-sm text-muted-foreground">商品价格: {formatCurrency(selectedTask.price)}</p>
+                <div className="border-t mt-2 pt-2">
+                  <p className="text-sm text-muted-foreground">基础返佣: {formatCurrency(selectedTask.baseCommission)}</p>
+                  <p className="text-sm text-muted-foreground">好评返佣: {formatCurrency(selectedTask.reviewReward)}</p>
+                  <p className="text-sm font-medium text-green-600">
+                    总返款: {formatCurrency(selectedTask.price + selectedTask.baseCommission + selectedTask.reviewReward)}
+                  </p>
+                </div>
+                <p className="text-sm mt-2">
+                  剩余名额: <span className="font-bold text-primary">{selectedTask.maxOrders - selectedTask.currentOrders}人</span>
+                </p>
+              </div>
+              <div>
+                <label className="text-sm font-medium">选择接单人 *</label>
+                <select
+                  value={selectedTaker}
+                  onChange={(e) => setSelectedTaker(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">请选择接单人</option>
+                  {takers.map((taker: any) => (
+                    <option key={taker.id} value={taker.id}>
+                      {taker.wechatName} ({taker.wechatId})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowQuickOrder(false);
+                    setSelectedTask(null);
+                    setSelectedTaker('');
+                  }}
+                  className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={handleConfirmQuickOrder}
+                  disabled={quickOrderMutation.isPending}
+                  className="rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 disabled:opacity-50"
+                >
+                  {quickOrderMutation.isPending ? '接单中...' : '确认接单'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Actions */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+          <span className="text-sm text-muted-foreground">
+            已选择 {selectedIds.size} 项
+          </span>
+          <button
+            onClick={handleBatchDelete}
+            disabled={batchDeleteMutation.isPending}
+            className="inline-flex items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" />
+            {batchDeleteMutation.isPending ? '删除中...' : '批量删除'}
+          </button>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            取消选择
+          </button>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="rounded-lg border bg-card shadow-sm overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b">
+              <th className="px-4 py-3 text-left">
+                <button
+                  onClick={handleSelectAll}
+                  className="p-1 hover:bg-accent rounded"
+                  title={selectedIds.size === tasks.length ? '取消全选' : '全选'}
+                >
+                  {selectedIds.size === tasks.length && tasks.length > 0 ? (
+                    <CheckSquare className="h-4 w-4 text-primary" />
+                  ) : (
+                    <Square className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </button>
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium">商品ID</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">产品编号</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">淘口令</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">价格</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">基础返佣</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">好评返佣</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">限接人数</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">已接人数</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">状态</th>
+              <th className="px-4 py-3 text-left text-sm font-medium">发布日期</th>
+              <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            {/* New Row */}
+            {addingNewRow && (
+              <tr className="border-b bg-blue-50">
+                <td className="px-4 py-2">
+                  <input
+                    type="text"
+                    value={newRowData.productId}
+                    onChange={(e) => setNewRowData({ ...newRowData, productId: e.target.value })}
+                    className="w-full rounded border px-2 py-1 text-sm"
+                    placeholder="商品ID"
+                  />
+                </td>
+                <td className="px-4 py-2">
+                  <input
+                    type="text"
+                    value={newRowData.productCode}
+                    onChange={(e) => setNewRowData({ ...newRowData, productCode: e.target.value })}
+                    className="w-full rounded border px-2 py-1 text-sm"
+                    placeholder="产品编号"
+                  />
+                </td>
+                <td className="px-4 py-2">
+                  <input
+                    type="text"
+                    value={newRowData.taoToken}
+                    onChange={(e) => setNewRowData({ ...newRowData, taoToken: e.target.value })}
+                    className="w-full rounded border px-2 py-1 text-sm"
+                    placeholder="淘口令"
+                  />
+                </td>
+                <td className="px-4 py-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newRowData.price}
+                    onChange={(e) => setNewRowData({ ...newRowData, price: e.target.value })}
+                    className="w-24 rounded border px-2 py-1 text-sm"
+                    placeholder="价格"
+                  />
+                </td>
+                <td className="px-4 py-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newRowData.baseCommission}
+                    onChange={(e) => setNewRowData({ ...newRowData, baseCommission: e.target.value })}
+                    className="w-20 rounded border px-2 py-1 text-sm"
+                  />
+                </td>
+                <td className="px-4 py-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={newRowData.reviewReward}
+                    onChange={(e) => setNewRowData({ ...newRowData, reviewReward: e.target.value })}
+                    className="w-20 rounded border px-2 py-1 text-sm"
+                  />
+                </td>
+                <td className="px-4 py-2">
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="1"
+                      value={newRowData.maxOrders}
+                      onChange={(e) => setNewRowData({ ...newRowData, maxOrders: e.target.value })}
+                      className="w-16 rounded border px-2 py-1 text-sm"
+                    />
+                    <span className="text-xs text-muted-foreground">人</span>
+                  </div>
+                </td>
+                <td className="px-4 py-2 text-muted-foreground">0人</td>
+                <td className="px-4 py-2">
+                  <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
+                    进行中
+                  </span>
+                </td>
+                <td className="px-4 py-2 text-muted-foreground">
+                  {formatDate(new Date())}
+                </td>
+                <td className="px-4 py-2 text-right">
+                  <div className="flex items-center justify-end gap-1">
+                    <button
+                      onClick={handleSaveNewRow}
+                      disabled={createMutation.isPending}
+                      className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {createMutation.isPending ? '保存中...' : '保存'}
+                    </button>
+                    <button
+                      onClick={handleCancelNewRow}
+                      className="px-3 py-1 border rounded text-sm hover:bg-accent"
+                    >
+                      取消
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            )}
+            
+            {/* Data Rows */}
+            {isLoading ? (
+              <tr>
+                <td colSpan={12} className="px-4 py-8 text-center text-muted-foreground">
+                  加载中...
+                </td>
+              </tr>
+            ) : tasks.length === 0 && !addingNewRow ? (
+              <tr>
+                <td colSpan={12} className="px-4 py-8 text-center text-muted-foreground">
+                  暂无任务
+                </td>
+              </tr>
+            ) : (
+              tasks.map((task: any) => (
+                <tr key={task.id} className={`border-b last:border-0 hover:bg-muted/30 ${selectedIds.has(task.id) ? 'bg-blue-50' : ''}`}>
+                  <td className="px-4 py-2">
+                    <button
+                      onClick={() => handleSelectOne(task.id)}
+                      className="p-1 hover:bg-accent rounded"
+                    >
+                      {selectedIds.has(task.id) ? (
+                        <CheckSquare className="h-4 w-4 text-primary" />
+                      ) : (
+                        <Square className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
+                  </td>
+                  <td className="px-4 py-2">
+                    {renderEditableCell(task, 'productId')}
+                  </td>
+                  <td className="px-4 py-2">
+                    {renderEditableCell(task, 'productCode')}
+                  </td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1">
+                      {renderEditableCell(task, 'taoToken')}
+                      {task.taoToken && (
+                        <button
+                          onClick={() => handleCopyTaoToken(task.taoToken)}
+                          className="p-1 hover:bg-accent rounded"
+                          title="复制淘口令"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 font-medium">
+                    {renderEditableCell(task, 'price', 'number')}
+                  </td>
+                  <td className="px-4 py-2">
+                    {renderEditableCell(task, 'baseCommission', 'number')}
+                  </td>
+                  <td className="px-4 py-2">
+                    {renderEditableCell(task, 'reviewReward', 'number')}
+                  </td>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1">
+                      {renderEditableCell(task, 'maxOrders', 'integer')}
+                      <span className="text-xs text-muted-foreground">人</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 text-sm">
+                    <span className={task.currentOrders >= task.maxOrders ? 'text-red-600 font-medium' : ''}>
+                      {task.currentOrders}人
+                    </span>
+                  </td>
+                  <td className="px-4 py-2">
+                    {renderStatusSelect(task)}
+                  </td>
+                  <td className="px-4 py-2 text-sm text-muted-foreground">
+                    {formatDate(task.publishDate)}
+                  </td>
+                  <td className="px-4 py-2 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => handleQuickOrder(task)}
+                        disabled={task.currentOrders >= task.maxOrders || task.status !== 'active'}
+                        className="p-1 hover:bg-accent rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="快速接单"
+                      >
+                        <Zap className="h-4 w-4 text-green-600" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(task.id)}
+                        className="p-1 hover:bg-red-100 rounded-md"
+                        title="删除任务"
+                      >
+                        <Trash2 className="h-4 w-4 text-red-600" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination */}
+      {total > 10 && (
+        <div className="flex justify-center gap-2">
+          <button
+            onClick={() => setPage(p => Math.max(1, p - 1))}
+            disabled={page === 1}
+            className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
+          >
+            上一页
+          </button>
+          <span className="flex items-center px-3 text-sm">
+            第 {page} 页 / 共 {Math.ceil(total / 10)} 页
+          </span>
+          <button
+            onClick={() => setPage(p => p + 1)}
+            disabled={page >= Math.ceil(total / 10)}
+            className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
+          >
+            下一页
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
