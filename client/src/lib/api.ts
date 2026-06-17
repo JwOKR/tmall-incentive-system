@@ -64,6 +64,7 @@ export const ordersApi = {
   getById: (id: string) => api.get(`/orders/${id}`),
   create: (data: any) => api.post('/orders', data),
   batchCreate: (orders: any[]) => api.post('/orders/batch', { orders }),
+  batchUpdate: (orders: any[]) => api.put('/orders/batch/update', { orders }),
   update: (id: string, data: any) => api.put(`/orders/${id}`, data),
   delete: (id: string) => api.delete(`/orders/${id}`),
 };

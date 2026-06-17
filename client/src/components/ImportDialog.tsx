@@ -14,9 +14,11 @@ interface ImportDialogProps {
   onImport: (data: any[]) => Promise<{ success: number; failed: number; duplicates: number }>;
   buttonLabel?: string;
   templateFilename?: string;
+  /** create = 新建导入（默认），update = 批量修改（以订单号/19订单号为匹配键，只更新非空字段） */
+  mode?: 'create' | 'update';
 }
 
-export default function ImportDialog({ title, columns, onImport, buttonLabel = '导入', templateFilename = '导入模板' }: ImportDialogProps) {
+export default function ImportDialog({ title, columns, onImport, buttonLabel = '导入', templateFilename = '导入模板', mode = 'create' }: ImportDialogProps) {
   const [showDialog, setShowDialog] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -242,7 +244,9 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
                 ))}
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                请确保Excel文件的第一行为列名，且包含上述字段
+                {mode === 'update'
+                  ? '批量修改模式：必须包含订单编号或19订单号作为匹配键，其余字段留空则不修改'
+                  : '请确保Excel文件的第一行为列名，且包含上述字段'}
               </p>
             </div>
 
@@ -285,22 +289,32 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
             {/* 导入结果 */}
             {result && (
               <div className="mb-6 p-4 rounded-lg bg-muted/50">
-                <h4 className="font-medium mb-2">导入结果</h4>
+                <h4 className="font-medium mb-2">
+                  {mode === 'update' ? '修改结果' : '导入结果'}
+                </h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="h-4 w-4 text-green-600" />
-                    <span>成功导入: {result.success} 条</span>
+                    <span>
+                      {mode === 'update' ? `成功修改: ${result.success} 条` : `成功导入: ${result.success} 条`}
+                    </span>
                   </div>
                   {result.duplicates > 0 && (
                     <div className="flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 text-yellow-600" />
-                      <span>重复数据: {result.duplicates} 条（已跳过）</span>
+                      <span>
+                        {mode === 'update'
+                          ? `未找到订单: ${result.duplicates} 条（订单号不存在）`
+                          : `重复数据: ${result.duplicates} 条（已跳过）`}
+                      </span>
                     </div>
                   )}
                   {result.failed > 0 && (
                     <div className="flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 text-red-600" />
-                      <span>导入失败: {result.failed} 条</span>
+                      <span>
+                        {mode === 'update' ? `修改失败: ${result.failed} 条` : `导入失败: ${result.failed} 条`}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -320,7 +334,9 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
                   disabled={!file || previewData.length === 0 || importing}
                   className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {importing ? '导入中...' : `导入 (${previewData.length} 条)`}
+                  {importing
+                    ? (mode === 'update' ? '修改中...' : '导入中...')
+                    : (mode === 'update' ? `批量修改 (${previewData.length} 条)` : `导入 (${previewData.length} 条)`)}
                 </button>
               )}
             </div>

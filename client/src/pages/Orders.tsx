@@ -373,6 +373,39 @@ export default function Orders() {
             }}
             buttonLabel="导入"
           />
+          <ImportDialog
+            title="批量修改订单"
+            templateFilename="订单批量修改模板"
+            mode="update"
+            columns={[
+              { key: 'orderNo', label: '订单编号', required: true },
+              { key: 'orderNo19', label: '19订单号' },
+              { key: 'wechatName', label: '微信昵称' },
+              { key: 'actualPayment', label: '实付价' },
+              { key: 'baseCommission', label: '基础返佣' },
+              { key: 'reviewCommission', label: '好评返佣' },
+              { key: 'isRefunded', label: '是否已返款' },
+              { key: 'refundDate', label: '返款日期' },
+              { key: 'isGoodReview', label: '是否好评' },
+              { key: 'reviewCommissionDate', label: '好评返佣日期' },
+              { key: 'remark', label: '备注' },
+            ]}
+            onImport={async (data) => {
+              try {
+                const result = await ordersApi.batchUpdate(data);
+                queryClient.invalidateQueries({ queryKey: ['orders'] });
+                queryClient.invalidateQueries({ queryKey: ['tasks'] });
+                queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+                return result.data || { success: data.length, failed: 0, duplicates: 0 };
+              } catch (error: any) {
+                console.error('Batch update error:', error);
+                const errorMessage = error?.response?.data?.message || error?.message || '批量修改失败';
+                alert(errorMessage);
+                return { success: 0, failed: data.length, duplicates: 0 };
+              }
+            }}
+            buttonLabel="批量修改"
+          />
         </div>
       </div>
 

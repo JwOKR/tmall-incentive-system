@@ -445,6 +445,158 @@ export const batchCreateOrders = async (req: Request, res: Response) => {
   }
 };
 
+// 批量修改订单（以订单号/19订单号为匹配键，只更新非空字段）
+export const batchUpdateOrders = async (req: Request, res: Response) => {
+  try {
+    const { orders } = req.body;
+
+    if (!Array.isArray(orders) || orders.length === 0) {
+      return res.status(400).json({ success: false, message: '请提供订单列表' });
+    }
+
+    let success = 0;
+    let failed = 0;
+    let notFound = 0;
+    const errors: string[] = [];
+    const details: any[] = [];
+
+    for (const item of orders) {
+      try {
+        const orderNoStr = item.orderNo ? String(item.orderNo).trim() : null;
+        const orderNo19Str = item.orderNo19 ? String(item.orderNo19).trim() : null;
+
+        if (!orderNoStr && !orderNo19Str) {
+          failed++;
+          errors.push('某条记录缺少订单编号或19订单号，已跳过');
+          continue;
+        }
+
+        // 通过订单号或19订单号找到现有订单
+        const existingOrder = await prisma.order.findFirst({
+          where: {
+            OR: [
+              ...(orderNoStr ? [{ orderNo: orderNoStr }] : []),
+              ...(orderNo19Str ? [{ orderNo19: orderNo19Str }] : []),
+            ],
+          },
+        });
+
+        if (!existingOrder) {
+          notFound++;
+          details.push({ orderNo: orderNoStr || orderNo19Str, status: 'not_found', reason: '订单不存在' });
+          continue;
+        }
+
+        // 构造只更新非空字段的 updateData
+        const updateData: any = {};
+
+        // 字符串字段：只要传了且不为空就更新
+        if (item.wechatName || item.wechatId) {
+          const wechatNameStr = item.wechatName ? String(item.wechatName).trim() : null;
+          const wechatIdStr = item.wechatId ? String(item.wechatId).trim() : null;
+          const taker = await prisma.orderTaker.findFirst({
+            where: {
+              OR: [
+                ...(wechatIdStr ? [{ wechatId: wechatIdStr }] : []),
+                ...(wechatNameStr ? [{ wechatName: wechatNameStr }] : []),
+              ],
+            },
+          });
+          if (taker) updateData.takerId = taker.id;
+        }
+
+        if (item.actualPayment !== '' && item.actualPayment !== undefined && item.actualPayment !== null) {
+          updateData.actualPayment = Number(item.actualPayment) || 0;
+        }
+        if (item.baseCommission !== '' && item.baseCommission !== undefined && item.baseCommission !== null) {
+          updateData.baseCommission = Number(item.baseCommission) || 0;
+        }
+        if (item.reviewCommission !== '' && item.reviewCommission !== undefined && item.reviewCommission !== null) {
+          updateData.reviewCommission = Number(item.reviewCommission) || 0;
+        }
+        if (item.remark !== '' && item.remark !== undefined) {
+          updateData.remark = String(item.remark).trim() || null;
+        }
+        if (item.isRefunded !== '' && item.isRefunded !== undefined && item.isRefunded !== null) {
+          updateData.isRefunded = parseBoolValue(item.isRefunded);
+        }
+        if (item.refundDate !== '' && item.refundDate !== undefined && item.refundDate !== null) {
+          updateData.refundDate = parseExcelDate(item.refundDate);
+        }
+        if (item.isGoodReview !== '' && item.isGoodReview !== undefined && item.isGoodReview !== null) {
+          updateData.isGoodReview = parseBoolValue(item.isGoodReview);
+        }
+        if (item.reviewCommissionDate !== '' && item.reviewCommissionDate !== undefined && item.reviewCommissionDate !== null) {
+          updateData.reviewCommissionDate = parseExcelDate(item.reviewCommissionDate);
+        }
+        if (item.orderNo19 && !existingOrder.orderNo19) {
+          updateData.orderNo19 = orderNo19Str;
+        }
+
+        // 重新计算总返款
+        const newActualPayment = updateData.actualPayment ?? existingOrder.actualPayment;
+        const newBaseCommission = updateData.baseCommission ?? existingOrder.baseCommission;
+        const newReviewCommission = updateData.reviewCommission ?? existingOrder.reviewCommission;
+        updateData.totalRefund = newActualPayment + newBaseCommission + newReviewCommission;
+
+        if (Object.keys(updateData).length <= 1) {
+          // 只有 totalRefund，说明没有任何实际更新字段
+          notFound++;
+          details.push({ orderNo: orderNoStr || orderNo19Str, status: 'skipped', reason: '无需更新的字段' });
+          continue;
+        }
+
+        await prisma.order.update({ where: { id: existingOrder.id }, data: updateData });
+
+        // 记录变更日志
+        const changes: string[] = [];
+        if (updateData.isRefunded !== undefined && updateData.isRefunded !== existingOrder.isRefunded)
+          changes.push(`返款状态: ${existingOrder.isRefunded ? '已返款' : '未返款'} → ${updateData.isRefunded ? '已返款' : '未返款'}`);
+        if (updateData.isGoodReview !== undefined && updateData.isGoodReview !== existingOrder.isGoodReview)
+          changes.push(`好评状态: ${existingOrder.isGoodReview ? '已好评' : '未好评'} → ${updateData.isGoodReview ? '已好评' : '未好评'}`);
+        if (updateData.actualPayment !== undefined) changes.push(`实付款: ${existingOrder.actualPayment} → ${updateData.actualPayment}`);
+        if (updateData.baseCommission !== undefined) changes.push(`基础返佣: ${existingOrder.baseCommission} → ${updateData.baseCommission}`);
+        if (updateData.reviewCommission !== undefined) changes.push(`好评返佣: ${existingOrder.reviewCommission} → ${updateData.reviewCommission}`);
+        if (updateData.remark !== undefined) changes.push(`备注: ${existingOrder.remark || '空'} → ${updateData.remark || '空'}`);
+
+        await createAuditLog({
+          orderId: existingOrder.id,
+          action: 'update',
+          detail: `批量修改订单 ${existingOrder.orderNo || existingOrder.id}: ${changes.join(', ') || '无变更'}`,
+          ipAddress: req.ip,
+        });
+
+        success++;
+        details.push({ orderNo: orderNoStr || orderNo19Str, status: 'success', changes: changes.join(', ') });
+      } catch (error) {
+        failed++;
+        errors.push(`${item.orderNo || item.orderNo19 || '未知'}: ${(error as Error).message}`);
+      }
+    }
+
+    await createAuditLog({
+      action: 'batch_update',
+      detail: `批量修改订单: 成功${success}条，未找到${notFound}条，失败${failed}条`,
+      ipAddress: req.ip,
+    });
+
+    res.json({
+      success: true,
+      data: {
+        success,
+        failed,
+        duplicates: notFound,
+        details: details.slice(0, 20),
+        errors: errors.slice(0, 10),
+      },
+      message: `修改完成: 成功${success}条，未找到${notFound}条，失败${failed}条`,
+    });
+  } catch (error) {
+    console.error('Error batch updating orders:', error);
+    res.status(500).json({ success: false, message: '批量修改订单失败' });
+  }
+};
+
 // 删除订单
 export const deleteOrder = async (req: Request, res: Response) => {
   try {
