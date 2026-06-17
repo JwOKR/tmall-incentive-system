@@ -230,6 +230,17 @@ export const updateOrder = async (req: Request, res: Response) => {
   }
 };
 
+// 通用布尔值解析（支持 true/false/'true'/'false'/1/0/'是'/'否'/'已返款'/'已好评' 等）
+function parseBoolValue(value: any): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    return v === 'true' || v === '1' || v === '是' || v === '已返款' || v === '已好评' || v === '有';
+  }
+  return false;
+}
+
 // 通用日期解析函数（支持多种格式）
 function parseExcelDate(dateValue: any): Date | null {
   if (!dateValue) return null;
@@ -368,9 +379,9 @@ export const batchCreateOrders = async (req: Request, res: Response) => {
             baseCommission,
             reviewCommission,
             totalRefund,
-            isRefunded: item.isRefunded === 'true' || item.isRefunded === true,
+            isRefunded: parseBoolValue(item.isRefunded),
             refundDate: parseExcelDate(item.refundDate),
-            isGoodReview: item.isGoodReview === 'true' || item.isGoodReview === true,
+            isGoodReview: parseBoolValue(item.isGoodReview),
             reviewCommissionDate: parseExcelDate(item.reviewCommissionDate),
             remark: remarkStr,
           },

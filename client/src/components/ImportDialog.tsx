@@ -69,8 +69,8 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
         const mappedData = jsonData.map((row: any) => {
           const mapped: any = {};
           columns.forEach(col => {
-            // 尝试匹配列名（支持中文和英文）
-            const value = row[col.label] || row[col.key] || '';
+            // 尝试匹配列名（支持中文和英文），注意不能用||否则false/0会被忽略
+            const value = col.label in row ? row[col.label] : (col.key in row ? row[col.key] : '');
             mapped[col.key] = value;
           });
           return mapped;
@@ -135,7 +135,7 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
           const mappedData = jsonData.map((row: any) => {
             const mapped: any = {};
             columns.forEach(col => {
-              let value = row[col.label] || row[col.key] || '';
+              let value = col.label in row ? row[col.label] : (col.key in row ? row[col.key] : '');
               // 确保数字类型的字段转换为字符串
               if (typeof value === 'number' && ['orderNo', 'orderNo19', 'productId', 'productCode'].includes(col.key)) {
                 value = String(value);
