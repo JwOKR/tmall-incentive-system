@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { ordersApi } from '@/lib/api';
+import api, { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Search, Copy, Save, Trash2, CheckSquare, Square } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
@@ -336,14 +336,17 @@ export default function Orders() {
             data={orders}
             buttonLabel="导出"
             fetchData={async () => {
-              const res = await ordersApi.getAll({
-                page: 1,
-                pageSize: 99999,
-                search,
-                isRefunded: refundFilter || undefined,
-                isGoodReview: reviewFilter || undefined,
-                startDate: startDate || undefined,
-                endDate: endDate || undefined,
+              const res = await api.get('/orders', {
+                params: {
+                  page: 1,
+                  pageSize: 99999,
+                  search,
+                  isRefunded: refundFilter || undefined,
+                  isGoodReview: reviewFilter || undefined,
+                  startDate: startDate || undefined,
+                  endDate: endDate || undefined,
+                },
+                timeout: 120000,
               });
               return res.data?.list || [];
             }}
