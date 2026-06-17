@@ -335,6 +335,18 @@ export default function Orders() {
             columns={orderColumns}
             data={orders}
             buttonLabel="导出"
+            fetchData={async () => {
+              const res = await ordersApi.getAll({
+                page: 1,
+                pageSize: 99999,
+                search,
+                isRefunded: refundFilter || undefined,
+                isGoodReview: reviewFilter || undefined,
+                startDate: startDate || undefined,
+                endDate: endDate || undefined,
+              });
+              return res.data?.list || [];
+            }}
           />
           <ImportDialog
             title="导入订单数据"

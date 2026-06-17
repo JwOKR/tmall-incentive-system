@@ -8,13 +8,16 @@ interface ExportDialogProps {
   columns: ExportColumn[];
   data: any[];
   buttonLabel?: string;
+  /** 可选：导出时调用的异步函数，返回全量数据（解决分页问题） */
+  fetchData?: () => Promise<any[]>;
 }
 
-export default function ExportDialog({ title, filename, columns, data, buttonLabel = '导出' }: ExportDialogProps) {
+export default function ExportDialog({ title, filename, columns, data, buttonLabel = '导出', fetchData }: ExportDialogProps) {
   const [showDialog, setShowDialog] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<ExportColumn[]>(
     columns.map(col => ({ ...col }))
   );
+  const [exporting, setExporting] = useState(false);
 
   const handleToggleColumn = (key: string) => {
     setSelectedColumns(prev =>
@@ -36,25 +39,36 @@ export default function ExportDialog({ title, filename, columns, data, buttonLab
     );
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const selected = selectedColumns.filter(col => col.selected);
     if (selected.length === 0) {
       alert('请至少选择一列');
       return;
     }
-    
-    // 生成带日期的文件名
-    const now = new Date();
-    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
-    const datedFilename = `${dateStr}_${filename}`;
-    
-    exportToExcel({
-      filename: datedFilename,
-      columns: selected,
-      data,
-    });
-    
-    setShowDialog(false);
+
+    setExporting(true);
+    try {
+      // 生成带日期的文件名
+      const now = new Date();
+      const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+      const datedFilename = `${dateStr}_${filename}`;
+
+      // 如果提供了 fetchData，优先获取全量数据（解决分页导出不全问题）
+      const exportData = fetchData ? await fetchData() : data;
+
+      exportToExcel({
+        filename: datedFilename,
+        columns: selected,
+        data: exportData,
+      });
+
+      setShowDialog(false);
+    } catch (error) {
+      console.error('导出失败:', error);
+      alert('导出失败，请重试');
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -126,9 +140,10 @@ export default function ExportDialog({ title, filename, columns, data, buttonLab
               </button>
               <button
                 onClick={handleExport}
-                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+                disabled={exporting}
+                className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
-                导出 ({selectedColumns.filter(c => c.selected).length} 列)
+                {exporting ? '正在获取数据并导出...' : `导出 (${selectedColumns.filter(c => c.selected).length} 列)`}
               </button>
             </div>
           </div>
