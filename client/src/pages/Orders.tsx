@@ -239,7 +239,7 @@ export default function Orders() {
     }
     
     const displayValue = () => {
-      if (type === 'number') return formatCurrency(value);
+      if (type === 'number') return value ? formatCurrency(value) : '-';
       if (type === 'date') return value ? formatDate(value).split(' ')[0] : '-';
       return value || '-';
     };
@@ -258,7 +258,7 @@ export default function Orders() {
   // 只读单元格（不可编辑）
   const renderReadOnlyCell = (value: any, type: 'text' | 'number' | 'date' = 'text') => {
     const displayValue = () => {
-      if (type === 'number') return formatCurrency(value);
+      if (type === 'number') return value ? formatCurrency(value) : '-';
       if (type === 'date') return value ? formatDate(value).split(' ')[0] : '-';
       return value || '-';
     };
