@@ -41,11 +41,11 @@ export const getIncentiveSummary = async (req: Request, res: Response) => {
     
     let summaryText = `${dateStr}激励订单\n`;
     summaryText += `合计${orders.length}单，合计激励本金：${totalActualPayment.toFixed(2)}\n\n`;
-    summaryText += `微信昵称-订单号-实付\n\n`;
+    summaryText += `微信昵称-19订单号-实付\n\n`;
 
     orders.forEach(order => {
       const wechatName = order.taker?.wechatName || '未知';
-      const orderNo = order.orderNo || '未填写';
+      const orderNo = order.orderNo19 || '未填写';
       const actualPayment = order.actualPayment.toFixed(2);
       summaryText += `${wechatName}-${orderNo}-${actualPayment}\n`;
     });
