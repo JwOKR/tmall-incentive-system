@@ -8,10 +8,13 @@ const api = axios.create({
   },
 });
 
-// Request interceptor
+// Request interceptor - 自动添加 JWT token
 api.interceptors.request.use(
   (config) => {
-    // You can add auth token here if needed
+    const token = localStorage.getItem('tmall_auth_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
     return config;
   },
   (error) => {
@@ -19,12 +22,21 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor
+// Response interceptor - 处理 401 自动跳转登录
 api.interceptors.response.use(
   (response) => {
     return response.data;
   },
   (error) => {
+    // 401 未授权 - 清除登录状态并跳转登录页
+    if (error.response?.status === 401) {
+      localStorage.removeItem('tmall_auth_token');
+      localStorage.removeItem('tmall_auth_user');
+      // 避免在登录页循环跳转
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
+    }
     const message = error.response?.data?.message || '网络错误';
     console.error('API Error:', message);
     return Promise.reject(error);

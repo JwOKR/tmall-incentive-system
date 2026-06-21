@@ -1,9 +1,23 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('Start seeding...');
+
+  // 创建默认管理员用户
+  const hashedPassword = await bcrypt.hash('admin123', 10);
+  await prisma.user.upsert({
+    where: { username: 'admin' },
+    update: {},
+    create: {
+      username: 'admin',
+      password: hashedPassword,
+      role: 'admin',
+    },
+  });
+  console.log('Default admin user created: admin / admin123');
 
   // 创建接单人
   const taker1 = await prisma.orderTaker.create({

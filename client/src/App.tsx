@@ -1,5 +1,6 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Takers from './pages/Takers';
@@ -7,6 +8,8 @@ import Tasks from './pages/Tasks';
 import Orders from './pages/Orders';
 import Logs from './pages/Logs';
 import ExportPage from './pages/ExportPage';
+import Login from './pages/Login';
+import { Loader2 } from 'lucide-react';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -17,21 +20,94 @@ const queryClient = new QueryClient({
   },
 });
 
+// 路由守卫：未登录时跳转登录页
+function ProtectedLayout({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <Layout>{children}</Layout>;
+}
+
+function AppRoutes() {
+  const { isAuthenticated } = useAuth();
+
+  return (
+    <Routes>
+      <Route
+        path="/login"
+        element={isAuthenticated ? <Navigate to="/" replace /> : <Login />}
+      />
+      <Route
+        path="/"
+        element={
+          <ProtectedLayout>
+            <Dashboard />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/takers"
+        element={
+          <ProtectedLayout>
+            <Takers />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/tasks"
+        element={
+          <ProtectedLayout>
+            <Tasks />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/orders"
+        element={
+          <ProtectedLayout>
+            <Orders />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/logs"
+        element={
+          <ProtectedLayout>
+            <Logs />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/export"
+        element={
+          <ProtectedLayout>
+            <ExportPage />
+          </ProtectedLayout>
+        }
+      />
+    </Routes>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/takers" element={<Takers />} />
-            <Route path="/tasks" element={<Tasks />} />
-            <Route path="/orders" element={<Orders />} />
-            <Route path="/logs" element={<Logs />} />
-            <Route path="/export" element={<ExportPage />} />
-          </Routes>
-        </Layout>
-      </Router>
+      <AuthProvider>
+        <Router>
+          <AppRoutes />
+        </Router>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

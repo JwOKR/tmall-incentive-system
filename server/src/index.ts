@@ -5,14 +5,19 @@ import morgan from 'morgan';
 import { createServer } from 'http';
 
 // Import routes
+import authRoutes from './routes/auth';
 import dashboardRoutes from './routes/dashboard';
 import takerRoutes from './routes/takers';
 import taskRoutes from './routes/tasks';
 import orderRoutes from './routes/orders';
 import logRoutes from './routes/logs';
 
+// Import middleware
+import { authMiddleware } from './middleware/auth';
+
 // Import utils
 import logger from './utils/logger';
+import { ensureAdminUser } from './utils/bootstrap';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -33,17 +38,20 @@ app.use(morgan('combined', {
   },
 }));
 
-// Health check
+// Health check (no auth)
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// API Routes
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/takers', takerRoutes);
-app.use('/api/tasks', taskRoutes);
-app.use('/api/orders', orderRoutes);
-app.use('/api/logs', logRoutes);
+// Auth routes (no auth required)
+app.use('/api/auth', authRoutes);
+
+// Protected API Routes
+app.use('/api/dashboard', authMiddleware, dashboardRoutes);
+app.use('/api/takers', authMiddleware, takerRoutes);
+app.use('/api/tasks', authMiddleware, taskRoutes);
+app.use('/api/orders', authMiddleware, orderRoutes);
+app.use('/api/logs', authMiddleware, logRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
@@ -69,6 +77,8 @@ const server = createServer(app);
 server.listen(PORT, () => {
   logger.info(`Server is running on port ${PORT}`);
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  // 启动时确保管理员用户存在
+  ensureAdminUser();
 });
 
 // Graceful shutdown
