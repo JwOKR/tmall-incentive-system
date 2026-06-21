@@ -8,8 +8,8 @@ import logger from './logger';
  */
 export async function ensureAdminUser() {
   try {
-    const adminUsername = process.env.ADMIN_USERNAME || 'admin';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+    const adminUsername = process.env.ADMIN_USERNAME || 'JIA';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'yw551129';
 
     const existing = await prisma.user.findUnique({
       where: { username: adminUsername },
