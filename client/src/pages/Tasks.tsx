@@ -20,6 +20,7 @@ export default function Tasks() {
   const [showQuickOrder, setShowQuickOrder] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedTaker, setSelectedTaker] = useState('');
+  const [takerSearch, setTakerSearch] = useState('');
   const [showBatchForm, setShowBatchForm] = useState(false);
   const [batchProductCodes, setBatchProductCodes] = useState('');
   const [addingNewRow, setAddingNewRow] = useState(false);
@@ -364,6 +365,7 @@ export default function Tasks() {
 
   const handleQuickOrder = (task: any) => {
     setSelectedTask(task);
+    setTakerSearch('');
     setShowQuickOrder(true);
   };
 
@@ -530,18 +532,58 @@ export default function Tasks() {
               </div>
               <div>
                 <label className="text-sm font-medium">选择接单人 *</label>
-                <select
-                  value={selectedTaker}
-                  onChange={(e) => setSelectedTaker(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                >
-                  <option value="">请选择接单人</option>
-                  {takers.map((taker: any) => (
-                    <option key={taker.id} value={taker.id}>
-                      {taker.wechatName} ({taker.wechatId})
-                    </option>
-                  ))}
-                </select>
+                <div className="relative mt-1">
+                  <input
+                    type="text"
+                    value={takerSearch}
+                    onChange={(e) => {
+                      setTakerSearch(e.target.value);
+                      setSelectedTaker('');
+                    }}
+                    placeholder="搜索微信昵称或微信号..."
+                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                  {takerSearch && (
+                    <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto rounded-md border bg-card shadow-lg">
+                      {takers
+                        .filter((t: any) => {
+                          const keyword = takerSearch.toLowerCase();
+                          return (
+                            (t.wechatName && t.wechatName.toLowerCase().includes(keyword)) ||
+                            (t.wechatId && t.wechatId.toLowerCase().includes(keyword))
+                          );
+                        })
+                        .slice(0, 20)
+                        .map((taker: any) => (
+                          <div
+                            key={taker.id}
+                            onClick={() => {
+                              setSelectedTaker(taker.id);
+                              setTakerSearch(`${taker.wechatName} (${taker.wechatId})`);
+                            }}
+                            className={`cursor-pointer px-3 py-2 text-sm hover:bg-accent ${selectedTaker === taker.id ? 'bg-accent' : ''}`}
+                          >
+                            {taker.wechatName} ({taker.wechatId})
+                          </div>
+                        ))
+                      }
+                      {takers.filter((t: any) => {
+                        const keyword = takerSearch.toLowerCase();
+                        return (
+                          (t.wechatName && t.wechatName.toLowerCase().includes(keyword)) ||
+                          (t.wechatId && t.wechatId.toLowerCase().includes(keyword))
+                        );
+                      }).length === 0 && (
+                        <div className="px-3 py-2 text-sm text-muted-foreground">未找到匹配的接单人</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {selectedTaker && !takerSearch && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    已选择: {takers.find((t: any) => t.id === selectedTaker)?.wechatName}
+                  </p>
+                )}
               </div>
               <div className="flex justify-end gap-2">
                 <button
@@ -550,6 +592,7 @@ export default function Tasks() {
                     setShowQuickOrder(false);
                     setSelectedTask(null);
                     setSelectedTaker('');
+                    setTakerSearch('');
                   }}
                   className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
                 >
