@@ -669,6 +669,7 @@ export default function Tasks() {
             {/* New Row */}
             {addingNewRow && (
               <tr className="border-b bg-blue-50">
+                <td className="px-4 py-2"></td>
                 <td className="px-4 py-2">
                   <input
                     type="text"
