@@ -11,11 +11,21 @@ export const getAllOrders = async (req: Request, res: Response) => {
     if (isRefunded !== undefined) where.isRefunded = isRefunded === 'true';
     if (isGoodReview !== undefined) where.isGoodReview = isGoodReview === 'true';
     if (search) {
+      const s = search as string;
       where.OR = [
-        { orderNo: { contains: search as string } },
-        { orderNo19: { contains: search as string } },
-        { productId: { contains: search as string } },
-        { productCode: { contains: search as string } },
+        { orderNo: { contains: s } },
+        { orderNo19: { contains: s } },
+        { productId: { contains: s } },
+        { productCode: { contains: s } },
+        { remark: { contains: s } },
+        {
+          taker: {
+            OR: [
+              { wechatName: { contains: s } },
+              { wechatId: { contains: s } },
+            ],
+          },
+        },
       ];
     }
     
