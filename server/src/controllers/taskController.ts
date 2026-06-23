@@ -102,10 +102,11 @@ export const createTask = async (req: Request, res: Response) => {
       maxOrders,
     } = req.body;
 
-    // 验证淘口令唯一性（如果提供了淘口令）
-    if (taoToken) {
+    // 验证淘口令唯一性（仅在提供了非空淘口令时）
+    const cleanTaoToken = taoToken && String(taoToken).trim() ? String(taoToken).trim() : null;
+    if (cleanTaoToken) {
       const existingTask = await prisma.task.findUnique({
-        where: { taoToken },
+        where: { taoToken: cleanTaoToken },
       });
       if (existingTask) {
         return res.status(400).json({
@@ -119,7 +120,7 @@ export const createTask = async (req: Request, res: Response) => {
       data: {
         productId: productId || '',
         productCode: productCode || '',
-        taoToken: taoToken || '',
+        taoToken: cleanTaoToken,
         price: price ? Number(price) : 0,
         baseCommission: baseCommission ? Number(baseCommission) : 5,
         reviewReward: reviewReward ? Number(reviewReward) : 0,
@@ -183,7 +184,7 @@ export const batchCreateTasks = async (req: Request, res: Response) => {
         publishDate: parseExcelDate(task.publishDate) || new Date(),
         productId: task.productId ? String(task.productId).trim() : '',
         productCode: task.productCode ? String(task.productCode).trim() : '',
-        taoToken: task.taoToken ? String(task.taoToken).trim() : `TASK-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        taoToken: task.taoToken ? String(task.taoToken).trim() : null,
         price: Number(task.price) || 0,
         baseCommission: Number(task.baseCommission) || 5,
         reviewReward: Number(task.reviewReward) || 0,
@@ -237,10 +238,11 @@ export const updateTask = async (req: Request, res: Response) => {
       });
     }
 
-    // 验证淘口令唯一性（如果修改了淘口令）
-    if (taoToken && taoToken !== existingTask.taoToken) {
+    // 验证淘口令唯一性（仅在提供了非空淘口令且有变更时）
+    const cleanTaoToken = taoToken !== undefined ? (taoToken && String(taoToken).trim() ? String(taoToken).trim() : null) : undefined;
+    if (cleanTaoToken && cleanTaoToken !== existingTask.taoToken) {
       const duplicateTask = await prisma.task.findUnique({
-        where: { taoToken },
+        where: { taoToken: cleanTaoToken },
       });
       if (duplicateTask) {
         return res.status(400).json({
@@ -255,7 +257,7 @@ export const updateTask = async (req: Request, res: Response) => {
       data: {
         productId,
         productCode,
-        taoToken,
+        taoToken: cleanTaoToken,
         price: price ? Number(price) : undefined,
         baseCommission: baseCommission ? Number(baseCommission) : undefined,
         reviewReward: reviewReward ? Number(reviewReward) : undefined,

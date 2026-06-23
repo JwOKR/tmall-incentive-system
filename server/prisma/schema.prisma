@@ -44,7 +44,7 @@ model Task {
   publishDate     DateTime @default(now()) // 发布日期
   productId       String   // 商品ID
   productCode     String   // 产品编号
-  taoToken        String   @unique // 淘口令（唯一）
+  taoToken        String?  @unique // 淘口令（唯一，空白时允许多条）
   price           Float    // 商品价格
   baseCommission  Float    @default(5) // 基础佣金，默认5元
   reviewReward    Float    @default(0) // 晒单奖励
