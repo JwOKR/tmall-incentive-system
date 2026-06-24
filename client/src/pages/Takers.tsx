@@ -1,16 +1,18 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
+import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { takerColumns } from '@/lib/export';
 
 export default function Takers() {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [showForm, setShowForm] = useState(false);
   const [editingTaker, setEditingTaker] = useState<any>(null);
   const [formData, setFormData] = useState({
@@ -75,6 +77,23 @@ export default function Takers() {
 
   const takers = (data as any)?.data?.list || [];
   const total = (data as any)?.data?.total || 0;
+
+  const filteredTakers = useMemo(() => {
+    return filterData(takers, columnFilters, (item: any, key: string) => {
+      if (key === 'createdAt') return item.createdAt ? formatDate(item.createdAt) : '';
+      if (key === 'totalAmount') return item.totalAmount ? formatCurrency(item.totalAmount) : '';
+      return String(item[key] ?? '');
+    });
+  }, [takers, columnFilters]);
+
+  const setColFilter = (key: string, value: string) => {
+    setColumnFilters((prev) => {
+      const next = { ...prev };
+      if (value) next[key] = value;
+      else delete next[key];
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -202,13 +221,31 @@ export default function Takers() {
         <table className="w-full">
           <thead>
             <tr className="border-b">
-              <th className="px-4 py-3 text-left text-sm font-medium">微信昵称</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">微信号</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">状态</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">总订单</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">总金额</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">创建时间</th>
-              <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>微信昵称</div>
+                <ColumnFilter value={columnFilters['wechatName'] || ''} onChange={(v) => setColFilter('wechatName', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>微信号</div>
+                <ColumnFilter value={columnFilters['wechatId'] || ''} onChange={(v) => setColFilter('wechatId', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>状态</div>
+                <ColumnFilter type="select" value={columnFilters['status'] || ''} onChange={(v) => setColFilter('status', v)} options={[{ value: 'active', label: '活跃' }, { value: 'inactive', label: '停用' }]} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>总订单</div>
+                <ColumnFilter value={columnFilters['totalOrders'] || ''} onChange={(v) => setColFilter('totalOrders', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>总金额</div>
+                <ColumnFilter value={columnFilters['totalAmount'] || ''} onChange={(v) => setColFilter('totalAmount', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>创建时间</div>
+                <ColumnFilter value={columnFilters['createdAt'] || ''} onChange={(v) => setColFilter('createdAt', v)} />
+              </th>
+              <th className="px-4 py-2 text-right text-sm font-medium"><div>操作</div></th>
             </tr>
           </thead>
           <tbody>
@@ -218,14 +255,14 @@ export default function Takers() {
                   加载中...
                 </td>
               </tr>
-            ) : takers.length === 0 ? (
+            ) : filteredTakers.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
-                  暂无数据
+                  暂无匹配数据
                 </td>
               </tr>
             ) : (
-              takers.map((taker: any) => (
+              filteredTakers.map((taker: any) => (
                 <tr key={taker.id} className="border-b last:border-0">
                   <td className="px-4 py-3 text-sm font-medium">{taker.wechatName}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{taker.wechatId}</td>

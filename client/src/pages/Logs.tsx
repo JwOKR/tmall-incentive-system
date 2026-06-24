@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { logsApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { Filter } from 'lucide-react';
+import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 
 export default function Logs() {
   const [page, setPage] = useState(1);
   const [actionFilter, setActionFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery({
     queryKey: ['logs', page, actionFilter, startDate, endDate],
@@ -24,6 +26,24 @@ export default function Logs() {
 
   const logs = (data as any)?.data?.list || [];
   const total = (data as any)?.data?.total || 0;
+
+  const filteredLogs = useMemo(() => {
+    return filterData(logs, columnFilters, (item: any, key: string) => {
+      if (key === 'createdAt') return item.createdAt ? formatDate(item.createdAt) : '';
+      if (key === 'action') return actionLabels[item.action] || item.action || '';
+      if (key === 'orderInfo') return item.order ? `${item.order.orderNo || ''} ${item.order.productName || ''}`.trim() : '';
+      return String(item[key] ?? '');
+    });
+  }, [logs, columnFilters]);
+
+  const setColFilter = (key: string, value: string) => {
+    setColumnFilters((prev) => {
+      const next = { ...prev };
+      if (value) next[key] = value;
+      else delete next[key];
+      return next;
+    });
+  };
 
   const actionColors: Record<string, string> = {
     create: 'bg-green-100 text-green-800',
@@ -89,11 +109,26 @@ export default function Logs() {
         <table className="w-full">
           <thead>
             <tr className="border-b">
-              <th className="px-4 py-3 text-left text-sm font-medium">时间</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">操作类型</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">详细信息</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">关联订单</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">IP地址</th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>时间</div>
+                <ColumnFilter value={columnFilters['createdAt'] || ''} onChange={(v) => setColFilter('createdAt', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>操作类型</div>
+                <ColumnFilter type="select" value={columnFilters['action'] || ''} onChange={(v) => setColFilter('action', v)} options={[{ value: '创建', label: '创建' }, { value: '更新', label: '更新' }, { value: '删除', label: '删除' }, { value: '状态变更', label: '状态变更' }, { value: '分配', label: '分配' }]} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>详细信息</div>
+                <ColumnFilter value={columnFilters['detail'] || ''} onChange={(v) => setColFilter('detail', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>关联订单</div>
+                <ColumnFilter value={columnFilters['orderInfo'] || ''} onChange={(v) => setColFilter('orderInfo', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>IP地址</div>
+                <ColumnFilter value={columnFilters['ipAddress'] || ''} onChange={(v) => setColFilter('ipAddress', v)} />
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -103,14 +138,14 @@ export default function Logs() {
                   加载中...
                 </td>
               </tr>
-            ) : logs.length === 0 ? (
+            ) : filteredLogs.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                  暂无日志记录
+                  暂无匹配数据
                 </td>
               </tr>
             ) : (
-              logs.map((log: any) => (
+              filteredLogs.map((log: any) => (
                 <tr key={log.id} className="border-b last:border-0">
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     {formatDate(log.createdAt)}

@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api, { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Search, Copy, Save, Trash2, CheckSquare, Square } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
+import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { orderColumns } from '@/lib/export';
 
 interface EditingCell {
@@ -25,6 +26,7 @@ export default function Orders() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery({
     queryKey: ['orders', page, search, refundFilter, reviewFilter, startDate, endDate],
@@ -166,10 +168,10 @@ export default function Orders() {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === orders.length) {
+    if (selectedIds.size === filteredOrders.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(orders.map((o: any) => o.id)));
+      setSelectedIds(new Set(filteredOrders.map((o: any) => o.id)));
     }
   };
 
@@ -310,6 +312,23 @@ export default function Orders() {
 
   const orders = (data as any)?.data?.list || [];
   const total = (data as any)?.data?.total || 0;
+
+  const filteredOrders = useMemo(() => {
+    return filterData(orders, columnFilters, (item: any, key: string) => {
+      if (key === 'wechatName') return item.taker?.wechatName || '';
+      if (key === 'wechatId') return item.taker?.wechatId || '';
+      return String(item[key] ?? '');
+    });
+  }, [orders, columnFilters]);
+
+  const setColFilter = (key: string, value: string) => {
+    setColumnFilters((prev) => {
+      const next = { ...prev };
+      if (value) next[key] = value;
+      else delete next[key];
+      return next;
+    });
+  };
 
   const refundOptions = [
     { value: 'true', label: '已返款', color: 'bg-green-100 text-green-700' },
@@ -505,33 +524,78 @@ export default function Orders() {
                 <button
                   onClick={handleSelectAll}
                   className="p-1 hover:bg-accent rounded"
-                  title={selectedIds.size === orders.length ? '取消全选' : '全选'}
+                  title={selectedIds.size === filteredOrders.length ? '取消全选' : '全选'}
                 >
-                  {selectedIds.size === orders.length && orders.length > 0 ? (
+                  {selectedIds.size === filteredOrders.length && filteredOrders.length > 0 ? (
                     <CheckSquare className="h-4 w-4 text-primary" />
                   ) : (
                     <Square className="h-4 w-4 text-muted-foreground" />
                   )}
                 </button>
               </th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">接单日期</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">微信昵称</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">微信号</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">总返款</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">返款状态</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">返款日期</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">商品ID</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">产品编号</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">19订单号</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">订单编号</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">订单链接</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">实付</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">好评状态</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">基础返佣</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">好评返佣</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">好评返佣日期</th>
-              <th className="px-3 py-3 text-left font-medium whitespace-nowrap">备注</th>
-              <th className="px-3 py-3 text-right font-medium whitespace-nowrap">操作</th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">接单日期</div>
+                <ColumnFilter value={columnFilters['orderDate'] || ''} onChange={(v) => setColFilter('orderDate', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">微信昵称</div>
+                <ColumnFilter value={columnFilters['wechatName'] || ''} onChange={(v) => setColFilter('wechatName', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">微信号</div>
+                <ColumnFilter value={columnFilters['wechatId'] || ''} onChange={(v) => setColFilter('wechatId', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium"><div className="whitespace-nowrap">总返款</div></th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">返款状态</div>
+                <ColumnFilter type="select" value={columnFilters['isRefunded'] || ''} onChange={(v) => setColFilter('isRefunded', v)} options={[{ value: 'true', label: '已返款' }, { value: 'false', label: '未返款' }]} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">返款日期</div>
+                <ColumnFilter value={columnFilters['refundDate'] || ''} onChange={(v) => setColFilter('refundDate', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">商品ID</div>
+                <ColumnFilter value={columnFilters['productId'] || ''} onChange={(v) => setColFilter('productId', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">产品编号</div>
+                <ColumnFilter value={columnFilters['productCode'] || ''} onChange={(v) => setColFilter('productCode', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">19订单号</div>
+                <ColumnFilter value={columnFilters['orderNo19'] || ''} onChange={(v) => setColFilter('orderNo19', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">订单编号</div>
+                <ColumnFilter value={columnFilters['orderNo'] || ''} onChange={(v) => setColFilter('orderNo', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium"><div className="whitespace-nowrap">订单链接</div></th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">实付</div>
+                <ColumnFilter value={columnFilters['actualPayment'] || ''} onChange={(v) => setColFilter('actualPayment', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">好评状态</div>
+                <ColumnFilter type="select" value={columnFilters['isGoodReview'] || ''} onChange={(v) => setColFilter('isGoodReview', v)} options={[{ value: 'true', label: '已好评' }, { value: 'false', label: '未好评' }]} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">基础返佣</div>
+                <ColumnFilter value={columnFilters['baseCommission'] || ''} onChange={(v) => setColFilter('baseCommission', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">好评返佣</div>
+                <ColumnFilter value={columnFilters['reviewCommission'] || ''} onChange={(v) => setColFilter('reviewCommission', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">好评返佣日期</div>
+                <ColumnFilter value={columnFilters['reviewCommissionDate'] || ''} onChange={(v) => setColFilter('reviewCommissionDate', v)} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
+                <div className="whitespace-nowrap">备注</div>
+                <ColumnFilter value={columnFilters['remark'] || ''} onChange={(v) => setColFilter('remark', v)} />
+              </th>
+              <th className="px-3 py-2 text-right font-medium"><div className="whitespace-nowrap">操作</div></th>
             </tr>
           </thead>
           <tbody>
@@ -541,14 +605,14 @@ export default function Orders() {
                   加载中...
                 </td>
               </tr>
-            ) : orders.length === 0 ? (
+            ) : filteredOrders.length === 0 ? (
               <tr>
                 <td colSpan={19} className="px-4 py-8 text-center text-muted-foreground">
-                  暂无订单记录
+                  暂无匹配数据
                 </td>
               </tr>
             ) : (
-              orders.map((order: any) => (
+              filteredOrders.map((order: any) => (
                 <tr key={order.id} className={`border-b last:border-0 hover:bg-muted/30 ${selectedIds.has(order.id) ? 'bg-blue-50' : ''}`}>
                   <td className="px-3 py-2">
                     <button

@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi, takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { Plus, Search, Zap, Copy, Save, Trash2, CheckSquare, Square } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
+import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { taskColumns } from '@/lib/export';
 
 interface EditingCell {
@@ -41,6 +42,7 @@ export default function Tasks() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery({
     queryKey: ['tasks', page, search, statusFilter],
@@ -327,10 +329,10 @@ export default function Tasks() {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === tasks.length) {
+    if (selectedIds.size === filteredTasks.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(tasks.map((t: any) => t.id)));
+      setSelectedIds(new Set(filteredTasks.map((t: any) => t.id)));
     }
   };
 
@@ -407,6 +409,22 @@ export default function Tasks() {
   const tasks = (data as any)?.data?.list || [];
   const total = (data as any)?.data?.total || 0;
   const takers = (takersData as any)?.data?.list || [];
+
+  const filteredTasks = useMemo(() => {
+    return filterData(tasks, columnFilters, (item: any, key: string) => {
+      if (key === 'publishDate') return item.publishDate ? formatDate(item.publishDate) : '';
+      return String(item[key] ?? '');
+    });
+  }, [tasks, columnFilters]);
+
+  const setColFilter = (key: string, value: string) => {
+    setColumnFilters((prev) => {
+      const next = { ...prev };
+      if (value) next[key] = value;
+      else delete next[key];
+      return next;
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -720,26 +738,56 @@ export default function Tasks() {
                 <button
                   onClick={handleSelectAll}
                   className="p-1 hover:bg-accent rounded"
-                  title={selectedIds.size === tasks.length ? '取消全选' : '全选'}
+                  title={selectedIds.size === filteredTasks.length ? '取消全选' : '全选'}
                 >
-                  {selectedIds.size === tasks.length && tasks.length > 0 ? (
+                  {selectedIds.size === filteredTasks.length && filteredTasks.length > 0 ? (
                     <CheckSquare className="h-4 w-4 text-primary" />
                   ) : (
                     <Square className="h-4 w-4 text-muted-foreground" />
                   )}
                 </button>
               </th>
-              <th className="px-4 py-3 text-left text-sm font-medium">商品ID</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">产品编号</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">淘口令</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">价格</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">基础返佣</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">好评返佣</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">限接人数</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">已接人数</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">状态</th>
-              <th className="px-4 py-3 text-left text-sm font-medium">发布日期</th>
-              <th className="px-4 py-3 text-right text-sm font-medium">操作</th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>商品ID</div>
+                <ColumnFilter value={columnFilters['productId'] || ''} onChange={(v) => setColFilter('productId', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>产品编号</div>
+                <ColumnFilter value={columnFilters['productCode'] || ''} onChange={(v) => setColFilter('productCode', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>淘口令</div>
+                <ColumnFilter value={columnFilters['taoToken'] || ''} onChange={(v) => setColFilter('taoToken', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>价格</div>
+                <ColumnFilter value={columnFilters['price'] || ''} onChange={(v) => setColFilter('price', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>基础返佣</div>
+                <ColumnFilter value={columnFilters['baseCommission'] || ''} onChange={(v) => setColFilter('baseCommission', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>好评返佣</div>
+                <ColumnFilter value={columnFilters['reviewReward'] || ''} onChange={(v) => setColFilter('reviewReward', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>限接人数</div>
+                <ColumnFilter value={columnFilters['maxOrders'] || ''} onChange={(v) => setColFilter('maxOrders', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>已接人数</div>
+                <ColumnFilter value={columnFilters['currentOrders'] || ''} onChange={(v) => setColFilter('currentOrders', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>状态</div>
+                <ColumnFilter type="select" value={columnFilters['status'] || ''} onChange={(v) => setColFilter('status', v)} options={[{ value: 'active', label: '进行中' }, { value: 'completed', label: '已完成' }, { value: 'cancelled', label: '已取消' }]} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>发布日期</div>
+                <ColumnFilter value={columnFilters['publishDate'] || ''} onChange={(v) => setColFilter('publishDate', v)} />
+              </th>
+              <th className="px-4 py-2 text-right text-sm font-medium"><div>操作</div></th>
             </tr>
           </thead>
           <tbody>
@@ -850,14 +898,14 @@ export default function Tasks() {
                   加载中...
                 </td>
               </tr>
-            ) : tasks.length === 0 && !addingNewRow ? (
+            ) : filteredTasks.length === 0 && !addingNewRow ? (
               <tr>
                 <td colSpan={12} className="px-4 py-8 text-center text-muted-foreground">
-                  暂无任务
+                  暂无匹配数据
                 </td>
               </tr>
             ) : (
-              tasks.map((task: any) => (
+              filteredTasks.map((task: any) => (
                 <tr key={task.id} className={`border-b last:border-0 hover:bg-muted/30 ${selectedIds.has(task.id) ? 'bg-blue-50' : ''}`}>
                   <td className="px-4 py-2">
                     <button
