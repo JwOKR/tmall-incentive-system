@@ -422,6 +422,10 @@ export default function Tasks() {
             columns={taskColumns}
             data={tasks}
             buttonLabel="导出"
+            fetchData={async () => {
+              const res: any = await tasksApi.getAll({ pageSize: 99999, search, status: statusFilter });
+              return res?.data?.list || [];
+            }}
           />
           <ImportDialog
             title="导入任务数据"

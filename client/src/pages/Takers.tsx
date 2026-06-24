@@ -90,6 +90,10 @@ export default function Takers() {
             columns={takerColumns}
             data={takers}
             buttonLabel="导出"
+            fetchData={async () => {
+              const res: any = await takersApi.getAll({ pageSize: 99999, search });
+              return res?.data?.list || [];
+            }}
           />
           <ImportDialog
             title="导入接单人数据"
