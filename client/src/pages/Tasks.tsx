@@ -21,7 +21,9 @@ export default function Tasks() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedTaker, setSelectedTaker] = useState('');
   const [takerSearch, setTakerSearch] = useState('');
+  const [showTakerDropdown, setShowTakerDropdown] = useState(false);
   const [quickOrderForm, setQuickOrderForm] = useState({ orderNo: '', orderNo19: '', actualPayment: '' });
+  const takerDropdownRef = useRef<HTMLDivElement>(null);
   const [showBatchForm, setShowBatchForm] = useState(false);
   const [batchProductCodes, setBatchProductCodes] = useState('');
   const [addingNewRow, setAddingNewRow] = useState(false);
@@ -127,6 +129,7 @@ export default function Tasks() {
       setSelectedTask(null);
       setSelectedTaker('');
       setTakerSearch('');
+      setShowTakerDropdown(false);
       setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
       alert(data?.message || '接单成功');
     },
@@ -154,6 +157,16 @@ export default function Tasks() {
       if (selectRef.current) selectRef.current.focus();
     }
   }, [editingCell]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (takerDropdownRef.current && !takerDropdownRef.current.contains(e.target as Node)) {
+        setShowTakerDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleCellClick = (taskId: string, field: string, currentValue: any) => {
     if (editingCell?.taskId === taskId && editingCell?.field === field) return;
@@ -365,6 +378,7 @@ export default function Tasks() {
     setSelectedTask(task);
     setTakerSearch('');
     setSelectedTaker('');
+    setShowTakerDropdown(false);
     setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
     setShowQuickOrder(true);
   };
@@ -536,42 +550,62 @@ export default function Tasks() {
               </div>
               <div>
                 <label className="text-sm font-medium">选择接单人 *</label>
-                <div className="relative mt-1">
-                  <input
-                    type="text"
-                    value={takerSearch}
-                    onChange={(e) => {
-                      setTakerSearch(e.target.value);
-                      setSelectedTaker('');
-                    }}
-                    placeholder="搜索微信昵称或微信号..."
-                    className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  />
-                  {takerSearch && (
-                    <div className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto rounded-md border bg-card shadow-lg">
+                <div className="relative mt-1" ref={takerDropdownRef}>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={takerSearch}
+                      onChange={(e) => {
+                        setTakerSearch(e.target.value);
+                        setSelectedTaker('');
+                        setShowTakerDropdown(true);
+                      }}
+                      onFocus={() => setShowTakerDropdown(true)}
+                      placeholder="点击展开或输入搜索..."
+                      className={`w-full rounded-md border bg-background px-3 py-2 text-sm pr-8 ${
+                        selectedTaker ? 'border-green-500' : 'border-input'
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowTakerDropdown(v => !v)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <svg className={`h-4 w-4 transition-transform ${showTakerDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                  </div>
+                  {showTakerDropdown && (
+                    <div className="absolute z-10 mt-1 w-full max-h-52 overflow-y-auto rounded-md border bg-card shadow-lg">
                       {takers
                         .filter((t: any) => {
+                          if (!takerSearch) return true;
                           const keyword = takerSearch.toLowerCase();
                           return (
                             (t.wechatName && t.wechatName.toLowerCase().includes(keyword)) ||
                             (t.wechatId && t.wechatId.toLowerCase().includes(keyword))
                           );
                         })
-                        .slice(0, 20)
+                        .slice(0, 50)
                         .map((taker: any) => (
                           <div
                             key={taker.id}
-                            onClick={() => {
+                            onMouseDown={(e) => {
+                              e.preventDefault();
                               setSelectedTaker(taker.id);
-                              setTakerSearch(`${taker.wechatName} (${taker.wechatId})`);
+                              setTakerSearch(`${taker.wechatName}（${taker.wechatId}）`);
+                              setShowTakerDropdown(false);
                             }}
-                            className={`cursor-pointer px-3 py-2 text-sm hover:bg-accent ${selectedTaker === taker.id ? 'bg-accent' : ''}`}
+                            className={`cursor-pointer px-3 py-2 text-sm hover:bg-accent flex items-center justify-between ${
+                              selectedTaker === taker.id ? 'bg-accent font-medium' : ''
+                            }`}
                           >
-                            {taker.wechatName} ({taker.wechatId})
+                            <span>{taker.wechatName}</span>
+                            <span className="text-xs text-muted-foreground">{taker.wechatId}</span>
                           </div>
                         ))
                       }
                       {takers.filter((t: any) => {
+                        if (!takerSearch) return true;
                         const keyword = takerSearch.toLowerCase();
                         return (
                           (t.wechatName && t.wechatName.toLowerCase().includes(keyword)) ||
@@ -583,9 +617,10 @@ export default function Tasks() {
                     </div>
                   )}
                 </div>
-                {selectedTaker && !takerSearch && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    已选择: {takers.find((t: any) => t.id === selectedTaker)?.wechatName}
+                {selectedTaker && (
+                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                    已选择接单人
                   </p>
                 )}
               </div>
@@ -629,6 +664,7 @@ export default function Tasks() {
                     setSelectedTask(null);
                     setSelectedTaker('');
                     setTakerSearch('');
+                    setShowTakerDropdown(false);
                     setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
                   }}
                   className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
