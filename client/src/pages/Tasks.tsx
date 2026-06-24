@@ -21,6 +21,7 @@ export default function Tasks() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedTaker, setSelectedTaker] = useState('');
   const [takerSearch, setTakerSearch] = useState('');
+  const [quickOrderForm, setQuickOrderForm] = useState({ orderNo: '', orderNo19: '', actualPayment: '' });
   const [showBatchForm, setShowBatchForm] = useState(false);
   const [batchProductCodes, setBatchProductCodes] = useState('');
   const [addingNewRow, setAddingNewRow] = useState(false);
@@ -125,6 +126,8 @@ export default function Tasks() {
       setShowQuickOrder(false);
       setSelectedTask(null);
       setSelectedTaker('');
+      setTakerSearch('');
+      setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
       alert(data?.message || '接单成功');
     },
     onError: (error: any) => {
@@ -136,17 +139,12 @@ export default function Tasks() {
       if (code === 'INTERVAL_LIMIT') {
         const confirmed = confirm(`${message}\n\n是否强制接单？`);
         if (confirmed) {
-          // 强制接单
-          quickOrderMutation.mutate({
-            taskId: selectedTask.id,
-            takerId: selectedTaker,
-            force: true,
-          });
+          handleConfirmQuickOrder(true);
           return;
         }
+      } else {
+        alert(message);
       }
-      
-      alert(message);
     },
   });
 
@@ -366,10 +364,12 @@ export default function Tasks() {
   const handleQuickOrder = (task: any) => {
     setSelectedTask(task);
     setTakerSearch('');
+    setSelectedTaker('');
+    setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
     setShowQuickOrder(true);
   };
 
-  const handleConfirmQuickOrder = () => {
+  const handleConfirmQuickOrder = (force = false) => {
     if (!selectedTaker) {
       alert('请选择接单人');
       return;
@@ -377,6 +377,10 @@ export default function Tasks() {
     quickOrderMutation.mutate({
       taskId: selectedTask.id,
       takerId: selectedTaker,
+      orderNo: quickOrderForm.orderNo || undefined,
+      orderNo19: quickOrderForm.orderNo19 || undefined,
+      actualPayment: quickOrderForm.actualPayment !== '' ? Number(quickOrderForm.actualPayment) : undefined,
+      force,
     });
   };
 
@@ -585,6 +589,38 @@ export default function Tasks() {
                   </p>
                 )}
               </div>
+              <div>
+                <label className="text-sm font-medium">订单号（淘宝）</label>
+                <input
+                  type="text"
+                  value={quickOrderForm.orderNo}
+                  onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo: e.target.value })}
+                  placeholder="选填"
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">19位订单号</label>
+                <input
+                  type="text"
+                  value={quickOrderForm.orderNo19}
+                  onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo19: e.target.value })}
+                  placeholder="选填"
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">实付款（元）</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={quickOrderForm.actualPayment}
+                  onChange={(e) => setQuickOrderForm({ ...quickOrderForm, actualPayment: e.target.value })}
+                  placeholder="选填，默认 0"
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                />
+              </div>
               <div className="flex justify-end gap-2">
                 <button
                   type="button"
@@ -593,13 +629,14 @@ export default function Tasks() {
                     setSelectedTask(null);
                     setSelectedTaker('');
                     setTakerSearch('');
+                    setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
                   }}
                   className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
                 >
                   取消
                 </button>
                 <button
-                  onClick={handleConfirmQuickOrder}
+                  onClick={() => handleConfirmQuickOrder()}
                   disabled={quickOrderMutation.isPending}
                   className="rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 disabled:opacity-50"
                 >
