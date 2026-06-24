@@ -14,8 +14,8 @@ services:
       - PORT=3001
       - DATABASE_URL=mysql://tmall:yw551129@host.docker.internal:3306/tmall_incentive
       - JWT_SECRET=tmall-jwt-secret-2026-yw551129
-      - ADMIN_USERNAME=admin
-      - ADMIN_PASSWORD=admin123
+      - ADMIN_USERNAME=JIA
+      - ADMIN_PASSWORD=yw551129
     extra_hosts:
       - "host.docker.internal:host-gateway"
     restart: unless-stopped
