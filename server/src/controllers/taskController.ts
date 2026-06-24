@@ -406,13 +406,12 @@ export const quickOrder = async (req: Request, res: Response) => {
       });
     }
 
-    // 检查是否在7天内接过该任务（首次接单不受限制）
+    // 检查接单人7天内是否接过任何订单（首次接单不受限制，全局7天间隔）
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
     const recentOrder = await prisma.order.findFirst({
       where: {
-        taskId,
         takerId,
         orderDate: {
           gte: sevenDaysAgo,
@@ -430,7 +429,7 @@ export const quickOrder = async (req: Request, res: Response) => {
       
       return res.status(400).json({
         success: false,
-        message: `您在7天内已接过该任务，需等待至 ${nextAvailableDate.toLocaleDateString('zh-CN')} 后才能再次接单`,
+        message: `该接单人7天内已接单（最近接单时间：${recentOrder.orderDate.toLocaleString('zh-CN')}），需等待至 ${nextAvailableDate.toLocaleString('zh-CN')} 后才能再次接单`,
         code: 'INTERVAL_LIMIT',
       });
     }
