@@ -192,11 +192,11 @@ export const updateOrder = async (req: Request, res: Response) => {
         actualPayment: actualPayment !== undefined ? Number(actualPayment) : undefined,
         totalRefund: calculatedTotalRefund, // 自动计算，不接受手动输入
         isRefunded: isRefunded !== undefined ? Boolean(isRefunded) : undefined,
-        refundDate: parseExcelDate(refundDate),
+        refundDate: refundDate !== undefined ? parseExcelDate(refundDate) : undefined,
         isGoodReview: isGoodReview !== undefined ? Boolean(isGoodReview) : undefined,
         baseCommission: baseCommission ? Number(baseCommission) : undefined,
         reviewCommission: reviewCommission ? Number(reviewCommission) : undefined,
-        reviewCommissionDate: parseExcelDate(reviewCommissionDate),
+        reviewCommissionDate: reviewCommissionDate !== undefined ? parseExcelDate(reviewCommissionDate) : undefined,
         remark,
       },
       include: {
