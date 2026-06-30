@@ -46,7 +46,7 @@ export default function Tasks() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['tasks', page, search, statusFilter],
-    queryFn: () => tasksApi.getAll({ page, pageSize: 10, search, status: statusFilter }),
+    queryFn: () => tasksApi.getAll({ page, pageSize: 20, search, status: statusFilter }),
   });
 
   const { data: takersData } = useQuery({
@@ -999,7 +999,7 @@ export default function Tasks() {
       </div>
 
       {/* Pagination */}
-      {total > 10 && (
+      {total > 20 && (
         <div className="flex justify-center gap-2">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -1009,11 +1009,11 @@ export default function Tasks() {
             上一页
           </button>
           <span className="flex items-center px-3 text-sm">
-            第 {page} 页 / 共 {Math.ceil(total / 10)} 页
+            第 {page} 页 / 共 {Math.ceil(total / 20)} 页
           </span>
           <button
             onClick={() => setPage(p => p + 1)}
-            disabled={page >= Math.ceil(total / 10)}
+            disabled={page >= Math.ceil(total / 20)}
             className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
           >
             下一页
