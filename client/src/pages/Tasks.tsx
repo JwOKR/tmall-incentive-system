@@ -230,11 +230,11 @@ export default function Tasks() {
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={() => handleSave(task.id)}
             onKeyDown={(e) => handleKeyDown(e, task.id)}
-            className="w-full rounded border border-primary px-2 py-1 text-sm bg-white"
+            className="w-full rounded border border-primary px-2 py-1 text-sm bg-background"
           />
           <button
             onClick={() => handleSave(task.id)}
-            className="p-1 text-green-600 hover:bg-green-100 rounded"
+            className="p-1 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"
           >
             <Save className="h-3 w-3" />
           </button>
@@ -251,7 +251,7 @@ export default function Tasks() {
     return (
       <div
         onClick={() => handleCellClick(task.id, field, value)}
-        className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded min-h-[28px] flex items-center"
+        className="cursor-pointer hover:bg-accent px-2 py-1 rounded min-h-[28px] flex items-center"
         title="点击编辑"
       >
         {displayValue()}
@@ -262,9 +262,9 @@ export default function Tasks() {
   const renderStatusSelect = (task: any) => {
     const editing = isEditing(task.id, 'status');
     const statusOptions = [
-      { value: 'active', label: '进行中', color: 'bg-green-100 text-green-700' },
-      { value: 'completed', label: '已完成', color: 'bg-blue-100 text-blue-700' },
-      { value: 'cancelled', label: '已取消', color: 'bg-red-100 text-red-700' },
+      { value: 'active', label: '进行中', color: 'badge-success' },
+      { value: 'completed', label: '已完成', color: 'badge-info' },
+      { value: 'cancelled', label: '已取消', color: 'badge-danger' },
     ];
     const currentOption = statusOptions.find(opt => opt.value === task.status);
     
@@ -474,7 +474,7 @@ export default function Tasks() {
           />
           <button
             onClick={() => setShowBatchForm(true)}
-            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
             批量新增
@@ -515,8 +515,8 @@ export default function Tasks() {
 
       {/* Batch Form Modal */}
       {showBatchForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50">
             <h3 className="text-lg font-semibold mb-4">批量新增任务</h3>
             <div className="space-y-4">
               <div>
@@ -558,8 +558,8 @@ export default function Tasks() {
 
       {/* Quick Order Modal */}
       {showQuickOrder && selectedTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50">
             <h3 className="text-lg font-semibold mb-4">快速接单</h3>
             <div className="space-y-4">
               <div className="rounded-lg border p-4 bg-muted/50">
@@ -569,7 +569,7 @@ export default function Tasks() {
                 <div className="border-t mt-2 pt-2">
                   <p className="text-sm text-muted-foreground">基础返佣: {formatCurrency(selectedTask.baseCommission)}</p>
                   <p className="text-sm text-muted-foreground">好评返佣: {formatCurrency(selectedTask.reviewReward)}</p>
-                  <p className="text-sm font-medium text-green-600">
+                  <p className="text-sm font-medium text-green-600 dark:text-green-400">
                     总返款: {formatCurrency(selectedTask.price + selectedTask.baseCommission + selectedTask.reviewReward)}
                   </p>
                 </div>
@@ -647,7 +647,7 @@ export default function Tasks() {
                   )}
                 </div>
                 {selectedTaker && (
-                  <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     已选择接单人
                   </p>
@@ -703,7 +703,7 @@ export default function Tasks() {
                 <button
                   onClick={() => handleConfirmQuickOrder()}
                   disabled={quickOrderMutation.isPending}
-                  className="rounded-md bg-green-600 px-4 py-2 text-sm text-white hover:bg-green-700 disabled:opacity-50"
+                  className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   {quickOrderMutation.isPending ? '接单中...' : '确认接单'}
                 </button>
@@ -740,7 +740,7 @@ export default function Tasks() {
       <div className="rounded-lg border bg-card shadow-sm overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b">
+            <tr className="table-header">
               <th className="px-4 py-3 text-left">
                 <button
                   onClick={handleSelectAll}
@@ -800,7 +800,7 @@ export default function Tasks() {
           <tbody>
             {/* New Row */}
             {addingNewRow && (
-              <tr className="border-b bg-blue-50">
+              <tr className="border-b bg-primary/5 dark:bg-primary/10">
                 <td className="px-4 py-2"></td>
                 <td className="px-4 py-2">
                   <input
@@ -871,7 +871,7 @@ export default function Tasks() {
                 </td>
                 <td className="px-4 py-2 text-muted-foreground">0人</td>
                 <td className="px-4 py-2">
-                  <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-green-100 text-green-800">
+                  <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium badge-success">
                     进行中
                   </span>
                 </td>
@@ -883,7 +883,7 @@ export default function Tasks() {
                     <button
                       onClick={handleSaveNewRow}
                       disabled={createMutation.isPending}
-                      className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 disabled:opacity-50"
+                      className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm hover:bg-primary/90 disabled:opacity-50"
                     >
                       {createMutation.isPending ? '保存中...' : '保存'}
                     </button>
@@ -913,7 +913,7 @@ export default function Tasks() {
               </tr>
             ) : (
               filteredTasks.map((task: any) => (
-                <tr key={task.id} className={`border-b last:border-0 hover:bg-muted/30 ${selectedIds.has(task.id) ? 'bg-blue-50' : ''}`}>
+                <tr key={task.id} className={`table-row-hover table-row-zebra ${selectedIds.has(task.id) ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
                   <td className="px-4 py-2">
                     <button
                       onClick={() => handleSelectOne(task.id)}
@@ -962,7 +962,7 @@ export default function Tasks() {
                     </div>
                   </td>
                   <td className="px-4 py-2 text-sm">
-                    <span className={task.currentOrders >= task.maxOrders ? 'text-red-600 font-medium' : ''}>
+                    <span className={task.currentOrders >= task.maxOrders ? 'text-destructive font-medium' : ''}>
                       {task.currentOrders}人
                     </span>
                   </td>
@@ -980,14 +980,14 @@ export default function Tasks() {
                         className="p-1 hover:bg-accent rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                         title="快速接单"
                       >
-                        <Zap className="h-4 w-4 text-green-600" />
+                        <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
                       </button>
                       <button
                         onClick={() => handleDelete(task.id)}
-                        className="p-1 hover:bg-red-100 rounded-md"
+                        className="p-1 hover:bg-destructive/10 rounded-md"
                         title="删除任务"
                       >
-                        <Trash2 className="h-4 w-4 text-red-600" />
+                        <Trash2 className="h-4 w-4 text-destructive" />
                       </button>
                     </div>
                   </td>

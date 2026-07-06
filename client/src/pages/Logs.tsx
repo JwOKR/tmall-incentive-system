@@ -46,11 +46,11 @@ export default function Logs() {
   };
 
   const actionColors: Record<string, string> = {
-    create: 'bg-green-100 text-green-800',
-    update: 'bg-blue-100 text-blue-800',
-    delete: 'bg-red-100 text-red-800',
-    status_change: 'bg-yellow-100 text-yellow-800',
-    assign: 'bg-purple-100 text-purple-800',
+    create: 'badge-success',
+    update: 'badge-info',
+    delete: 'badge-danger',
+    status_change: 'badge-warning',
+    assign: 'badge-purple',
   };
 
   const actionLabels: Record<string, string> = {
@@ -108,7 +108,7 @@ export default function Logs() {
       <div className="rounded-lg border bg-card shadow-sm">
         <table className="w-full">
           <thead>
-            <tr className="border-b">
+            <tr className="table-header">
               <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>时间</div>
                 <ColumnFilter value={columnFilters['createdAt'] || ''} onChange={(v) => setColFilter('createdAt', v)} />
@@ -146,14 +146,14 @@ export default function Logs() {
               </tr>
             ) : (
               filteredLogs.map((log: any) => (
-                <tr key={log.id} className="border-b last:border-0">
+                <tr key={log.id} className="table-row-hover table-row-zebra">
                   <td className="px-4 py-3 text-sm text-muted-foreground">
                     {formatDate(log.createdAt)}
                   </td>
                   <td className="px-4 py-3 text-sm">
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                        actionColors[log.action] || 'bg-gray-100 text-gray-800'
+                        actionColors[log.action] || 'badge-neutral'
                       }`}
                     >
                       {actionLabels[log.action] || log.action}

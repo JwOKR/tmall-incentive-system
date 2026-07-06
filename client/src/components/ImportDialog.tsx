@@ -183,8 +183,8 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
       </button>
       
       {showDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-3xl rounded-lg bg-card p-6 shadow-lg max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-3xl rounded-xl bg-card p-6 shadow-xl border border-border/50 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">{title}</h3>
               <button
@@ -239,7 +239,7 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
                   <div key={col.key} className="flex items-center gap-2 text-sm">
                     <span className="text-muted-foreground">•</span>
                     <span>{col.label}</span>
-                    {col.required && <span className="text-red-500">*</span>}
+                    {col.required && <span className="text-destructive">*</span>}
                   </div>
                 ))}
               </div>
@@ -259,7 +259,7 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
                 <div className="overflow-x-auto border rounded-lg">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b bg-muted/50">
+                      <tr className="table-header">
                         {columns.map(col => (
                           <th key={col.key} className="px-3 py-2 text-left font-medium">
                             {col.label}
@@ -269,7 +269,7 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
                     </thead>
                     <tbody>
                       {previewData.map((row, index) => (
-                        <tr key={index} className="border-b last:border-0">
+                        <tr key={index} className="table-row-hover">
                           {columns.map(col => (
                             <td key={col.key} className="px-3 py-2">
                               {row[col.key] || '-'}
@@ -294,14 +294,14 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
                 </h4>
                 <div className="space-y-1 text-sm">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
                     <span>
                       {mode === 'update' ? `成功修改: ${result.success} 条` : `成功导入: ${result.success} 条`}
                     </span>
                   </div>
                   {result.duplicates > 0 && (
                     <div className="flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-yellow-600" />
+                      <AlertCircle className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
                       <span>
                         {mode === 'update'
                           ? `未找到订单: ${result.duplicates} 条（订单号不存在）`
@@ -311,7 +311,7 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
                   )}
                   {result.failed > 0 && (
                     <div className="flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-red-600" />
+                      <AlertCircle className="h-4 w-4 text-destructive" />
                       <span>
                         {mode === 'update' ? `修改失败: ${result.failed} 条` : `导入失败: ${result.failed} 条`}
                       </span>

@@ -165,8 +165,8 @@ export default function Takers() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50">
             <h3 className="text-lg font-semibold mb-4">
               {editingTaker ? '编辑接单人' : '添加接单人'}
             </h3>
@@ -220,7 +220,7 @@ export default function Takers() {
       <div className="rounded-lg border bg-card shadow-sm">
         <table className="w-full">
           <thead>
-            <tr className="border-b">
+            <tr className="table-header">
               <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>微信昵称</div>
                 <ColumnFilter value={columnFilters['wechatName'] || ''} onChange={(v) => setColFilter('wechatName', v)} />
@@ -263,15 +263,15 @@ export default function Takers() {
               </tr>
             ) : (
               filteredTakers.map((taker: any) => (
-                <tr key={taker.id} className="border-b last:border-0">
+                <tr key={taker.id} className="table-row-hover table-row-zebra">
                   <td className="px-4 py-3 text-sm font-medium">{taker.wechatName}</td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{taker.wechatId}</td>
                   <td className="px-4 py-3 text-sm">
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                         taker.status === 'active'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-gray-100 text-gray-800'
+                          ? 'badge-success'
+                          : 'badge-neutral'
                       }`}
                     >
                       {taker.status === 'active' ? '活跃' : '停用'}

@@ -228,11 +228,11 @@ export default function Orders() {
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={handleSave}
             onKeyDown={handleKeyDown}
-            className="w-full rounded border border-primary px-2 py-1 text-sm bg-white"
+            className="w-full rounded border border-primary px-2 py-1 text-sm bg-background"
           />
           <button
             onClick={handleSave}
-            className="p-1 text-green-600 hover:bg-green-100 rounded"
+            className="p-1 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"
           >
             <Save className="h-3 w-3" />
           </button>
@@ -249,7 +249,7 @@ export default function Orders() {
     return (
       <div
         onClick={() => handleCellClick(order.id, field, value)}
-        className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded min-h-[28px] flex items-center"
+        className="cursor-pointer hover:bg-accent px-2 py-1 rounded min-h-[28px] flex items-center"
         title="点击编辑"
       >
         {displayValue()}
@@ -331,13 +331,13 @@ export default function Orders() {
   };
 
   const refundOptions = [
-    { value: 'true', label: '已返款', color: 'bg-green-100 text-green-700' },
-    { value: 'false', label: '未返款', color: 'bg-red-100 text-red-700' },
+    { value: 'true', label: '已返款', color: 'badge-success' },
+    { value: 'false', label: '未返款', color: 'badge-danger' },
   ];
 
   const reviewOptions = [
-    { value: 'true', label: '已好评', color: 'bg-green-100 text-green-700' },
-    { value: 'false', label: '未好评', color: 'bg-gray-100 text-gray-700' },
+    { value: 'true', label: '已好评', color: 'badge-success' },
+    { value: 'false', label: '未好评', color: 'badge-neutral' },
   ];
 
   return (
@@ -519,7 +519,7 @@ export default function Orders() {
       <div className="rounded-lg border bg-card shadow-sm overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b bg-muted/50">
+            <tr className="table-header">
               <th className="px-3 py-3 text-left">
                 <button
                   onClick={handleSelectAll}
@@ -613,7 +613,7 @@ export default function Orders() {
               </tr>
             ) : (
               filteredOrders.map((order: any) => (
-                <tr key={order.id} className={`border-b last:border-0 hover:bg-muted/30 ${selectedIds.has(order.id) ? 'bg-blue-50' : ''}`}>
+                <tr key={order.id} className={`table-row-hover table-row-zebra ${selectedIds.has(order.id) ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
                   <td className="px-3 py-2">
                     <button
                       onClick={() => handleSelectOne(order.id)}
@@ -635,7 +635,7 @@ export default function Orders() {
                   <td className="px-3 py-2 text-muted-foreground">
                     {order.taker?.wechatId}
                   </td>
-                  <td className="px-3 py-2 text-green-600 font-medium">
+                  <td className="px-3 py-2 text-green-600 dark:text-green-400 font-medium">
                     <div title={`实付 ${formatCurrency(order.actualPayment)} + 基础返佣 ${formatCurrency(order.baseCommission)} + 好评返佣 ${formatCurrency(order.reviewCommission)}`}>
                       {renderReadOnlyCell(calculateTotalRefund(order), 'number')}
                     </div>
@@ -660,7 +660,7 @@ export default function Orders() {
                           href={`http://web.19buy.com/search.aspx?id=${order.productCode}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 text-xs"
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-xs"
                           title="查看产品页面"
                         >
                           ↗
@@ -684,7 +684,7 @@ export default function Orders() {
                           onChange={(e) => setEditValue(e.target.value)}
                           onBlur={handleSave}
                           onKeyDown={handleKeyDown}
-                          className="w-full rounded border border-primary px-2 py-1 text-sm bg-white"
+                          className="w-full rounded border border-primary px-2 py-1 text-sm bg-background"
                         />
                         <button onClick={handleSave} className="p-1 text-green-600 hover:bg-green-100 rounded">
                           <Save className="h-3 w-3" />
@@ -696,7 +696,7 @@ export default function Orders() {
                           href={order.orderLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:underline text-xs"
+                          className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
                           title="点击打开链接"
                         >
                           打开
@@ -747,10 +747,10 @@ export default function Orders() {
                   <td className="px-3 py-2 text-right">
                     <button
                       onClick={() => handleDelete(order.id)}
-                      className="p-1 hover:bg-red-100 rounded-md"
+                      className="p-1 hover:bg-destructive/10 rounded-md"
                       title="删除订单"
                     >
-                      <Trash2 className="h-4 w-4 text-red-600" />
+                      <Trash2 className="h-4 w-4 text-destructive" />
                     </button>
                   </td>
                 </tr>

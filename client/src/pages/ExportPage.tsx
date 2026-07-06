@@ -179,7 +179,7 @@ export default function ExportPage() {
                   .filter(sheet => selectedSheets[sheet.key as keyof typeof selectedSheets])
                   .map(sheet => (
                     <div key={sheet.key} className="flex items-center gap-2">
-                      <span className="text-green-600">✓</span>
+                      <span className="text-green-600 dark:text-green-400">✓</span>
                       <span>{sheet.label}</span>
                       <span className="text-xs text-muted-foreground">({sheet.count}条)</span>
                     </div>
@@ -208,7 +208,7 @@ export default function ExportPage() {
             >
               {exporting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground"></div>
                   导出中...
                 </>
               ) : (

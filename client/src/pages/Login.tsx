@@ -115,7 +115,7 @@ export default function Login() {
             </button>
 
             <p className="text-center text-xs text-muted-foreground pt-2">
-              默认账户: admin / admin123
+              天猫激励订单管理系统
             </p>
           </form>
         </div>
