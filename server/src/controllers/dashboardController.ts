@@ -34,25 +34,29 @@ export const getIncentiveSummary = async (req: Request, res: Response) => {
     });
 
     // 生成汇总文本
+    const fmt = (n: number) => {
+      const fixed = n.toFixed(2);
+      return fixed.endsWith('.00') ? fixed.slice(0, -3) : fixed;
+    };
     const dateStr = targetDate.toISOString().split('T')[0];
     const dateFormatted = dateStr.replace(/-/g, '.');
     const totalActualPayment = orders.reduce((sum, o) => sum + o.actualPayment, 0);
     const totalCommission = orders.reduce((sum, o) => sum + o.baseCommission, 0);
     
     let summaryText = `${dateStr}天猫激励订单\n`;
-    summaryText += `合计${orders.length}单，合计激励本金：${totalActualPayment.toFixed(2)}\n\n`;
+    summaryText += `合计${orders.length}单，合计激励本金：${fmt(totalActualPayment)}\n\n`;
     summaryText += `微信昵称-19订单号-实付\n\n`;
 
     orders.forEach(order => {
       const wechatName = order.taker?.wechatName || '未知';
       const orderNo = order.orderNo19 || '未填写';
-      const actualPayment = order.actualPayment.toFixed(2);
+      const actualPayment = fmt(order.actualPayment);
       summaryText += `${wechatName}-${orderNo}-${actualPayment}\n`;
     });
 
-    summaryText += `\n${dateStr}天猫激励佣金合计${totalCommission.toFixed(2)}元\n`;
+    summaryText += `\n${dateStr}天猫激励佣金合计${fmt(totalCommission)}元\n`;
     summaryText += `日期 单数 佣金\n`;
-    summaryText += `${dateFormatted} ${orders.length} ${totalCommission.toFixed(2)}`;
+    summaryText += `${dateFormatted} ${orders.length} ${fmt(totalCommission)}`;
 
     res.json({
       success: true,
