@@ -29,6 +29,8 @@ export default function Tasks() {
   const [showTakerDropdown, setShowTakerDropdown] = useState(false);
   const [quickOrderForm, setQuickOrderForm] = useState({ orderNo: '', orderNo19: '', actualPayment: '' });
   const takerDropdownRef = useRef<HTMLDivElement>(null);
+  const quickOrderModalRef = useRef<HTMLDivElement>(null);
+  const batchFormModalRef = useRef<HTMLDivElement>(null);
   const [showBatchForm, setShowBatchForm] = useState(false);
   const [batchProductCodes, setBatchProductCodes] = useState('');
   const [addingNewRow, setAddingNewRow] = useState(false);
@@ -56,6 +58,7 @@ export default function Tasks() {
   const { data: takersData } = useQuery({
     queryKey: ['takers-list'],
     queryFn: () => takersApi.getAll({ pageSize: 100 }),
+    staleTime: 5 * 60 * 1000,
   });
 
   const createMutation = useMutation({
@@ -177,6 +180,18 @@ export default function Tasks() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    if (showQuickOrder && quickOrderModalRef.current) {
+      quickOrderModalRef.current.focus();
+    }
+  }, [showQuickOrder]);
+
+  useEffect(() => {
+    if (showBatchForm && batchFormModalRef.current) {
+      batchFormModalRef.current.focus();
+    }
+  }, [showBatchForm]);
 
   const handleCellClick = (taskId: string, field: string, currentValue: any) => {
     if (editingCell?.taskId === taskId && editingCell?.field === field) return;
@@ -528,7 +543,7 @@ export default function Tasks() {
           onClick={() => { setShowBatchForm(false); setBatchProductCodes(''); }}
           onKeyDown={(e) => e.key === 'Escape' && (setShowBatchForm(false), setBatchProductCodes(''))}
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={batchFormModalRef}
         >
           <div
             className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50"
@@ -580,7 +595,7 @@ export default function Tasks() {
           onClick={() => { setShowQuickOrder(false); setSelectedTask(null); setSelectedTaker(''); setTakerSearch(''); setShowTakerDropdown(false); setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }); }}
           onKeyDown={(e) => e.key === 'Escape' && (setShowQuickOrder(false), setSelectedTask(null), setSelectedTaker(''), setTakerSearch(''), setShowTakerDropdown(false), setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }))}
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={quickOrderModalRef}
         >
           <div
             className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50"
