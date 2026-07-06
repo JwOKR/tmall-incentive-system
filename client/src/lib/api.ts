@@ -77,6 +77,8 @@ export const ordersApi = {
   create: (data: any) => api.post('/orders', data),
   batchCreate: (orders: any[]) => api.post('/orders/batch', { orders }, { timeout: 120000 }),
   batchUpdate: (orders: any[]) => api.put('/orders/batch/update', { orders }, { timeout: 120000 }),
+  batchUpdateStatus: (ids: string[], field: string, value: boolean) =>
+    api.put('/orders/batch/status', { ids, field, value }),
   update: (id: string, data: any) => api.put(`/orders/${id}`, data),
   delete: (id: string) => api.delete(`/orders/${id}`),
 };

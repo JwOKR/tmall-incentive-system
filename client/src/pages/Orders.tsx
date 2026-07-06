@@ -2,10 +2,11 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api, { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Search, Copy, Save, Trash2, CheckSquare, Square } from 'lucide-react';
+import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Star, Calendar } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
+import { useToast } from '@/components/Toast';
 import { orderColumns } from '@/lib/export';
 
 interface EditingCell {
@@ -15,6 +16,7 @@ interface EditingCell {
 
 export default function Orders() {
   const queryClient = useQueryClient();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [refundFilter, setRefundFilter] = useState('');
@@ -49,7 +51,7 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (error: any) => {
-      alert(error?.response?.data?.message || '更新订单失败');
+      toastError(error?.response?.data?.message || '更新订单失败');
     },
   });
 
@@ -59,9 +61,10 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      toastSuccess('删除成功');
     },
     onError: (error: any) => {
-      alert(error?.response?.data?.message || '删除订单失败');
+      toastError(error?.response?.data?.message || '删除订单失败');
     },
   });
 
@@ -77,10 +80,24 @@ export default function Orders() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       setSelectedIds(new Set());
-      alert(`批量删除完成: 成功${result.success}条，失败${result.failed}条`);
+      toastSuccess(`批量删除完成: 成功${result.success}条${result.failed > 0 ? `，失败${result.failed}条` : ''}`);
     },
     onError: () => {
-      alert('批量删除失败');
+      toastError('批量删除失败');
+    },
+  });
+
+  const batchStatusMutation = useMutation({
+    mutationFn: ({ ids, field, value }: { ids: string[]; field: string; value: boolean }) =>
+      ordersApi.batchUpdateStatus(ids, field, value),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      setSelectedIds(new Set());
+      toastSuccess(data?.message || '批量更新成功');
+    },
+    onError: (error: any) => {
+      toastError(error?.response?.data?.message || '批量更新失败');
     },
   });
 
@@ -187,11 +204,22 @@ export default function Orders() {
 
   const handleBatchDelete = () => {
     if (selectedIds.size === 0) {
-      alert('请先选择要删除的订单');
+      toastError('请先选择要删除的订单');
       return;
     }
     if (confirm(`确定要删除选中的 ${selectedIds.size} 个订单吗？此操作不可恢复！`)) {
       batchDeleteMutation.mutate(Array.from(selectedIds));
+    }
+  };
+
+  const handleBatchStatus = (field: 'isRefunded' | 'isGoodReview', value: boolean) => {
+    if (selectedIds.size === 0) {
+      toastError('请先选择订单');
+      return;
+    }
+    const label = field === 'isRefunded' ? '返款' : '好评';
+    if (confirm(`确定要将选中的 ${selectedIds.size} 个订单标记为${value ? '已' : '未'}${label}吗？`)) {
+      batchStatusMutation.mutate({ ids: Array.from(selectedIds), field, value });
     }
   };
 
@@ -205,7 +233,7 @@ export default function Orders() {
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text).then(() => {
-      alert('已复制');
+      toastSuccess('已复制');
     });
   };
 
@@ -340,6 +368,44 @@ export default function Orders() {
     { value: 'false', label: '未好评', color: 'badge-neutral' },
   ];
 
+  // 快捷日期筛选
+  const applyDatePreset = (preset: 'today' | 'yesterday' | '7days' | '30days' | 'clear') => {
+    const now = new Date();
+    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    if (preset === 'clear') {
+      setStartDate('');
+      setEndDate('');
+      return;
+    }
+    if (preset === 'today') {
+      setStartDate(fmt(now));
+      setEndDate(fmt(now));
+    } else if (preset === 'yesterday') {
+      const y = new Date(now); y.setDate(y.getDate() - 1);
+      setStartDate(fmt(y));
+      setEndDate(fmt(y));
+    } else if (preset === '7days') {
+      const d = new Date(now); d.setDate(d.getDate() - 6);
+      setStartDate(fmt(d));
+      setEndDate(fmt(now));
+    } else if (preset === '30days') {
+      const d = new Date(now); d.setDate(d.getDate() - 29);
+      setStartDate(fmt(d));
+      setEndDate(fmt(now));
+    }
+    setPage(1);
+  };
+
+  // 当前筛选结果的快速统计
+  const stats = useMemo(() => {
+    const refundPending = filteredOrders.filter((o: any) => !o.isRefunded).length;
+    const reviewPending = filteredOrders.filter((o: any) => !o.isGoodReview).length;
+    const totalAmount = filteredOrders.reduce((sum: number, o: any) => sum + (o.actualPayment || 0), 0);
+    const totalRefund = filteredOrders.reduce((sum: number, o: any) =>
+      sum + (o.actualPayment || 0) + (o.baseCommission || 0) + (o.reviewCommission || 0), 0);
+    return { refundPending, reviewPending, totalAmount, totalRefund, count: filteredOrders.length };
+  }, [filteredOrders]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -401,7 +467,7 @@ export default function Orders() {
               } catch (error: any) {
                 console.error('Import error:', error);
                 const errorMessage = error?.response?.data?.message || error?.message || '导入失败';
-                alert(errorMessage);
+                toastError(errorMessage);
                 return { success: 0, failed: data.length, duplicates: 0 };
               }
             }}
@@ -434,7 +500,7 @@ export default function Orders() {
               } catch (error: any) {
                 console.error('Batch update error:', error);
                 const errorMessage = error?.response?.data?.message || error?.message || '批量修改失败';
-                alert(errorMessage);
+                toastError(errorMessage);
                 return { success: 0, failed: data.length, duplicates: 0 };
               }
             }}
@@ -444,71 +510,133 @@ export default function Orders() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="搜索订单号、商品ID、微信昵称..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-md border border-input bg-background pl-10 pr-4 py-2 text-sm"
-          />
+      <div className="space-y-3">
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="搜索订单号、商品ID、微信昵称..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-md border border-input bg-background pl-10 pr-4 py-2 text-sm"
+            />
+          </div>
+          <select
+            value={refundFilter}
+            onChange={(e) => setRefundFilter(e.target.value)}
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">返款状态</option>
+            <option value="true">已返款</option>
+            <option value="false">未返款</option>
+          </select>
+          <select
+            value={reviewFilter}
+            onChange={(e) => setReviewFilter(e.target.value)}
+            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+          >
+            <option value="">好评状态</option>
+            <option value="true">已好评</option>
+            <option value="false">未好评</option>
+          </select>
+          <div className="flex items-center gap-2">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              placeholder="开始日期"
+            />
+            <span className="text-muted-foreground">至</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              placeholder="结束日期"
+            />
+          </div>
         </div>
-        <select
-          value={refundFilter}
-          onChange={(e) => setRefundFilter(e.target.value)}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-          <option value="">返款状态</option>
-          <option value="true">已返款</option>
-          <option value="false">未返款</option>
-        </select>
-        <select
-          value={reviewFilter}
-          onChange={(e) => setReviewFilter(e.target.value)}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-        >
-          <option value="">好评状态</option>
-          <option value="true">已好评</option>
-          <option value="false">未好评</option>
-        </select>
-        <div className="flex items-center gap-2">
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-            placeholder="开始日期"
-          />
-          <span className="text-muted-foreground">至</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
-            placeholder="结束日期"
-          />
+        {/* Quick date presets */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <Calendar className="h-4 w-4 text-muted-foreground" />
+          {[
+            { label: '今天', value: 'today' as const },
+            { label: '昨天', value: 'yesterday' as const },
+            { label: '近7天', value: '7days' as const },
+            { label: '近30天', value: '30days' as const },
+            { label: '全部', value: 'clear' as const },
+          ].map(preset => (
+            <button
+              key={preset.value}
+              onClick={() => applyDatePreset(preset.value)}
+              className="rounded-md border border-input bg-background px-3 py-1 text-xs hover:bg-accent transition-colors"
+            >
+              {preset.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Quick Stats Bar */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="rounded-lg border bg-card p-3 text-center">
+          <p className="text-xs text-muted-foreground">当前结果</p>
+          <p className="text-lg font-bold mt-0.5">{stats.count}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-3 text-center">
+          <p className="text-xs text-muted-foreground">待返款</p>
+          <p className="text-lg font-bold mt-0.5 text-yellow-600 dark:text-yellow-400">{stats.refundPending}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-3 text-center">
+          <p className="text-xs text-muted-foreground">待好评</p>
+          <p className="text-lg font-bold mt-0.5 text-blue-600 dark:text-blue-400">{stats.reviewPending}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-3 text-center">
+          <p className="text-xs text-muted-foreground">实付总额</p>
+          <p className="text-lg font-bold mt-0.5">{formatCurrency(stats.totalAmount)}</p>
+        </div>
+        <div className="rounded-lg border bg-card p-3 text-center">
+          <p className="text-xs text-muted-foreground">返款总额</p>
+          <p className="text-lg font-bold mt-0.5 text-green-600 dark:text-green-400">{formatCurrency(stats.totalRefund)}</p>
         </div>
       </div>
 
       {/* Batch Actions */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+        <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg flex-wrap">
           <span className="text-sm text-muted-foreground">
-            已选择 {selectedIds.size} 项
+            已选择 <span className="font-bold text-foreground">{selectedIds.size}</span> 项
           </span>
+          <div className="h-4 w-px bg-border" />
+          <button
+            onClick={() => handleBatchStatus('isRefunded', true)}
+            disabled={batchStatusMutation.isPending}
+            className="inline-flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+          >
+            <CheckCircle className="h-4 w-4" />
+            批量已返款
+          </button>
+          <button
+            onClick={() => handleBatchStatus('isGoodReview', true)}
+            disabled={batchStatusMutation.isPending}
+            className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          >
+            <Star className="h-4 w-4" />
+            批量已好评
+          </button>
           <button
             onClick={handleBatchDelete}
             disabled={batchDeleteMutation.isPending}
-            className="inline-flex items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
           >
             <Trash2 className="h-4 w-4" />
             {batchDeleteMutation.isPending ? '删除中...' : '批量删除'}
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className="text-sm text-muted-foreground hover:text-foreground ml-auto"
           >
             取消选择
           </button>

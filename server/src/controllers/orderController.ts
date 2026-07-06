@@ -607,6 +607,66 @@ export const batchUpdateOrders = async (req: Request, res: Response) => {
   }
 };
 
+// 批量更新订单状态（批量标记已返款/已好评）
+export const batchUpdateStatus = async (req: Request, res: Response) => {
+  try {
+    const { ids, field, value } = req.body;
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: '请提供订单ID列表' });
+    }
+
+    if (!['isRefunded', 'isGoodReview'].includes(field)) {
+      return res.status(400).json({ success: false, message: '不支持的字段' });
+    }
+
+    const boolValue = Boolean(value);
+    const updateData: any = { [field]: boolValue };
+
+    // 自动设置日期
+    if (field === 'isRefunded' && boolValue) {
+      updateData.refundDate = new Date();
+    }
+    if (field === 'isGoodReview' && boolValue) {
+      updateData.reviewCommissionDate = new Date();
+    }
+
+    // 重新计算总返款
+    const orders = await prisma.order.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, actualPayment: true, baseCommission: true, reviewCommission: true },
+    });
+
+    let success = 0;
+    for (const order of orders) {
+      const newReviewCommission = field === 'isGoodReview' ? order.reviewCommission : order.reviewCommission;
+      updateData.totalRefund = order.actualPayment + order.baseCommission + newReviewCommission;
+
+      await prisma.order.update({
+        where: { id: order.id },
+        data: updateData,
+      });
+      success++;
+    }
+
+    const fieldLabel = field === 'isRefunded' ? '返款' : '好评';
+    await createAuditLog({
+      action: 'batch_update',
+      detail: `批量标记${success}个订单为${boolValue ? '已' : '未'}${fieldLabel}`,
+      ipAddress: req.ip,
+    });
+
+    res.json({
+      success: true,
+      data: { updated: success, total: ids.length },
+      message: `成功更新${success}条订单`,
+    });
+  } catch (error) {
+    console.error('Error batch updating status:', error);
+    res.status(500).json({ success: false, message: '批量更新状态失败' });
+  }
+};
+
 // 删除订单
 export const deleteOrder = async (req: Request, res: Response) => {
   try {

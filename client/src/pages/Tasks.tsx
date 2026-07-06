@@ -6,6 +6,7 @@ import { Plus, Search, Zap, Copy, Save, Trash2, CheckSquare, Square } from 'luci
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
+import { useToast } from '@/components/Toast';
 import { taskColumns } from '@/lib/export';
 
 interface EditingCell {
@@ -15,6 +16,7 @@ interface EditingCell {
 
 export default function Tasks() {
   const queryClient = useQueryClient();
+  const { success: toastSuccess, error: toastError } = useToast();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -63,7 +65,7 @@ export default function Tasks() {
       resetNewRow();
     },
     onError: (error: any) => {
-      alert(error?.response?.data?.message || '创建任务失败');
+      toastError(error?.response?.data?.message || '创建任务失败');
     },
   });
 
@@ -74,10 +76,10 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       setShowBatchForm(false);
       setBatchProductCodes('');
-      alert(data?.message || '批量创建成功');
+      toastSuccess(data?.message || '批量创建成功');
     },
     onError: () => {
-      alert('批量创建失败');
+      toastError('批量创建失败');
     },
   });
 
@@ -89,7 +91,7 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
     },
     onError: (error: any) => {
-      alert(error?.response?.data?.message || '更新任务失败');
+      toastError(error?.response?.data?.message || '更新任务失败');
     },
   });
 
@@ -114,10 +116,10 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       setSelectedIds(new Set());
-      alert(`批量删除完成: 成功${result.success}条，失败${result.failed}条`);
+      toastSuccess(`批量删除完成: 成功${result.success}条${result.failed > 0 ? `，失败${result.failed}条` : ''}`);
     },
     onError: () => {
-      alert('批量删除失败');
+      toastError('批量删除失败');
     },
   });
 
@@ -133,7 +135,7 @@ export default function Tasks() {
       setTakerSearch('');
       setShowTakerDropdown(false);
       setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
-      alert(data?.message || '接单成功');
+      toastSuccess(data?.message || '接单成功');
     },
     onError: (error: any) => {
       const errorData = error?.response?.data;
@@ -148,7 +150,7 @@ export default function Tasks() {
           return;
         }
       } else {
-        alert(message);
+        toastError(message);
       }
     },
   });
@@ -348,7 +350,7 @@ export default function Tasks() {
 
   const handleBatchDelete = () => {
     if (selectedIds.size === 0) {
-      alert('请先选择要删除的任务');
+      toastError('请先选择要删除的任务');
       return;
     }
     if (confirm(`确定要删除选中的 ${selectedIds.size} 个任务吗？删除后关联的订单也会被删除。此操作不可恢复！`)) {
@@ -359,7 +361,7 @@ export default function Tasks() {
   const handleBatchCreate = () => {
     const codes = batchProductCodes.split('\n').filter(code => code.trim());
     if (codes.length === 0) {
-      alert('请输入商品编号');
+      toastError('请输入商品编号');
       return;
     }
     
@@ -387,7 +389,7 @@ export default function Tasks() {
 
   const handleConfirmQuickOrder = (force = false) => {
     if (!selectedTaker) {
-      alert('请选择接单人');
+      toastError('请选择接单人');
       return;
     }
     quickOrderMutation.mutate({
@@ -402,7 +404,7 @@ export default function Tasks() {
 
   const handleCopyTaoToken = (taoToken: string) => {
     navigator.clipboard.writeText(taoToken).then(() => {
-      alert('淘口令已复制');
+      toastSuccess('淘口令已复制');
     });
   };
 
@@ -466,7 +468,7 @@ export default function Tasks() {
               } catch (error: any) {
                 console.error('Import error:', error);
                 const errorMessage = error?.response?.data?.message || error?.message || '导入失败';
-                alert(errorMessage);
+                toastError(errorMessage);
                 return { success: 0, failed: data.length, duplicates: 0 };
               }
             }}

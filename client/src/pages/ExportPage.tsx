@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { takersApi, tasksApi, ordersApi, logsApi } from '@/lib/api';
+import { useToast } from '@/components/Toast';
 import { takerColumns, taskColumns, orderColumns, logColumns, exportCombined } from '@/lib/export';
 
 export default function ExportPage() {
+  const { error: toastError } = useToast();
   const [selectedSheets, setSelectedSheets] = useState({
     takers: true,
     tasks: true,
@@ -81,7 +83,7 @@ export default function ExportPage() {
     }
     
     if (sheets.length === 0) {
-      alert('请至少选择一个表格');
+      toastError('请至少选择一个表格');
       return;
     }
     

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi } from '@/lib/api';
 import { formatCurrency, formatNumber } from '@/lib/utils';
+import { useToast } from '@/components/Toast';
 import { Link } from 'react-router-dom';
 import {
   ShoppingCart,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 
 export default function Dashboard() {
+  const { success: toastSuccess, error: toastError } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [summaryText, setSummaryText] = useState('');
   const [showSummary, setShowSummary] = useState(false);
@@ -37,9 +39,9 @@ export default function Dashboard() {
       setShowSummary(true);
       
       await navigator.clipboard.writeText(text);
-      alert('已复制到剪贴板');
+      toastSuccess('已复制到剪贴板');
     } catch (error) {
-      alert('获取激励汇总失败');
+      toastError('获取激励汇总失败');
     }
   };
 
@@ -154,7 +156,7 @@ export default function Dashboard() {
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(summaryText);
-                  alert('已复制到剪贴板');
+                  toastSuccess('已复制到剪贴板');
                 }}
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
@@ -335,9 +337,15 @@ export default function Dashboard() {
             <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
               <BarChart3 className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             </div>
-            <h3 className="text-lg font-semibold">当日汇总</h3>
+            <h3 className="text-lg font-semibold">近7天趋势</h3>
           </div>
         </div>
+        {/* SVG Trend Chart */}
+        {stats?.dailySummary && stats.dailySummary.length > 0 && (
+          <div className="mb-6">
+            <TrendChart data={[...stats.dailySummary].reverse()} />
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -382,6 +390,77 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+    </div>
+  );
+}
+
+// 迷你趋势图组件
+function TrendChart({ data }: { data: any[] }) {
+  if (!data || data.length === 0) return null;
+
+  const maxOrders = Math.max(...data.map(d => d.orderCount), 1);
+  const chartWidth = 600;
+  const chartHeight = 120;
+  const barWidth = chartWidth / data.length;
+  const gap = barWidth * 0.3;
+  const actualBarWidth = barWidth - gap;
+
+  return (
+    <div className="w-full overflow-x-auto">
+      <svg viewBox={`0 0 ${chartWidth} ${chartHeight + 30}`} className="w-full min-w-[400px]" preserveAspectRatio="xMidYMid meet">
+        {/* Grid lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map(ratio => (
+          <line
+            key={ratio}
+            x1={0}
+            y1={chartHeight - chartHeight * ratio}
+            x2={chartWidth}
+            y2={chartHeight - chartHeight * ratio}
+            stroke="currentColor"
+            strokeOpacity={0.1}
+            strokeWidth={1}
+          />
+        ))}
+        {/* Bars */}
+        {data.map((item, i) => {
+          const barHeight = (item.orderCount / maxOrders) * (chartHeight - 20);
+          const x = i * barWidth + gap / 2;
+          const y = chartHeight - barHeight;
+          const dateLabel = item.date.slice(5); // MM-DD
+          return (
+            <g key={item.date}>
+              <rect
+                x={x}
+                y={y}
+                width={actualBarWidth}
+                height={barHeight}
+                rx={4}
+                fill="hsl(var(--primary))"
+                opacity={0.8}
+                className="transition-opacity hover:opacity-100"
+              />
+              <text
+                x={x + actualBarWidth / 2}
+                y={y - 4}
+                textAnchor="middle"
+                className="text-xs fill-current opacity-60"
+                style={{ fontSize: '10px' }}
+              >
+                {item.orderCount}
+              </text>
+              <text
+                x={x + actualBarWidth / 2}
+                y={chartHeight + 15}
+                textAnchor="middle"
+                className="fill-current opacity-50"
+                style={{ fontSize: '10px' }}
+              >
+                {dateLabel}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
     </div>
   );
 }

@@ -6,10 +6,12 @@ import { Plus, Pencil, Trash2, Search } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
+import { useToast } from '@/components/Toast';
 import { takerColumns } from '@/lib/export';
 
 export default function Takers() {
   const queryClient = useQueryClient();
+  const { error: toastError } = useToast();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
@@ -129,7 +131,7 @@ export default function Takers() {
               } catch (error: any) {
                 console.error('Import error:', error);
                 const errorMessage = error?.response?.data?.message || error?.message || '导入失败';
-                alert(errorMessage);
+                toastError(errorMessage);
                 return { success: 0, failed: data.length, duplicates: 0 };
               }
             }}
