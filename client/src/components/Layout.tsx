@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { useState, ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -13,6 +13,9 @@ import {
   User,
   Sparkles,
   Clock,
+  DollarSign,
+  Menu,
+  X,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,6 +30,7 @@ const navigation = [
   { name: '任务', href: '/tasks', icon: ClipboardList },
   { name: '订单明细', href: '/orders', icon: ShoppingCart },
   { name: '接单间隔', href: '/intervals', icon: Clock },
+  { name: '佣金分析', href: '/commissions', icon: DollarSign },
   { name: '操作日志', href: '/logs', icon: FileText },
   { name: '数据导出', href: '/export', icon: Download },
 ];
@@ -36,16 +40,27 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
 
+  const closeSidebar = () => setSidebarOpen(false);
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-50 w-64 bg-card border-r flex flex-col">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r flex flex-col transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Brand */}
         <div className="flex h-16 items-center justify-between px-6 border-b">
           <div className="flex items-center gap-2.5">
@@ -54,13 +69,21 @@ export default function Layout({ children }: LayoutProps) {
             </div>
             <h1 className="text-lg font-bold tracking-tight">天猫激励系统</h1>
           </div>
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg hover:bg-accent transition-all hover:scale-110 active:scale-95"
-            title={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
-          >
-            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg hover:bg-accent transition-all hover:scale-110 active:scale-95"
+              title={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </button>
+            <button
+              onClick={closeSidebar}
+              className="p-2 rounded-lg hover:bg-accent transition-colors lg:hidden"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
         
         {/* Navigation */}
@@ -71,6 +94,7 @@ export default function Layout({ children }: LayoutProps) {
               <Link
                 key={item.name}
                 to={item.href}
+                onClick={closeSidebar}
                 className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                   isActive
                     ? 'bg-primary text-primary-foreground shadow-sm'
@@ -109,8 +133,23 @@ export default function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Main content */}
-      <main className="pl-64">
-        <div className="p-6 lg:p-8">
+      <main className="lg:pl-64">
+        {/* Mobile top bar */}
+        <div className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card/80 backdrop-blur-sm px-4 lg:hidden">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 rounded-lg hover:bg-accent transition-colors"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/70">
+              <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
+            </div>
+            <span className="font-bold text-sm">天猫激励系统</span>
+          </div>
+        </div>
+        <div className="p-4 lg:p-8">
           {children}
         </div>
       </main>

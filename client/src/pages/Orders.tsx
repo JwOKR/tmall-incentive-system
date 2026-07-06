@@ -7,6 +7,7 @@ import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { orderColumns } from '@/lib/export';
 
 interface EditingCell {
@@ -17,6 +18,7 @@ interface EditingCell {
 export default function Orders() {
   const queryClient = useQueryClient();
   const { success: toastSuccess, error: toastError } = useToast();
+  const { confirm } = useConfirm();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [refundFilter, setRefundFilter] = useState('');
@@ -178,8 +180,8 @@ export default function Orders() {
     setEditValue('');
   };
 
-  const handleDelete = (orderId: string) => {
-    if (confirm('确定要删除这个订单吗？')) {
+  const handleDelete = async (orderId: string) => {
+    if (await confirm({ message: '确定要删除这个订单吗？', variant: 'danger' })) {
       deleteMutation.mutate(orderId);
     }
   };
@@ -202,23 +204,23 @@ export default function Orders() {
     setSelectedIds(newSelected);
   };
 
-  const handleBatchDelete = () => {
+  const handleBatchDelete = async () => {
     if (selectedIds.size === 0) {
       toastError('请先选择要删除的订单');
       return;
     }
-    if (confirm(`确定要删除选中的 ${selectedIds.size} 个订单吗？此操作不可恢复！`)) {
+    if (await confirm({ message: `确定要删除选中的 ${selectedIds.size} 个订单吗？此操作不可恢复！`, variant: 'danger', confirmText: '删除' })) {
       batchDeleteMutation.mutate(Array.from(selectedIds));
     }
   };
 
-  const handleBatchStatus = (field: 'isRefunded' | 'isGoodReview', value: boolean) => {
+  const handleBatchStatus = async (field: 'isRefunded' | 'isGoodReview', value: boolean) => {
     if (selectedIds.size === 0) {
       toastError('请先选择订单');
       return;
     }
     const label = field === 'isRefunded' ? '返款' : '好评';
-    if (confirm(`确定要将选中的 ${selectedIds.size} 个订单标记为${value ? '已' : '未'}${label}吗？`)) {
+    if (await confirm({ message: `确定要将选中的 ${selectedIds.size} 个订单标记为${value ? '已' : '未'}${label}吗？`, variant: 'warning' })) {
       batchStatusMutation.mutate({ ids: Array.from(selectedIds), field, value });
     }
   };

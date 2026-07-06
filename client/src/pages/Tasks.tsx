@@ -7,6 +7,7 @@ import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { taskColumns } from '@/lib/export';
 
 interface EditingCell {
@@ -17,6 +18,7 @@ interface EditingCell {
 export default function Tasks() {
   const queryClient = useQueryClient();
   const { success: toastSuccess, error: toastError } = useToast();
+  const { confirm } = useConfirm();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -137,14 +139,14 @@ export default function Tasks() {
       setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
       toastSuccess(data?.message || '接单成功');
     },
-    onError: (error: any) => {
+    onError: async (error: any) => {
       const errorData = error?.response?.data;
       const message = errorData?.message || '接单失败';
       const code = errorData?.code;
       
       // 如果是7天间隔限制，显示二次确认
       if (code === 'INTERVAL_LIMIT') {
-        const confirmed = confirm(`${message}\n\n是否强制接单？`);
+        const confirmed = await confirm({ message: `${message}\n\n是否强制接单？`, variant: 'warning', confirmText: '强制接单' });
         if (confirmed) {
           handleConfirmQuickOrder(true);
           return;
@@ -324,8 +326,8 @@ export default function Tasks() {
     resetNewRow();
   };
 
-  const handleDelete = (taskId: string) => {
-    if (confirm('确定要删除这个任务吗？删除后关联的订单也会被删除。')) {
+  const handleDelete = async (taskId: string) => {
+    if (await confirm({ message: '确定要删除这个任务吗？删除后关联的订单也会被删除。', variant: 'danger', confirmText: '删除' })) {
       deleteMutation.mutate(taskId);
     }
   };
@@ -348,12 +350,12 @@ export default function Tasks() {
     setSelectedIds(newSelected);
   };
 
-  const handleBatchDelete = () => {
+  const handleBatchDelete = async () => {
     if (selectedIds.size === 0) {
       toastError('请先选择要删除的任务');
       return;
     }
-    if (confirm(`确定要删除选中的 ${selectedIds.size} 个任务吗？删除后关联的订单也会被删除。此操作不可恢复！`)) {
+    if (await confirm({ message: `确定要删除选中的 ${selectedIds.size} 个任务吗？删除后关联的订单也会被删除。此操作不可恢复！`, variant: 'danger', confirmText: '删除' })) {
       batchDeleteMutation.mutate(Array.from(selectedIds));
     }
   };

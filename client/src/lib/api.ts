@@ -94,4 +94,16 @@ export const intervalApi = {
     api.get('/intervals', { params }),
 };
 
+// Commission Stats API
+export const commissionApi = {
+  getStats: (params?: { startDate?: string; endDate?: string }) =>
+    api.get('/commissions', { params }),
+};
+
+// Remind List API
+export const remindApi = {
+  getList: (params?: { type?: string }) =>
+    api.get('/reminds', { params }),
+};
+
 export default api;

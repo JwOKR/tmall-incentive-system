@@ -7,11 +7,13 @@ import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ConfirmDialog';
 import { takerColumns } from '@/lib/export';
 
 export default function Takers() {
   const queryClient = useQueryClient();
   const { error: toastError } = useToast();
+  const { confirm } = useConfirm();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
@@ -71,8 +73,8 @@ export default function Takers() {
     setShowForm(true);
   };
 
-  const handleDelete = (id: string) => {
-    if (confirm('确定要删除这个接单人吗？')) {
+  const handleDelete = async (id: string) => {
+    if (await confirm({ message: '确定要删除这个接单人吗？', variant: 'danger', confirmText: '删除' })) {
       deleteMutation.mutate(id);
     }
   };

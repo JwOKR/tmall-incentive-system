@@ -12,6 +12,8 @@ import taskRoutes from './routes/tasks';
 import orderRoutes from './routes/orders';
 import logRoutes from './routes/logs';
 import intervalRoutes from './routes/intervals';
+import commissionRoutes from './routes/commissions';
+import remindRoutes from './routes/reminds';
 
 // Import middleware
 import { authMiddleware } from './middleware/auth';
@@ -54,6 +56,8 @@ app.use('/api/tasks', authMiddleware, taskRoutes);
 app.use('/api/orders', authMiddleware, orderRoutes);
 app.use('/api/logs', authMiddleware, logRoutes);
 app.use('/api/intervals', authMiddleware, intervalRoutes);
+app.use('/api/commissions', authMiddleware, commissionRoutes);
+app.use('/api/reminds', authMiddleware, remindRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

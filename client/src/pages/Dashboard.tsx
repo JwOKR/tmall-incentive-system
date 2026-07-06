@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { dashboardApi } from '@/lib/api';
+import { dashboardApi, remindApi } from '@/lib/api';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { useToast } from '@/components/Toast';
+import { DashboardSkeleton } from '@/components/Skeleton';
 import { Link } from 'react-router-dom';
 import {
   ShoppingCart,
@@ -18,11 +19,13 @@ import {
   Clock,
   Copy,
   X,
+  ListTodo,
 } from 'lucide-react';
 
 export default function Dashboard() {
   const { success: toastSuccess, error: toastError } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showRemind, setShowRemind] = useState(false);
   const [summaryText, setSummaryText] = useState('');
   const [showSummary, setShowSummary] = useState(false);
   
@@ -45,12 +48,26 @@ export default function Dashboard() {
     }
   };
 
+  const [remindData, setRemindData] = useState<any>(null);
+  const handleShowRemind = async () => {
+    try {
+      const result = await remindApi.getList({ type: 'both' });
+      setRemindData((result as any)?.data);
+      setShowRemind(true);
+    } catch (error) {
+      toastError('获取催单列表失败');
+    }
+  };
+
+  const handleCopyRemind = async () => {
+    if (remindData?.copyText) {
+      await navigator.clipboard.writeText(remindData.copyText);
+      toastSuccess('催单列表已复制到剪贴板');
+    }
+  };
+
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   if (error) {
@@ -128,6 +145,13 @@ export default function Dashboard() {
               <Copy className="h-4 w-4" />
               复制激励汇总
             </button>
+            <button
+              onClick={handleShowRemind}
+              className="inline-flex items-center gap-2 rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-700 transition-all hover:shadow-md"
+            >
+              <ListTodo className="h-4 w-4" />
+              催单列表
+            </button>
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4" />
@@ -169,6 +193,54 @@ export default function Dashboard() {
               >
                 关闭
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remind Modal */}
+      {showRemind && remindData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">
+                催单列表
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  {remindData.totalTakers} 人 · {remindData.totalPendingOrders} 单待处理
+                </span>
+              </h3>
+              <button onClick={() => setShowRemind(false)} className="p-1.5 hover:bg-accent rounded-lg transition-colors">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-3">
+              {remindData.list?.map((taker: any) => (
+                <div key={taker.takerId} className="p-3 bg-muted/50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-medium text-sm">{taker.wechatName} ({taker.wechatId})</span>
+                    <span className="text-xs text-muted-foreground">{taker.totalPending} 单待处理</span>
+                  </div>
+                  {taker.unpaidOrders.length > 0 && (
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                      待返款 {taker.unpaidOrders.length} 单
+                    </p>
+                  )}
+                  {taker.unreviewedOrders.length > 0 && (
+                    <p className="text-xs text-blue-600 dark:text-blue-400">
+                      待好评 {taker.unreviewedOrders.length} 单
+                    </p>
+                  )}
+                </div>
+              ))}
+              {remindData.list?.length === 0 && (
+                <p className="text-center text-muted-foreground py-8">暂无待处理订单</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+              <button onClick={handleCopyRemind} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+                <Copy className="h-4 w-4" /> 复制催单文本
+              </button>
+              <button onClick={() => setShowRemind(false)} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">关闭</button>
             </div>
           </div>
         </div>
