@@ -162,8 +162,17 @@ export default function Dashboard() {
 
       {/* Summary Modal */}
       {showSummary && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowSummary(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setShowSummary(false)}
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+        >
+          <div
+            className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">激励汇总</h3>
               <button
@@ -200,8 +209,17 @@ export default function Dashboard() {
 
       {/* Remind Modal */}
       {showRemind && remindData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in max-h-[80vh] flex flex-col">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => setShowRemind(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setShowRemind(false)}
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+        >
+          <div
+            className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">
                 催单列表

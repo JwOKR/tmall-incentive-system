@@ -12,7 +12,7 @@ import { takerColumns } from '@/lib/export';
 
 export default function Takers() {
   const queryClient = useQueryClient();
-  const { error: toastError } = useToast();
+  const { success: toastSuccess, error: toastError } = useToast();
   const { confirm } = useConfirm();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -35,6 +35,10 @@ export default function Takers() {
       queryClient.invalidateQueries({ queryKey: ['takers'] });
       setShowForm(false);
       setFormData({ wechatName: '', wechatId: '' });
+      toastSuccess('创建成功');
+    },
+    onError: (error: any) => {
+      toastError(error?.response?.data?.message || '创建接单人失败');
     },
   });
 
@@ -45,6 +49,10 @@ export default function Takers() {
       setShowForm(false);
       setEditingTaker(null);
       setFormData({ wechatName: '', wechatId: '' });
+      toastSuccess('更新成功');
+    },
+    onError: (error: any) => {
+      toastError(error?.response?.data?.message || '更新接单人失败');
     },
   });
 
@@ -52,6 +60,10 @@ export default function Takers() {
     mutationFn: takersApi.delete,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['takers'] });
+      toastSuccess('删除成功');
+    },
+    onError: (error: any) => {
+      toastError(error?.response?.data?.message || '删除接单人失败');
     },
   });
 
@@ -169,8 +181,17 @@ export default function Takers() {
 
       {/* Form Modal */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => { setShowForm(false); setEditingTaker(null); }}
+          onKeyDown={(e) => e.key === 'Escape' && (setShowForm(false), setEditingTaker(null))}
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold mb-4">
               {editingTaker ? '编辑接单人' : '添加接单人'}
             </h3>

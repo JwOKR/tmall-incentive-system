@@ -103,6 +103,10 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      toastSuccess('删除成功');
+    },
+    onError: (error: any) => {
+      toastError(error?.response?.data?.message || '删除任务失败');
     },
   });
 
@@ -519,8 +523,17 @@ export default function Tasks() {
 
       {/* Batch Form Modal */}
       {showBatchForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => { setShowBatchForm(false); setBatchProductCodes(''); }}
+          onKeyDown={(e) => e.key === 'Escape' && (setShowBatchForm(false), setBatchProductCodes(''))}
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold mb-4">批量新增任务</h3>
             <div className="space-y-4">
               <div>
@@ -562,8 +575,17 @@ export default function Tasks() {
 
       {/* Quick Order Modal */}
       {showQuickOrder && selectedTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => { setShowQuickOrder(false); setSelectedTask(null); setSelectedTaker(''); setTakerSearch(''); setShowTakerDropdown(false); setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }); }}
+          onKeyDown={(e) => e.key === 'Escape' && (setShowQuickOrder(false), setSelectedTask(null), setSelectedTaker(''), setTakerSearch(''), setShowTakerDropdown(false), setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }))}
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+        >
+          <div
+            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold mb-4">快速接单</h3>
             <div className="space-y-4">
               <div className="rounded-lg border p-4 bg-muted/50">
