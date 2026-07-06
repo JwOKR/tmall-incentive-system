@@ -39,7 +39,7 @@ export const getIncentiveSummary = async (req: Request, res: Response) => {
     const totalActualPayment = orders.reduce((sum, o) => sum + o.actualPayment, 0);
     const totalCommission = orders.reduce((sum, o) => sum + o.baseCommission, 0);
     
-    let summaryText = `${dateStr}激励订单\n`;
+    let summaryText = `${dateStr}天猫激励订单\n`;
     summaryText += `合计${orders.length}单，合计激励本金：${totalActualPayment.toFixed(2)}\n\n`;
     summaryText += `微信昵称-19订单号-实付\n\n`;
 
@@ -50,7 +50,7 @@ export const getIncentiveSummary = async (req: Request, res: Response) => {
       summaryText += `${wechatName}-${orderNo}-${actualPayment}\n`;
     });
 
-    summaryText += `\n${dateStr}激励佣金合计${totalCommission.toFixed(2)}元\n`;
+    summaryText += `\n${dateStr}天猫激励佣金合计${totalCommission.toFixed(2)}元\n`;
     summaryText += `日期 单数 佣金\n`;
     summaryText += `${dateFormatted} ${orders.length} ${totalCommission.toFixed(2)}`;
 
