@@ -21,7 +21,7 @@ import { authMiddleware } from './middleware/auth';
 
 // Import utils
 import logger from './utils/logger';
-import { ensureAdminUser } from './utils/bootstrap';
+import { ensureAdminUser, autoCheckAnomalies } from './utils/bootstrap';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -87,6 +87,8 @@ server.listen(PORT, () => {
   logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
   // 启动时确保管理员用户存在
   ensureAdminUser();
+  // 启动时自动检查异常接单人
+  autoCheckAnomalies();
 });
 
 // Graceful shutdown
