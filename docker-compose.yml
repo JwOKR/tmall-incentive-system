@@ -35,9 +35,6 @@ services:
     container_name: tmall-incentive-web
     ports:
       - "5678:80"
-    volumes:
-      - ./client/public/favicon.ico:/usr/share/nginx/html/favicon.ico:ro
-      - ./client/public/favicon.png:/usr/share/nginx/html/favicon.png:ro
     depends_on:
       - api
     restart: unless-stopped
