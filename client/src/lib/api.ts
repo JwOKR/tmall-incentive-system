@@ -53,6 +53,8 @@ export const dashboardApi = {
 export const takersApi = {
   getAll: (params?: any) => api.get('/takers', { params }),
   getById: (id: string) => api.get(`/takers/${id}`),
+  getDetail: (id: string, params?: { page?: number; pageSize?: number }) =>
+    api.get(`/takers/${id}/detail`, { params }),
   create: (data: any) => api.post('/takers', data),
   batchCreate: (takers: any[]) => api.post('/takers/batch', { takers }, { timeout: 120000 }),
   update: (id: string, data: any) => api.put(`/takers/${id}`, data),
@@ -104,6 +106,11 @@ export const commissionApi = {
 export const remindApi = {
   getList: (params?: { type?: string }) =>
     api.get('/reminds', { params }),
+};
+
+// Anomaly API
+export const anomalyApi = {
+  getAnomalies: () => api.get('/anomalies'),
 };
 
 export default api;

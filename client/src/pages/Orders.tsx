@@ -2,10 +2,11 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api, { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Star, Calendar } from 'lucide-react';
+import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Star, Calendar, Eye } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
+import OrderDrawer from '@/components/OrderDrawer';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { orderColumns } from '@/lib/export';
@@ -23,6 +24,7 @@ export default function Orders() {
   const [search, setSearch] = useState('');
   const [refundFilter, setRefundFilter] = useState('');
   const [reviewFilter, setReviewFilter] = useState('');
+  const [drawerOrderId, setDrawerOrderId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
@@ -875,13 +877,22 @@ export default function Orders() {
                     {renderEditableCell(order, 'remark', 'text')}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <button
-                      onClick={() => handleDelete(order.id)}
-                      className="p-1 hover:bg-destructive/10 rounded-md"
-                      title="删除订单"
-                    >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </button>
+                    <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => setDrawerOrderId(order.id)}
+                        className="p-1 hover:bg-accent rounded-md"
+                        title="查看详情"
+                      >
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(order.id)}
+                        className="p-1 hover:bg-destructive/10 rounded-md"
+                        title="删除订单"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))
@@ -912,6 +923,9 @@ export default function Orders() {
           </button>
         </div>
       )}
+
+      {/* Order Detail Drawer */}
+      <OrderDrawer orderId={drawerOrderId} onClose={() => setDrawerOrderId(null)} />
     </div>
   );
 }

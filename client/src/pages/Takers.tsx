@@ -2,7 +2,8 @@ import { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
-import { Plus, Pencil, Trash2, Search } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Eye } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
@@ -289,7 +290,11 @@ export default function Takers() {
             ) : (
               filteredTakers.map((taker: any) => (
                 <tr key={taker.id} className="table-row-hover table-row-zebra">
-                  <td className="px-4 py-3 text-sm font-medium">{taker.wechatName}</td>
+                  <td className="px-4 py-3 text-sm font-medium">
+                    <Link to={`/takers/${taker.id}`} className="hover:text-primary hover:underline transition-colors">
+                      {taker.wechatName}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground">{taker.wechatId}</td>
                   <td className="px-4 py-3 text-sm">
                     <span
@@ -308,6 +313,13 @@ export default function Takers() {
                     {formatDate(taker.createdAt)}
                   </td>
                   <td className="px-4 py-3 text-right">
+                    <Link
+                      to={`/takers/${taker.id}`}
+                      className="p-1 hover:bg-accent rounded-md inline-block"
+                      title="查看详情"
+                    >
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    </Link>
                     <button
                       onClick={() => handleEdit(taker)}
                       className="p-1 hover:bg-accent rounded-md"

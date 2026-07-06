@@ -17,6 +17,7 @@ import {
   Menu,
   X,
   Settings as SettingsIcon,
+  AlertTriangle,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -33,6 +34,7 @@ const navigation = [
   { name: '接单间隔', href: '/intervals', icon: Clock },
   { name: '佣金分析', href: '/commissions', icon: DollarSign },
   { name: '操作日志', href: '/logs', icon: FileText },
+  { name: '异常预警', href: '/anomalies', icon: AlertTriangle },
   { name: '数据导出', href: '/export', icon: Download },
 ];
 
