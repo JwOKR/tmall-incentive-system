@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { Upload, X, FileSpreadsheet, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useToast } from '@/components/Toast';
 
 interface ImportColumn {
   key: string;
@@ -19,6 +20,7 @@ interface ImportDialogProps {
 }
 
 export default function ImportDialog({ title, columns, onImport, buttonLabel = '导入', templateFilename = '导入模板', mode = 'create' }: ImportDialogProps) {
+  const { error: toastError } = useToast();
   const [showDialog, setShowDialog] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
@@ -80,7 +82,7 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
 
         setPreviewData(mappedData.slice(0, 10)); // 预览前10条
       } catch (error) {
-        alert('文件解析失败，请检查文件格式');
+        toastError('文件解析失败，请检查文件格式');
         setFile(null);
         setPreviewData([]);
       }
@@ -150,14 +152,14 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
           const importResult = await onImport(mappedData);
           setResult(importResult);
         } catch (error) {
-          alert('导入失败：' + (error as Error).message);
+          toastError('导入失败：' + (error as Error).message);
         } finally {
           setImporting(false);
         }
       };
       reader.readAsBinaryString(file);
     } catch (error) {
-      alert('导入失败：' + (error as Error).message);
+      toastError('导入失败：' + (error as Error).message);
       setImporting(false);
     }
   };

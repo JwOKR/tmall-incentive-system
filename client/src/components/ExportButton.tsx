@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Download, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { exportToExcel, ExportColumn } from '@/lib/export';
+import { useToast } from '@/components/Toast';
 
 interface ExportButtonProps {
   filename: string;
@@ -10,6 +11,7 @@ interface ExportButtonProps {
 }
 
 export default function ExportButton({ filename, columns, data, label = '导出' }: ExportButtonProps) {
+  const { error: toastError } = useToast();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showColumnSelect, setShowColumnSelect] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<ExportColumn[]>(
@@ -39,7 +41,7 @@ export default function ExportButton({ filename, columns, data, label = '导出'
   const handleExport = () => {
     const selected = selectedColumns.filter(col => col.selected);
     if (selected.length === 0) {
-      alert('请至少选择一列');
+      toastError('请至少选择一列');
       return;
     }
     

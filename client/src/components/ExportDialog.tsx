@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Download, X } from 'lucide-react';
 import { exportToExcel, ExportColumn } from '@/lib/export';
+import { useToast } from '@/components/Toast';
 
 interface ExportDialogProps {
   title: string;
@@ -13,6 +14,7 @@ interface ExportDialogProps {
 }
 
 export default function ExportDialog({ title, filename, columns, data, buttonLabel = '导出', fetchData }: ExportDialogProps) {
+  const { error: toastError } = useToast();
   const [showDialog, setShowDialog] = useState(false);
   const [selectedColumns, setSelectedColumns] = useState<ExportColumn[]>(
     columns.map(col => ({ ...col }))
@@ -42,7 +44,7 @@ export default function ExportDialog({ title, filename, columns, data, buttonLab
   const handleExport = async () => {
     const selected = selectedColumns.filter(col => col.selected);
     if (selected.length === 0) {
-      alert('请至少选择一列');
+      toastError('请至少选择一列');
       return;
     }
 
@@ -65,7 +67,7 @@ export default function ExportDialog({ title, filename, columns, data, buttonLab
       setShowDialog(false);
     } catch (error) {
       console.error('导出失败:', error);
-      alert('导出失败，请重试');
+      toastError('导出失败，请重试');
     } finally {
       setExporting(false);
     }

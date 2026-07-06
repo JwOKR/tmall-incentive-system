@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Download, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { exportCombined, ExportColumn } from '@/lib/export';
+import { useToast } from '@/components/Toast';
 
 interface SheetConfig {
   name: string;
@@ -16,6 +17,7 @@ interface CombinedExportButtonProps {
 }
 
 export default function CombinedExportButton({ sheets, defaultFilename = '数据导出' }: CombinedExportButtonProps) {
+  const { error: toastError } = useToast();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showSheetSelect, setShowSheetSelect] = useState(false);
   const [selectedSheets, setSelectedSheets] = useState<SheetConfig[]>(
@@ -46,7 +48,7 @@ export default function CombinedExportButton({ sheets, defaultFilename = '数据
   const handleExport = () => {
     const selected = selectedSheets.filter(sheet => sheet.selected);
     if (selected.length === 0) {
-      alert('请至少选择一个表格');
+      toastError('请至少选择一个表格');
       return;
     }
     
