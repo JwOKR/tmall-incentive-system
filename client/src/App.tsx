@@ -8,6 +8,7 @@ import Tasks from './pages/Tasks';
 import Orders from './pages/Orders';
 import Logs from './pages/Logs';
 import ExportPage from './pages/ExportPage';
+import IntervalStats from './pages/IntervalStats';
 import Login from './pages/Login';
 import { Loader2 } from 'lucide-react';
 
@@ -85,6 +86,14 @@ function AppRoutes() {
         element={
           <ProtectedLayout>
             <Logs />
+          </ProtectedLayout>
+        }
+      />
+      <Route
+        path="/intervals"
+        element={
+          <ProtectedLayout>
+            <IntervalStats />
           </ProtectedLayout>
         }
       />

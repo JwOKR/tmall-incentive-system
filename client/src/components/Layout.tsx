@@ -12,6 +12,7 @@ import {
   LogOut,
   User,
   Sparkles,
+  Clock,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,6 +26,7 @@ const navigation = [
   { name: '接单人', href: '/takers', icon: Users },
   { name: '任务', href: '/tasks', icon: ClipboardList },
   { name: '订单明细', href: '/orders', icon: ShoppingCart },
+  { name: '接单间隔', href: '/intervals', icon: Clock },
   { name: '操作日志', href: '/logs', icon: FileText },
   { name: '数据导出', href: '/export', icon: Download },
 ];

@@ -86,4 +86,10 @@ export const logsApi = {
   getAll: (params?: any) => api.get('/logs', { params }),
 };
 
+// Interval Stats API
+export const intervalApi = {
+  getStats: (params?: { takerId?: string; startDate?: string; endDate?: string }) =>
+    api.get('/intervals', { params }),
+};
+
 export default api;
