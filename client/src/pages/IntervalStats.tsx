@@ -11,6 +11,10 @@ import {
   ChevronRight,
   AlertCircle,
   Search,
+  Clock,
+  Zap,
+  Hourglass,
+  CheckCircle,
 } from 'lucide-react';
 
 interface IntervalEntry {
@@ -31,6 +35,9 @@ interface TakerInterval {
   avgInterval: number | null;
   minInterval: number | null;
   maxInterval: number | null;
+  daysSinceLastOrder: number | null;
+  expectedNextDate: string | null;
+  daysUntilNext: number | null;
   intervals: IntervalEntry[];
 }
 
@@ -63,6 +70,29 @@ function getIntervalLabel(days: number): string {
   return `${days}天`;
 }
 
+// 距下次接单的状态判定
+function getCountdownState(days: number | null): {
+  label: string;
+  badgeClass: string;
+  icon: typeof Clock;
+  pulse?: boolean;
+} {
+  if (days === null) return { label: '待计算', badgeClass: 'badge-neutral', icon: Clock };
+  if (days < 0) return { label: `逾期${Math.abs(days)}天`, badgeClass: 'badge-danger', icon: AlertCircle, pulse: true };
+  if (days === 0) return { label: '今天', badgeClass: 'badge-danger', icon: Zap, pulse: true };
+  if (days === 1) return { label: '明天', badgeClass: 'badge-orange', icon: Zap };
+  if (days <= 3) return { label: `${days}天`, badgeClass: 'badge-warning', icon: Hourglass };
+  if (days <= 7) return { label: `${days}天`, badgeClass: 'badge-info', icon: Clock };
+  return { label: `${days}天`, badgeClass: 'badge-success', icon: CheckCircle };
+}
+
+// 计算倒计时进度条百分比（基于平均间隔）
+function getProgressPercent(daysSinceLast: number | null, avgInterval: number | null): number {
+  if (daysSinceLast === null || avgInterval === null || avgInterval === 0) return 0;
+  const percent = (daysSinceLast / avgInterval) * 100;
+  return Math.min(100, Math.max(0, percent));
+}
+
 export default function IntervalStats() {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -89,12 +119,16 @@ export default function IntervalStats() {
 
   const allTakers: TakerInterval[] = (data as any)?.data?.takers || [];
 
-  // 前端搜索过滤
   const filteredTakers = allTakers.filter(
     (t) =>
       t.wechatName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.wechatId.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // 统计待接单和逾期人数
+  const overdueCount = allTakers.filter((t) => t.daysUntilNext !== null && t.daysUntilNext < 0).length;
+  const dueTodayCount = allTakers.filter((t) => t.daysUntilNext === 0).length;
+  const dueSoonCount = allTakers.filter((t) => t.daysUntilNext !== null && t.daysUntilNext > 0 && t.daysUntilNext <= 3).length;
 
   if (isLoading) {
     return (
@@ -160,10 +194,9 @@ export default function IntervalStats() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">接单间隔分析</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            分析每个接单人的接单频率和间隔天数
+            分析每个接单人的接单频率、间隔天数及预计下次接单时间
           </p>
         </div>
-        {/* Date range filter */}
         <div className="flex items-center gap-2">
           <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
           <input
@@ -200,7 +233,6 @@ export default function IntervalStats() {
             key={card.title}
             className="card-hover rounded-xl border bg-card p-5 relative overflow-hidden"
           >
-            {/* Decorative gradient */}
             <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-gradient-to-br from-primary/5 to-transparent" />
             <div className="flex items-start justify-between relative">
               <div>
@@ -214,6 +246,29 @@ export default function IntervalStats() {
           </div>
         ))}
       </div>
+
+      {/* Countdown alert banner */}
+      {(overdueCount > 0 || dueTodayCount > 0) && (
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
+          <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+          <span className="text-sm font-medium text-destructive">接单提醒</span>
+          {overdueCount > 0 && (
+            <span className="badge-danger px-2.5 py-0.5 rounded-full text-xs font-medium">
+              {overdueCount}人已逾期
+            </span>
+          )}
+          {dueTodayCount > 0 && (
+            <span className="badge-orange px-2.5 py-0.5 rounded-full text-xs font-medium">
+              {dueTodayCount}人今天该接单
+            </span>
+          )}
+          {dueSoonCount > 0 && (
+            <span className="badge-warning px-2.5 py-0.5 rounded-full text-xs font-medium">
+              {dueSoonCount}人3天内待接单
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Search bar */}
       <div className="flex items-center gap-3">
@@ -241,8 +296,9 @@ export default function IntervalStats() {
                 <th className="w-10 px-4 py-3"></th>
                 <th className="px-4 py-3 text-left font-medium">接单人</th>
                 <th className="px-4 py-3 text-center font-medium">接单数</th>
-                <th className="px-4 py-3 text-left font-medium">首次接单</th>
                 <th className="px-4 py-3 text-left font-medium">最近接单</th>
+                <th className="px-4 py-3 text-left font-medium">预计下次</th>
+                <th className="px-4 py-3 text-center font-medium min-w-[140px]">距下次接单</th>
                 <th className="px-4 py-3 text-center font-medium">平均间隔</th>
                 <th className="px-4 py-3 text-center font-medium">最短</th>
                 <th className="px-4 py-3 text-center font-medium">最长</th>
@@ -251,17 +307,22 @@ export default function IntervalStats() {
             <tbody>
               {filteredTakers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
                     {searchTerm ? '未找到匹配的接单人' : '暂无接单数据'}
                   </td>
                 </tr>
               ) : (
                 filteredTakers.map((taker) => {
                   const isExpanded = expandedId === taker.takerId;
+                  const countdown = getCountdownState(taker.daysUntilNext);
+                  const progress = getProgressPercent(taker.daysSinceLastOrder, taker.avgInterval);
+                  const isOverdue = taker.daysUntilNext !== null && taker.daysUntilNext < 0;
+                  const CountdownIcon = countdown.icon;
+
                   return (
                     <Fragment key={taker.takerId}>
                       <tr
-                        className="table-row-hover table-row-zebra cursor-pointer"
+                        className={`table-row-hover table-row-zebra cursor-pointer ${isOverdue ? 'bg-red-50/50 dark:bg-red-950/10' : ''}`}
                         onClick={() => setExpandedId(isExpanded ? null : taker.takerId)}
                       >
                         <td className="px-4 py-3 text-center">
@@ -293,11 +354,46 @@ export default function IntervalStats() {
                             {taker.orderCount}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {formatDate(taker.firstOrderDate)}
+                        <td className="px-4 py-3">
+                          <div className="text-muted-foreground">{formatDate(taker.lastOrderDate)}</div>
+                          {taker.daysSinceLastOrder !== null && (
+                            <div className="text-xs text-muted-foreground/70 mt-0.5">
+                              {taker.daysSinceLastOrder === 0 ? '今天' : `${taker.daysSinceLastOrder}天前`}
+                            </div>
+                          )}
                         </td>
-                        <td className="px-4 py-3 text-muted-foreground">
-                          {formatDate(taker.lastOrderDate)}
+                        <td className="px-4 py-3">
+                          <div className={isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground'}>
+                            {formatDate(taker.expectedNextDate)}
+                          </div>
+                        </td>
+                        {/* Countdown cell - the star of the show */}
+                        <td className="px-4 py-3">
+                          <div className="flex flex-col items-center gap-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${countdown.badgeClass} ${countdown.pulse ? 'animate-pulse' : ''}`}
+                            >
+                              <CountdownIcon className="h-3 w-3" />
+                              {countdown.label}
+                            </span>
+                            {/* Progress bar */}
+                            {taker.avgInterval !== null && taker.avgInterval > 0 && (
+                              <div className="w-full max-w-[100px] h-1.5 rounded-full bg-muted overflow-hidden">
+                                <div
+                                  className={`h-full rounded-full transition-all ${
+                                    isOverdue
+                                      ? 'bg-red-500'
+                                      : progress > 80
+                                      ? 'bg-orange-500'
+                                      : progress > 50
+                                      ? 'bg-yellow-500'
+                                      : 'bg-green-500'
+                                  }`}
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="px-4 py-3 text-center">
                           {taker.avgInterval !== null ? (
@@ -341,46 +437,26 @@ export default function IntervalStats() {
                       </tr>
                       {/* Expanded detail rows */}
                       {isExpanded && taker.intervals.length > 0 && (
-                        <tr>                          <td colSpan={8} className="px-4 pb-4 bg-muted/20">
+                        <tr>
+                          <td colSpan={9} className="px-4 pb-4 bg-muted/20">
                             <div className="rounded-lg border bg-card overflow-hidden">
                               <table className="w-full text-xs">
                                 <thead>
                                   <tr className="border-b bg-muted/30">
-                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
-                                      序号
-                                    </th>
-                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
-                                      上次接单日期
-                                    </th>
-                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">
-                                      本次接单日期
-                                    </th>
-                                    <th className="px-3 py-2 text-center font-medium text-muted-foreground">
-                                      间隔天数
-                                    </th>
+                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">序号</th>
+                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">上次接单日期</th>
+                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">本次接单日期</th>
+                                    <th className="px-3 py-2 text-center font-medium text-muted-foreground">间隔天数</th>
                                   </tr>
                                 </thead>
                                 <tbody>
                                   {taker.intervals.map((interval, idx) => (
-                                    <tr
-                                      key={idx}
-                                      className="border-b last:border-0 hover:bg-muted/20"
-                                    >
-                                      <td className="px-3 py-2 text-muted-foreground">
-                                        #{idx + 1}
-                                      </td>
-                                      <td className="px-3 py-2">
-                                        {formatDate(interval.fromDate)}
-                                      </td>
-                                      <td className="px-3 py-2">
-                                        {formatDate(interval.toDate)}
-                                      </td>
+                                    <tr key={idx} className="border-b last:border-0 hover:bg-muted/20">
+                                      <td className="px-3 py-2 text-muted-foreground">#{idx + 1}</td>
+                                      <td className="px-3 py-2">{formatDate(interval.fromDate)}</td>
+                                      <td className="px-3 py-2">{formatDate(interval.toDate)}</td>
                                       <td className="px-3 py-2 text-center">
-                                        <span
-                                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getIntervalBadge(
-                                            interval.intervalDays
-                                          )}`}
-                                        >
+                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getIntervalBadge(interval.intervalDays)}`}>
                                           {getIntervalLabel(interval.intervalDays)}
                                         </span>
                                       </td>
@@ -403,26 +479,22 @@ export default function IntervalStats() {
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-        <span>间隔图例：</span>
+        <span>距下次接单：</span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-green-200 dark:bg-green-800" />
-          0-1天（高频）
+          <span className="w-3 h-3 rounded-full bg-red-500" />
+          逾期/今天
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-blue-200 dark:bg-blue-800" />
-          2-3天（活跃）
+          <span className="w-3 h-3 rounded-full bg-orange-400" />
+          1-3天
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-yellow-200 dark:bg-yellow-800" />
-          4-7天（正常）
+          <span className="w-3 h-3 rounded-full bg-blue-400" />
+          4-7天
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-orange-200 dark:bg-orange-800" />
-          8-14天（低频）
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-red-200 dark:bg-red-800" />
-          14天+（不活跃）
+          <span className="w-3 h-3 rounded-full bg-green-400" />
+          7天+
         </span>
       </div>
     </div>

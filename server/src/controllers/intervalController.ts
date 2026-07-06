@@ -60,6 +60,9 @@ export const getIntervalStats = async (req: Request, res: Response) => {
     });
 
     // 计算每个接单人的间隔数据
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
     const takerIntervals: Array<{
       takerId: string;
       wechatName: string;
@@ -72,6 +75,9 @@ export const getIntervalStats = async (req: Request, res: Response) => {
       avgInterval: number | null;
       minInterval: number | null;
       maxInterval: number | null;
+      daysSinceLastOrder: number | null;
+      expectedNextDate: Date | null;
+      daysUntilNext: number | null;
       intervals: Array<{
         fromDate: Date;
         toDate: Date;
@@ -106,6 +112,12 @@ export const getIntervalStats = async (req: Request, res: Response) => {
 
       const intervalValues = intervals.map(i => i.intervalDays);
       const sum = intervalValues.reduce((a, b) => a + b, 0);
+      const avg = intervalValues.length > 0 ? Math.round((sum / intervalValues.length) * 10) / 10 : null;
+
+      const lastDate = sorted.length > 0 ? sorted[sorted.length - 1].orderDate : null;
+      const daysSinceLast = lastDate ? Math.round((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
+      const expectedNext = (lastDate && avg) ? new Date(lastDate.getTime() + avg * 24 * 60 * 60 * 1000) : null;
+      const daysUntil = expectedNext ? Math.round((expectedNext.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
       takerIntervals.push({
         takerId,
@@ -115,19 +127,22 @@ export const getIntervalStats = async (req: Request, res: Response) => {
         totalOrders: taker.totalOrders,
         orderCount: sorted.length,
         firstOrderDate: sorted.length > 0 ? sorted[0].orderDate : null,
-        lastOrderDate: sorted.length > 0 ? sorted[sorted.length - 1].orderDate : null,
-        avgInterval: intervalValues.length > 0 ? Math.round((sum / intervalValues.length) * 10) / 10 : null,
+        lastOrderDate: lastDate,
+        avgInterval: avg,
         minInterval: intervalValues.length > 0 ? Math.min(...intervalValues) : null,
         maxInterval: intervalValues.length > 0 ? Math.max(...intervalValues) : null,
+        daysSinceLastOrder: daysSinceLast,
+        expectedNextDate: expectedNext,
+        daysUntilNext: daysUntil,
         intervals,
       });
     });
 
-    // 按平均间隔排序（无间隔的排最后）
+    // 按距下次接单天数排序（逾期的排最前，无数据的排最后）
     takerIntervals.sort((a, b) => {
-      if (a.avgInterval === null) return 1;
-      if (b.avgInterval === null) return -1;
-      return a.avgInterval - b.avgInterval;
+      if (a.daysUntilNext === null) return 1;
+      if (b.daysUntilNext === null) return -1;
+      return a.daysUntilNext - b.daysUntilNext;
     });
 
     // 全局统计
