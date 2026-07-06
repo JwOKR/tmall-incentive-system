@@ -26,7 +26,7 @@ export default function Takers() {
 
   const { data, isLoading } = useQuery({
     queryKey: ['takers', page, search],
-    queryFn: () => takersApi.getAll({ page, pageSize: 10, search }),
+    queryFn: () => takersApi.getAll({ page, pageSize: 20, search }),
   });
 
   const createMutation = useMutation({
@@ -308,7 +308,7 @@ export default function Takers() {
       </div>
 
       {/* Pagination */}
-      {total > 10 && (
+      {total > 20 && (
         <div className="flex justify-center gap-2">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -318,11 +318,11 @@ export default function Takers() {
             上一页
           </button>
           <span className="flex items-center px-3 text-sm">
-            第 {page} 页 / 共 {Math.ceil(total / 10)} 页
+            第 {page} 页 / 共 {Math.ceil(total / 20)} 页
           </span>
           <button
             onClick={() => setPage(p => p + 1)}
-            disabled={page >= Math.ceil(total / 10)}
+            disabled={page >= Math.ceil(total / 20)}
             className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
           >
             下一页

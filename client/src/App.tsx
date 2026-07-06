@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './components/Toast';
 import { ConfirmProvider } from './components/ConfirmDialog';
+import ErrorBoundary from './components/ErrorBoundary';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import Layout from './components/Layout';
 import { Loader2 } from 'lucide-react';
@@ -17,6 +18,7 @@ const Logs = lazy(() => import('./pages/Logs'));
 const ExportPage = lazy(() => import('./pages/ExportPage'));
 const IntervalStats = lazy(() => import('./pages/IntervalStats'));
 const CommissionStats = lazy(() => import('./pages/CommissionStats'));
+const Settings = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/Login'));
 
 const queryClient = new QueryClient({
@@ -131,6 +133,14 @@ function AppRoutes() {
             </ProtectedLayout>
           }
         />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedLayout>
+              <Settings />
+            </ProtectedLayout>
+          }
+        />
       </Routes>
     </Suspense>
   );
@@ -138,17 +148,19 @@ function AppRoutes() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ToastProvider>
-          <ConfirmProvider>
-            <Router>
-              <AppRoutes />
-            </Router>
-          </ConfirmProvider>
-        </ToastProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ToastProvider>
+            <ConfirmProvider>
+              <Router>
+                <AppRoutes />
+              </Router>
+            </ConfirmProvider>
+          </ToastProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

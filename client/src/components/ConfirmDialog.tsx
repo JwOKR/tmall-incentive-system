@@ -59,8 +59,17 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     <ConfirmContext.Provider value={{ confirm }}>
       {children}
       {state.show && (
-        <div className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-sm rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in">
+        <div
+          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          onClick={() => handleClose(false)}
+          onKeyDown={(e) => e.key === 'Escape' && handleClose(false)}
+          tabIndex={-1}
+          ref={(el) => el?.focus()}
+        >
+          <div
+            className="w-full max-w-sm rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-start gap-4">
               <div className={`p-2 rounded-full ${colors.bg} shrink-0`}>
                 <AlertTriangle className={`h-5 w-5 ${colors.icon}`} />

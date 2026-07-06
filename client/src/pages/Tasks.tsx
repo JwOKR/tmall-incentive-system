@@ -280,7 +280,7 @@ export default function Tasks() {
           onChange={(e) => handleSelectChange(task.id, 'status', e.target.value)}
           onBlur={() => setEditingCell(null)}
           onKeyDown={(e) => e.key === 'Escape' && handleCancel()}
-          className="rounded border border-primary px-2 py-1 text-sm bg-white w-full"
+          className="rounded border border-primary px-2 py-1 text-sm bg-background w-full"
         >
           {statusOptions.map(opt => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>

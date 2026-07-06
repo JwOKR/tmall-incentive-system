@@ -16,6 +16,7 @@ import {
   DollarSign,
   Menu,
   X,
+  Settings as SettingsIcon,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -113,7 +114,10 @@ export default function Layout({ children }: LayoutProps) {
 
         {/* User info & logout */}
         <div className="border-t p-3 space-y-1">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50">
+          <Link
+            to="/settings"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+          >
             <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-primary/80 to-primary/60 shrink-0">
               <User className="h-4 w-4 text-primary-foreground" />
             </div>
@@ -121,7 +125,8 @@ export default function Layout({ children }: LayoutProps) {
               <p className="font-medium text-sm truncate">{user?.username || '未知'}</p>
               <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? '管理员' : '普通用户'}</p>
             </div>
-          </div>
+            <SettingsIcon className="h-4 w-4 text-muted-foreground" />
+          </Link>
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-all hover:translate-x-0.5"

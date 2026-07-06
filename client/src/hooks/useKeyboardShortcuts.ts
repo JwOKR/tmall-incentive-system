@@ -51,6 +51,7 @@ export function useKeyboardShortcuts() {
           '6': '/commissions',
           '7': '/logs',
           '8': '/export',
+          '9': '/settings',
         };
         if (routes[e.key]) {
           e.preventDefault();
