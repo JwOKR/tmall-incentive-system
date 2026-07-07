@@ -2,6 +2,7 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Plus, Pencil, Trash2, Search, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ExportDialog from '@/components/ExportDialog';
@@ -17,6 +18,7 @@ export default function Takers() {
   const { confirm } = useConfirm();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [showForm, setShowForm] = useState(false);
   const [editingTaker, setEditingTaker] = useState<any>(null);
@@ -30,8 +32,8 @@ export default function Takers() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ['takers', page, search],
-    queryFn: () => takersApi.getAll({ page, pageSize: 20, search }),
+    queryKey: ['takers', page, debouncedSearch],
+    queryFn: () => takersApi.getAll({ page, pageSize: 20, search: debouncedSearch }),
   });
 
   const createMutation = useMutation({
