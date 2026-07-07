@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi, takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Plus, Search, Zap, Copy, Save, Trash2, CheckSquare, Square } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
@@ -22,6 +23,7 @@ export default function Tasks() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const debouncedSearch = useDebouncedValue(search, 300);
   const [showQuickOrder, setShowQuickOrder] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedTaker, setSelectedTaker] = useState('');
@@ -51,8 +53,8 @@ export default function Tasks() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
 
   const { data, isLoading } = useQuery({
-    queryKey: ['tasks', page, search, statusFilter],
-    queryFn: () => tasksApi.getAll({ page, pageSize: 20, search, status: statusFilter }),
+    queryKey: ['tasks', page, debouncedSearch, statusFilter],
+    queryFn: () => tasksApi.getAll({ page, pageSize: 20, search: debouncedSearch, status: statusFilter }),
   });
 
   const { data: takersData } = useQuery({
