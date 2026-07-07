@@ -120,4 +120,14 @@ export const backupApi = {
     api.post('/backup/import', { data, mode }, { timeout: 300000 }),
 };
 
+// Admin API
+export const adminApi = {
+  getAllUsers: () => api.get('/admin'),
+  createUser: (data: { username: string; password: string; role?: string }) =>
+    api.post('/admin', data),
+  updateUser: (id: string, data: { username?: string; password?: string; role?: string }) =>
+    api.put(`/admin/${id}`, data),
+  deleteUser: (id: string) => api.delete(`/admin/${id}`),
+};
+
 export default api;

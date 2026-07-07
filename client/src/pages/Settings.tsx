@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { backupApi } from '@/lib/api';
-// utils not needed in this page
+import { backupApi, adminApi } from '@/lib/api';
 import {
   User,
   Lock,
@@ -12,13 +11,21 @@ import {
   Loader2,
   CheckCircle,
   AlertCircle,
+  Users,
+  Plus,
+  Pencil,
+  Trash2,
+  X,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
+import { useConfirm } from '@/components/ConfirmDialog';
+import { formatDate } from '@/lib/utils';
 
 export default function Settings() {
   const { user } = useAuth();
   const { success: toastSuccess, error: toastError } = useToast();
-  const [activeTab, setActiveTab] = useState<'account' | 'password' | 'shortcuts' | 'backup'>('account');
+  const { confirm } = useConfirm();
+  const [activeTab, setActiveTab] = useState<'account' | 'password' | 'shortcuts' | 'backup' | 'users'>('account');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -26,6 +33,13 @@ export default function Settings() {
   const [backingUp, setBackingUp] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importMode, setImportMode] = useState<'merge' | 'overwrite'>('merge');
+
+  // 用户管理状态
+  const [users, setUsers] = useState<any[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [showUserForm, setShowUserForm] = useState(false);
+  const [editingUser, setEditingUser] = useState<any>(null);
+  const [userForm, setUserForm] = useState({ username: '', password: '', role: 'user' });
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword) {
@@ -57,6 +71,50 @@ export default function Settings() {
       toastError(err?.response?.data?.message || '密码修改失败');
     } finally {
       setChanging(false);
+    }
+  };
+
+  // 加载用户列表
+  const loadUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const res: any = await adminApi.getAllUsers();
+      if (res.success) setUsers(res.data || []);
+    } catch { toastError('加载用户列表失败'); }
+    finally { setLoadingUsers(false); }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'users') loadUsers();
+  }, [activeTab]);
+
+  const handleSaveUser = async () => {
+    if (!userForm.username) { toastError('请输入用户名'); return; }
+    if (!editingUser && !userForm.password) { toastError('请输入密码'); return; }
+    if (userForm.password && userForm.password.length < 6) { toastError('密码至少6位'); return; }
+
+    try {
+      if (editingUser) {
+        const updateData: any = { username: userForm.username, role: userForm.role };
+        if (userForm.password) updateData.password = userForm.password;
+        const res: any = await adminApi.updateUser(editingUser.id, updateData);
+        if (res.success) { toastSuccess('用户已更新'); setShowUserForm(false); setEditingUser(null); loadUsers(); }
+        else toastError(res.message || '更新失败');
+      } else {
+        const res: any = await adminApi.createUser({ username: userForm.username, password: userForm.password, role: userForm.role });
+        if (res.success) { toastSuccess('用户已创建'); setShowUserForm(false); loadUsers(); }
+        else toastError(res.message || '创建失败');
+      }
+    } catch (err: any) { toastError(err?.response?.data?.message || '操作失败'); }
+  };
+
+  const handleDeleteUser = async (u: any) => {
+    if (await confirm({ message: `确定删除用户「${u.username}」？此操作不可恢复。`, variant: 'danger', confirmText: '删除' })) {
+      try {
+        const res: any = await adminApi.deleteUser(u.id);
+        if (res.success) { toastSuccess('用户已删除'); loadUsers(); }
+        else toastError(res.message || '删除失败');
+      } catch (err: any) { toastError(err?.response?.data?.message || '删除失败'); }
     }
   };
 
@@ -121,6 +179,7 @@ export default function Settings() {
     { id: 'account' as const, label: '账户信息', icon: User },
     { id: 'password' as const, label: '修改密码', icon: Lock },
     { id: 'backup' as const, label: '数据备份', icon: Download },
+    { id: 'users' as const, label: '用户管理', icon: Users },
     { id: 'shortcuts' as const, label: '快捷键', icon: Keyboard },
   ];
 
@@ -314,6 +373,142 @@ export default function Settings() {
                 </p>
               </div>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'users' && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">用户管理</h3>
+              <button
+                onClick={() => { setEditingUser(null); setUserForm({ username: '', password: '', role: 'user' }); setShowUserForm(true); }}
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                <Plus className="h-4 w-4" />
+                添加用户
+              </button>
+            </div>
+
+            {loadingUsers ? (
+              <div className="flex items-center gap-2 text-muted-foreground py-8"><Loader2 className="h-4 w-4 animate-spin" /> 加载中...</div>
+            ) : users.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">暂无用户</div>
+            ) : (
+              <div className="rounded-lg border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="table-header">
+                      <th className="px-4 py-3 text-left font-medium">用户名</th>
+                      <th className="px-4 py-3 text-left font-medium">角色</th>
+                      <th className="px-4 py-3 text-left font-medium">创建时间</th>
+                      <th className="px-4 py-3 text-right font-medium">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {users.map(u => (
+                      <tr key={u.id} className="table-row-hover table-row-zebra">
+                        <td className="px-4 py-3 font-medium">{u.username}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${u.role === 'admin' ? 'badge-info' : 'badge-neutral'}`}>
+                            <Shield className="h-3 w-3" />
+                            {u.role === 'admin' ? '管理员' : '普通用户'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{formatDate(u.createdAt)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <button
+                              onClick={() => { setEditingUser(u); setUserForm({ username: u.username, password: '', role: u.role }); setShowUserForm(true); }}
+                              className="p-1.5 hover:bg-accent rounded-md"
+                              title="编辑"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(u)}
+                              className="p-1.5 hover:bg-destructive/10 rounded-md"
+                              title="删除"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* 用户表单弹窗 */}
+            {showUserForm && (
+              <div
+                className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                onClick={() => { setShowUserForm(false); setEditingUser(null); }}
+                onKeyDown={(e) => e.key === 'Escape' && (setShowUserForm(false), setEditingUser(null))}
+                tabIndex={-1}
+              >
+                <div
+                  className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold">{editingUser ? '编辑用户' : '添加用户'}</h3>
+                    <button onClick={() => { setShowUserForm(false); setEditingUser(null); }} className="p-1 hover:bg-accent rounded-md">
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium">用户名 *</label>
+                      <input
+                        type="text"
+                        value={userForm.username}
+                        onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
+                        placeholder="请输入用户名"
+                        className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">{editingUser ? '新密码（留空则不修改）' : '密码 *'}</label>
+                      <input
+                        type="password"
+                        value={userForm.password}
+                        onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
+                        placeholder={editingUser ? '留空则不修改' : '至少6位'}
+                        className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium">角色</label>
+                      <select
+                        value={userForm.role}
+                        onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
+                        className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      >
+                        <option value="user">普通用户</option>
+                        <option value="admin">管理员</option>
+                      </select>
+                      <p className="text-xs text-muted-foreground mt-1">管理员可管理用户和所有数据，普通用户仅可操作数据</p>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        onClick={() => { setShowUserForm(false); setEditingUser(null); }}
+                        className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
+                      >
+                        取消
+                      </button>
+                      <button
+                        onClick={handleSaveUser}
+                        className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+                      >
+                        {editingUser ? '保存修改' : '创建用户'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
