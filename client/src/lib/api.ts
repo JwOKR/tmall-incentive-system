@@ -113,4 +113,11 @@ export const anomalyApi = {
   getAnomalies: () => api.get('/anomalies'),
 };
 
+// Backup API
+export const backupApi = {
+  exportBackup: () => api.get('/backup/export'),
+  importBackup: (data: any, mode: 'merge' | 'overwrite' = 'merge') =>
+    api.post('/backup/import', { data, mode }, { timeout: 300000 }),
+};
+
 export default api;

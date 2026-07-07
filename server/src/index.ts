@@ -15,6 +15,7 @@ import intervalRoutes from './routes/intervals';
 import commissionRoutes from './routes/commissions';
 import remindRoutes from './routes/reminds';
 import anomalyRoutes from './routes/anomalies';
+import backupRoutes from './routes/backups';
 
 // Import middleware
 import { authMiddleware } from './middleware/auth';
@@ -60,6 +61,7 @@ app.use('/api/intervals', authMiddleware, intervalRoutes);
 app.use('/api/commissions', authMiddleware, commissionRoutes);
 app.use('/api/reminds', authMiddleware, remindRoutes);
 app.use('/api/anomalies', authMiddleware, anomalyRoutes);
+app.use('/api/backup', authMiddleware, backupRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
