@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api, { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Star, Calendar, Eye } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
@@ -33,13 +34,14 @@ export default function Orders() {
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const debouncedSearch = useDebouncedValue(search, 300);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['orders', page, search, refundFilter, reviewFilter, startDate, endDate],
+    queryKey: ['orders', page, debouncedSearch, refundFilter, reviewFilter, startDate, endDate],
     queryFn: () => ordersApi.getAll({
       page,
       pageSize: 20,
-      search,
+      search: debouncedSearch,
       isRefunded: refundFilter || undefined,
       isGoodReview: reviewFilter || undefined,
       startDate: startDate || undefined,
