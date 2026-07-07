@@ -745,7 +745,7 @@ export default function Orders() {
               </tr>
             ) : (
               filteredOrders.map((order: any) => (
-                <tr key={order.id} className={`table-row-hover table-row-zebra ${selectedIds.has(order.id) ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
+                <tr key={order.id} className={`table-row-hover table-row-zebra ${selectedIds.has(order.id) ? 'table-row-selected' : ''}`}>
                   <td className="px-3 py-2">
                     <button
                       onClick={() => handleSelectOne(order.id)}

@@ -92,6 +92,11 @@
   .table-row-zebra:nth-child(even) {
     @apply bg-muted/20;
   }
+
+  /* Row selection highlight */
+  .table-row-selected {
+    @apply bg-primary/10 dark:bg-primary/15 border-l-2 border-l-primary;
+  }
 }
 
 @layer utilities {
