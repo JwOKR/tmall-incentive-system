@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -20,6 +20,10 @@ export default function Takers() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [showForm, setShowForm] = useState(false);
   const [editingTaker, setEditingTaker] = useState<any>(null);
+  const formModalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (showForm && formModalRef.current) formModalRef.current.focus();
+  }, [showForm]);
   const [formData, setFormData] = useState({
     wechatName: '',
     wechatId: '',
@@ -187,7 +191,7 @@ export default function Takers() {
           onClick={() => { setShowForm(false); setEditingTaker(null); }}
           onKeyDown={(e) => e.key === 'Escape' && (setShowForm(false), setEditingTaker(null))}
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={formModalRef}
         >
           <div
             className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50"
