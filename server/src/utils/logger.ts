@@ -1,4 +1,11 @@
+import fs from 'fs';
 import winston from 'winston';
+
+// 确保 logs 目录存在
+const LOG_DIR = 'logs';
+if (!fs.existsSync(LOG_DIR)) {
+  fs.mkdirSync(LOG_DIR, { recursive: true });
+}
 
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || 'info',
