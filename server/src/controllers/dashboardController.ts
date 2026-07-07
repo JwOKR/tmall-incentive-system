@@ -78,100 +78,47 @@ export const getIncentiveSummary = async (req: Request, res: Response) => {
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
-    // 获取总订单数和总金额
-    const orderStats = await prisma.order.aggregate({
-      _count: true,
-      _sum: {
-        actualPayment: true,
-        totalRefund: true,
-      },
-    });
-
-    // 获取接单人数量
-    const takerCount = await prisma.orderTaker.count({
-      where: { status: 'active' },
-    });
-
-    // 获取任务数量
-    const taskCount = await prisma.task.count();
-
-    // 获取活跃任务数量
-    const activeTaskCount = await prisma.task.count({
-      where: { status: 'active' },
-    });
-
-    // 获取今日新增订单
+    // 并行执行所有独立查询，减少响应延迟
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayOrders = await prisma.order.count({
-      where: {
-        orderDate: {
-          gte: today,
-        },
-      },
-    });
-
-    // 获取今日金额和返款
-    const todayStats = await prisma.order.aggregate({
-      where: {
-        orderDate: {
-          gte: today,
-        },
-      },
-      _sum: {
-        actualPayment: true,
-        totalRefund: true,
-      },
-    });
-
-    // 获取待返款订单数
-    const pendingRefundCount = await prisma.order.count({
-      where: {
-        isRefunded: false,
-      },
-    });
-
-    // 获取待好评订单数
-    const pendingReviewCount = await prisma.order.count({
-      where: {
-        isGoodReview: false,
-      },
-    });
-
-    // 获取接单人排行榜
-    const topTakers = await prisma.orderTaker.findMany({
-      take: 5,
-      orderBy: {
-        totalOrders: 'desc',
-      },
-      select: {
-        id: true,
-        wechatName: true,
-        wechatId: true,
-        totalOrders: true,
-        totalAmount: true,
-      },
-    });
-
-    // 获取按接单日期分组的汇总数据（最近7天）
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
-    
-    // 获取最近7天的订单
-    const recentOrders = await prisma.order.findMany({
-      where: {
-        orderDate: {
-          gte: sevenDaysAgo,
-        },
-      },
-      select: {
-        orderDate: true,
-        totalRefund: true,
-        isRefunded: true,
-        isGoodReview: true,
-      },
-    });
+
+    const [
+      orderStats,
+      takerCount,
+      activeTaskCount,
+      todayOrders,
+      todayStats,
+      pendingRefundCount,
+      pendingReviewCount,
+      topTakers,
+      recentOrders,
+    ] = await Promise.all([
+      prisma.order.aggregate({
+        _count: true,
+        _sum: { actualPayment: true, totalRefund: true },
+      }),
+      prisma.orderTaker.count({ where: { status: 'active' } }),
+      prisma.task.count({ where: { status: 'active' } }),
+      prisma.order.count({ where: { orderDate: { gte: today } } }),
+      prisma.order.aggregate({
+        where: { orderDate: { gte: today } },
+        _sum: { actualPayment: true, totalRefund: true },
+      }),
+      prisma.order.count({ where: { isRefunded: false } }),
+      prisma.order.count({ where: { isGoodReview: false } }),
+      prisma.orderTaker.findMany({
+        take: 5,
+        orderBy: { totalOrders: 'desc' },
+        select: { id: true, wechatName: true, wechatId: true, totalOrders: true, totalAmount: true },
+      }),
+      prisma.order.findMany({
+        where: { orderDate: { gte: sevenDaysAgo } },
+        select: { orderDate: true, totalRefund: true, isRefunded: true, isGoodReview: true },
+      }),
+    ]);
 
     // 按日期分组统计
     const dailyMap = new Map<string, {
@@ -189,16 +136,13 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         refundedCount: 0,
         goodReviewCount: 0,
       };
-      
       existing.orderCount++;
       existing.totalRefund += order.totalRefund;
       if (order.isRefunded) existing.refundedCount++;
       if (order.isGoodReview) existing.goodReviewCount++;
-      
       dailyMap.set(dateStr, existing);
     });
 
-    // 转换为数组并排序
     const dailySummary = Array.from(dailyMap.entries())
       .map(([date, stats]) => ({
         date,
@@ -217,7 +161,6 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         totalAmount: orderStats._sum.actualPayment || 0,
         totalRefund: orderStats._sum.totalRefund || 0,
         activeTakers: takerCount,
-        totalTasks: taskCount,
         activeTasks: activeTaskCount,
         todayOrders,
         todayAmount: todayStats._sum.actualPayment || 0,
