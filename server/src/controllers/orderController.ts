@@ -683,31 +683,6 @@ export const deleteOrder = async (req: Request, res: Response) => {
       });
     }
 
-    await prisma.order.delete({
-      where: { id },
-    });
-
-    // 更新任务已接人数
-    if (existingOrder.taskId) {
-      await prisma.task.update({
-        where: { id: existingOrder.taskId },
-        data: {
-          currentOrders: { decrement: 1 },
-        },
-      });
-    }
-
-    // 更新接单人统计
-    if (existingOrder.takerId) {
-      await prisma.orderTaker.update({
-        where: { id: existingOrder.takerId },
-        data: {
-          totalOrders: { decrement: 1 },
-          totalAmount: { decrement: existingOrder.actualPayment },
-        },
-      });
-    }
-
     // 先创建审计日志（在删除订单之前）
     await createAuditLog({
       action: 'delete',
@@ -715,14 +690,32 @@ export const deleteOrder = async (req: Request, res: Response) => {
       ipAddress: req.ip,
     });
 
-    // 删除订单关联的日志
-    await prisma.log.deleteMany({
-      where: { orderId: id },
-    });
+    // 使用事务一次性完成：删除日志 → 删除订单 → 更新任务/接单人统计
+    await prisma.$transaction(async (tx) => {
+      // 删除订单关联的日志
+      await tx.log.deleteMany({ where: { orderId: id } });
 
-    // 删除订单
-    await prisma.order.delete({
-      where: { id },
+      // 删除订单
+      await tx.order.delete({ where: { id } });
+
+      // 更新任务已接人数
+      if (existingOrder.taskId) {
+        await tx.task.update({
+          where: { id: existingOrder.taskId },
+          data: { currentOrders: { decrement: 1 } },
+        });
+      }
+
+      // 更新接单人统计
+      if (existingOrder.takerId) {
+        await tx.orderTaker.update({
+          where: { id: existingOrder.takerId },
+          data: {
+            totalOrders: { decrement: 1 },
+            totalAmount: { decrement: existingOrder.actualPayment },
+          },
+        });
+      }
     });
 
     res.json({
