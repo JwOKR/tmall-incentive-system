@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Download, X } from 'lucide-react';
 import { exportToExcel, ExportColumn } from '@/lib/export';
 import { useToast } from '@/components/Toast';
@@ -20,6 +20,10 @@ export default function ExportDialog({ title, filename, columns, data, buttonLab
     columns.map(col => ({ ...col }))
   );
   const [exporting, setExporting] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (showDialog && dialogRef.current) dialogRef.current.focus();
+  }, [showDialog]);
 
   const handleToggleColumn = (key: string) => {
     setSelectedColumns(prev =>
@@ -89,7 +93,7 @@ export default function ExportDialog({ title, filename, columns, data, buttonLab
           onClick={() => setShowDialog(false)}
           onKeyDown={(e) => e.key === 'Escape' && setShowDialog(false)}
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={dialogRef}
         >
           <div
             className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50 max-h-[80vh] overflow-y-auto"
