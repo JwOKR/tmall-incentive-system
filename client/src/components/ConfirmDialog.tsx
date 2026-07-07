@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
 import { AlertTriangle } from 'lucide-react';
 
 interface ConfirmOptions {
@@ -42,6 +42,11 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const modalRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (state.show && modalRef.current) modalRef.current.focus();
+  }, [state.show]);
+
   const handleClose = (result: boolean) => {
     state.resolve?.(result);
     setState({ show: false, options: { message: '' }, resolve: null });
@@ -64,7 +69,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           onClick={() => handleClose(false)}
           onKeyDown={(e) => e.key === 'Escape' && handleClose(false)}
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={modalRef}
         >
           <div
             className="w-full max-w-sm rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in"
