@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi, remindApi } from '@/lib/api';
 import { formatCurrency, formatNumber } from '@/lib/utils';
@@ -28,7 +28,16 @@ export default function Dashboard() {
   const [showRemind, setShowRemind] = useState(false);
   const [summaryText, setSummaryText] = useState('');
   const [showSummary, setShowSummary] = useState(false);
-  
+  const summaryModalRef = useRef<HTMLDivElement>(null);
+  const remindModalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showSummary && summaryModalRef.current) summaryModalRef.current.focus();
+  }, [showSummary]);
+  useEffect(() => {
+    if (showRemind && remindModalRef.current) remindModalRef.current.focus();
+  }, [showRemind]);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => dashboardApi.getStats(),
@@ -167,7 +176,7 @@ export default function Dashboard() {
           onClick={() => setShowSummary(false)}
           onKeyDown={(e) => e.key === 'Escape' && setShowSummary(false)}
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={summaryModalRef}
         >
           <div
             className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in"
@@ -214,7 +223,7 @@ export default function Dashboard() {
           onClick={() => setShowRemind(false)}
           onKeyDown={(e) => e.key === 'Escape' && setShowRemind(false)}
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={remindModalRef}
         >
           <div
             className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in max-h-[80vh] flex flex-col"
