@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, X, FileSpreadsheet, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useToast } from '@/components/Toast';
@@ -27,6 +27,10 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ success: number; failed: number; duplicates: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (showDialog && dialogRef.current) dialogRef.current.focus();
+  }, [showDialog]);
 
   const handleDownloadTemplate = () => {
     // 创建模板数据
@@ -190,7 +194,7 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
           onClick={handleClose}
           onKeyDown={(e) => e.key === 'Escape' && handleClose()}
           tabIndex={-1}
-          ref={(el) => el?.focus()}
+          ref={dialogRef}
         >
           <div
             className="w-full max-w-3xl rounded-xl bg-card p-6 shadow-xl border border-border/50 max-h-[90vh] overflow-y-auto"
