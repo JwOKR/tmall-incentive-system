@@ -1,6 +1,23 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
 
+// 简单内存缓存（生产环境可替换为 Redis）
+const statsCache = new Map<string, { data: unknown; expires: number }>();
+const STATS_TTL_MS = 30_000; // 30 秒缓存
+
+function getCached<T>(key: string): T | null {
+  const entry = statsCache.get(key);
+  if (!entry || Date.now() > entry.expires) {
+    statsCache.delete(key);
+    return null;
+  }
+  return entry.data as T;
+}
+
+function setCache(key: string, data: unknown, ttlMs = STATS_TTL_MS) {
+  statsCache.set(key, { data, expires: Date.now() + ttlMs });
+}
+
 // 生成激励汇总文本
 export const getIncentiveSummary = async (req: Request, res: Response) => {
   try {
@@ -78,6 +95,12 @@ export const getIncentiveSummary = async (req: Request, res: Response) => {
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
+    // 检查缓存
+    const cached = getCached<Record<string, unknown>>('dashboard:stats');
+    if (cached) {
+      return res.json({ success: true, data: cached });
+    }
+
     // 并行执行所有独立查询，减少响应延迟
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -154,23 +177,25 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       }))
       .sort((a, b) => b.date.localeCompare(a.date));
 
-    res.json({
-      success: true,
-      data: {
-        totalOrders: orderStats._count,
-        totalAmount: orderStats._sum.actualPayment || 0,
-        totalRefund: orderStats._sum.totalRefund || 0,
-        activeTakers: takerCount,
-        activeTasks: activeTaskCount,
-        todayOrders,
-        todayAmount: todayStats._sum.actualPayment || 0,
-        todayReward: todayStats._sum.totalRefund || 0,
-        pendingRefundCount,
-        pendingReviewCount,
-        topTakers,
-        dailySummary,
-      },
-    });
+    const result = {
+      totalOrders: orderStats._count,
+      totalAmount: orderStats._sum.actualPayment || 0,
+      totalRefund: orderStats._sum.totalRefund || 0,
+      activeTakers: takerCount,
+      activeTasks: activeTaskCount,
+      todayOrders,
+      todayAmount: todayStats._sum.actualPayment || 0,
+      todayReward: todayStats._sum.totalRefund || 0,
+      pendingRefundCount,
+      pendingReviewCount,
+      topTakers,
+      dailySummary,
+    };
+
+    // 写入缓存
+    setCache('dashboard:stats', result);
+
+    res.json({ success: true, data: result });
   } catch (error) {
     console.error('Error fetching dashboard stats:', error);
     res.status(500).json({

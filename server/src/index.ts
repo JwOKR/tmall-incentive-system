@@ -63,7 +63,7 @@ app.use('/api/commissions', authMiddleware, commissionRoutes);
 app.use('/api/reminds', authMiddleware, remindRoutes);
 app.use('/api/anomalies', authMiddleware, anomalyRoutes);
 app.use('/api/backup', authMiddleware, backupRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', authMiddleware, adminRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

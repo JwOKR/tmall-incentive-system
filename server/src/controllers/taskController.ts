@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
 import { createAuditLog } from '../utils/auditLog';
+import { parseExcelDate } from '../utils/parseExcelDate';
 
 // 获取所有任务
 export const getAllTasks = async (req: Request, res: Response) => {
@@ -146,26 +147,6 @@ export const createTask = async (req: Request, res: Response) => {
     });
   }
 };
-
-// 通用日期解析函数（支持多种格式）
-function parseExcelDate(dateValue: any): Date | null {
-  if (!dateValue) return null;
-  
-  // 如果是数字（Excel日期序列号）
-  if (typeof dateValue === 'number') {
-    // Excel日期序列号：从1900年1月1日开始的天数
-    const excelEpoch = new Date(1900, 0, 1);
-    return new Date(excelEpoch.getTime() + (dateValue - 2) * 24 * 60 * 60 * 1000);
-  }
-  
-  // 尝试解析字符串日期
-  const parsed = new Date(dateValue);
-  if (!isNaN(parsed.getTime())) {
-    return parsed;
-  }
-  
-  return null;
-}
 
 // 批量创建任务（按商品编号）
 export const batchCreateTasks = async (req: Request, res: Response) => {
@@ -442,50 +423,49 @@ export const quickOrder = async (req: Request, res: Response) => {
       ? `https://qn.taobao.com/home.htm/trade-platform/tp/detail?spm=a21dvs.23580594.0.0.60fb2cedkP5BNV&bizOrderId=${finalOrderNo}`
       : '';
 
-    // 创建订单
-    // 使用用户输入的实付价，默认为空（0）
+    // 使用用户输入的实付价，默认为 0
     const finalActualPayment = actualPayment !== undefined ? Number(actualPayment) : 0;
     // 总返款 = 实付款 + 基础返佣 + 好评返佣
     const calculatedTotalRefund = finalActualPayment + task.baseCommission + task.reviewReward;
-    
-    const order = await prisma.order.create({
-      data: {
-        orderNo: finalOrderNo,
-        taskId,
-        takerId,
-        productId: task.productId,
-        productCode: task.productCode,
-        orderNo19: orderNo19 || null,
-        orderLink,
-        actualPayment: finalActualPayment,
-        baseCommission: task.baseCommission,
-        reviewCommission: task.reviewReward,
-        totalRefund: calculatedTotalRefund,
-      },
-      include: {
-        task: true,
-        taker: true,
-      },
+
+    // 使用事务保证原子性：创建订单 + 更新任务 + 更新接单人 统一成功或回滚
+    const order = await prisma.$transaction(async (tx) => {
+      const newOrder = await tx.order.create({
+        data: {
+          orderNo: finalOrderNo,
+          taskId,
+          takerId,
+          productId: task.productId,
+          productCode: task.productCode,
+          orderNo19: orderNo19 || null,
+          orderLink,
+          actualPayment: finalActualPayment,
+          baseCommission: task.baseCommission,
+          reviewCommission: task.reviewReward,
+          totalRefund: calculatedTotalRefund,
+        },
+        include: { task: true, taker: true },
+      });
+
+      // 更新任务已接人数
+      await tx.task.update({
+        where: { id: taskId },
+        data: { currentOrders: { increment: 1 } },
+      });
+
+      // 更新接单人统计
+      await tx.orderTaker.update({
+        where: { id: takerId },
+        data: {
+          totalOrders: { increment: 1 },
+          totalAmount: { increment: task.price },
+        },
+      });
+
+      return newOrder;
     });
 
-    // 更新任务已接人数
-    await prisma.task.update({
-      where: { id: taskId },
-      data: {
-        currentOrders: { increment: 1 },
-      },
-    });
-
-    // 更新接单人统计
-    await prisma.orderTaker.update({
-      where: { id: takerId },
-      data: {
-        totalOrders: { increment: 1 },
-        totalAmount: { increment: task.price },
-      },
-    });
-
-    // 记录日志
+    // 记录日志（事务外执行，不影响主流程）
     await createAuditLog({
       orderId: order.id,
       action: 'create',

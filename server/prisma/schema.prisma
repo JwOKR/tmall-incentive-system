@@ -35,6 +35,7 @@ model OrderTaker {
   
   orders      Order[]
   
+  @@index([status])
   @@map("order_takers")
 }
 
@@ -56,6 +57,9 @@ model Task {
   
   orders          Order[]
   
+  @@index([status])
+  @@index([productId])
+  @@index([productCode])
   @@map("tasks")
 }
 
@@ -95,6 +99,13 @@ model Order {
   taker               OrderTaker? @relation(fields: [takerId], references: [id])
   logs                Log[]
   
+  @@index([orderDate])
+  @@index([takerId])
+  @@index([taskId])
+  @@index([isRefunded])
+  @@index([isGoodReview])
+  @@index([productId])
+  @@index([productCode])
   @@map("orders")
 }
 
@@ -110,5 +121,8 @@ model Log {
   
   order       Order?   @relation(fields: [orderId], references: [id])
   
+  @@index([orderId])
+  @@index([action])
+  @@index([createdAt])
   @@map("logs")
 }
