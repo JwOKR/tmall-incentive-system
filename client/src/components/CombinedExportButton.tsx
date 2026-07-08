@@ -45,29 +45,34 @@ export default function CombinedExportButton({ sheets, defaultFilename = '数据
     );
   };
 
+  const getDateFilename = (base: string) => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    return `${dateStr}_${base}`;
+  };
+
   const handleExport = () => {
     const selected = selectedSheets.filter(sheet => sheet.selected);
     if (selected.length === 0) {
       toastError('请至少选择一个表格');
       return;
     }
-    
+
     exportCombined({
-      filename: filename || defaultFilename,
+      filename: getDateFilename(filename || defaultFilename),
       sheets: selected.map(sheet => ({
         name: sheet.label,
         columns: sheet.columns.filter(col => col.selected !== false),
         data: sheet.data,
       })),
     });
-    
+
     setShowSheetSelect(false);
     setShowDropdown(false);
   };
 
   const handleQuickExportAll = () => {
     exportCombined({
-      filename: filename || defaultFilename,
+      filename: getDateFilename(filename || defaultFilename),
       sheets: sheets.map(sheet => ({
         name: sheet.label,
         columns: sheet.columns.filter(col => col.selected !== false),

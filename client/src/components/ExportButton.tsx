@@ -38,26 +38,31 @@ export default function ExportButton({ filename, columns, data, label = '导出'
     );
   };
 
+  const getDateFilename = (base: string) => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    return `${dateStr}_${base}`;
+  };
+
   const handleExport = () => {
     const selected = selectedColumns.filter(col => col.selected);
     if (selected.length === 0) {
       toastError('请至少选择一列');
       return;
     }
-    
+
     exportToExcel({
-      filename,
+      filename: getDateFilename(filename),
       columns: selected,
       data,
     });
-    
+
     setShowDropdown(false);
     setShowColumnSelect(false);
   };
 
   const handleQuickExport = () => {
     exportToExcel({
-      filename,
+      filename: getDateFilename(filename),
       columns: columns.filter(col => col.selected !== false),
       data,
     });
