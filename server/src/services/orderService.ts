@@ -1,5 +1,4 @@
 import prisma from '../utils/db';
-import { Prisma } from '@prisma/client';
 import { parseExcelDate } from '../utils/parseExcelDate';
 
 // ──────────────────────────────────────
@@ -42,7 +41,8 @@ export interface BatchImportResult {
 export async function getOrderList(params: OrderListParams) {
   const { page = 1, pageSize = 10, search, isRefunded, isGoodReview, startDate, endDate } = params;
 
-  const where: Prisma.OrderWhereInput = {};
+  // 用 any 构建动态条件，最后传给 Prisma
+  const where: any = {};
 
   if (isRefunded !== undefined && isRefunded !== '') where.isRefunded = isRefunded === 'true';
   if (isGoodReview !== undefined && isGoodReview !== '') where.isGoodReview = isGoodReview === 'true';
@@ -58,15 +58,14 @@ export async function getOrderList(params: OrderListParams) {
     ];
   }
 
-  const dateFilter: Record<string, Date> = {};
-  if (startDate) dateFilter.gte = new Date(startDate);
-  if (endDate) {
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
-    dateFilter.lte = end;
-  }
-  if (Object.keys(dateFilter).length > 0) {
-    where.orderDate = dateFilter;
+  if (startDate || endDate) {
+    where.orderDate = {};
+    if (startDate) where.orderDate.gte = new Date(startDate);
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      where.orderDate.lte = end;
+    }
   }
 
   const [orders, total] = await Promise.all([
