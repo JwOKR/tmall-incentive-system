@@ -58,14 +58,15 @@ export async function getOrderList(params: OrderListParams) {
     ];
   }
 
-  if (startDate || endDate) {
-    where.orderDate = {};
-    if (startDate) where.orderDate.gte = new Date(startDate);
-    if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      where.orderDate.lte = end;
-    }
+  const dateFilter: Record<string, Date> = {};
+  if (startDate) dateFilter.gte = new Date(startDate);
+  if (endDate) {
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+    dateFilter.lte = end;
+  }
+  if (Object.keys(dateFilter).length > 0) {
+    where.orderDate = dateFilter;
   }
 
   const [orders, total] = await Promise.all([
