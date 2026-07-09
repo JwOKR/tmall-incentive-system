@@ -39,7 +39,9 @@ export interface BatchImportResult {
 // 查询：订单列表
 // ──────────────────────────────────────
 export async function getOrderList(params: OrderListParams) {
-  const { page = 1, pageSize = 10, search, isRefunded, isGoodReview, startDate, endDate } = params;
+  const page = Number(params.page) || 1;
+  const pageSize = Number(params.pageSize) || 10;
+  const { search, isRefunded, isGoodReview, startDate, endDate } = params;
 
   // 用 any 构建动态条件，最后传给 Prisma
   const where: any = {};
