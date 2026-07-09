@@ -171,7 +171,7 @@ export default function ExportPage() {
           <div className="space-y-4">
             <div className="p-4 bg-muted/50 rounded-lg">
               <p className="text-sm text-muted-foreground mb-2">文件名</p>
-              <p className="font-medium">{filename || '天猫激励数据导出'}.xlsx</p>
+              <p className="font-medium">{new Date().toISOString().split('T')[0]}_{filename || '天猫激励数据导出'}.xlsx</p>
             </div>
             
             <div className="p-4 bg-muted/50 rounded-lg">
