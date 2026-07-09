@@ -31,7 +31,7 @@ services:
       context: ./client
       dockerfile: Dockerfile
       args:
-        - VITE_API_URL=/api
+        - VITE_API_URL=http://192.168.1.78:3001
     container_name: tmall-incentive-web
     ports:
       - "5678:80"
