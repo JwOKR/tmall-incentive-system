@@ -1173,25 +1173,27 @@ export default function RepeatDiscounts() {
                 <table className="table w-full">
                   <thead>
                     <tr className="border-b bg-muted/30">
-                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground"></th>
-                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">近2年</th>
-                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">60天</th>
-                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">合计</th>
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground">人群</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">发放金额</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付金额</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">ROI</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付买家数</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付件数</th>
                     </tr>
                   </thead>
                   <tbody>
                     {[
-                      { label: '发放金额', g1: `¥${fmt(rec.g1.grantAmount)}`, g2: `¥${fmt(rec.g2.grantAmount)}`, total: `¥${fmt(t.grant)}`, red: true },
-                      { label: '支付金额', g1: `¥${fmt(rec.g1.paymentAmount)}`, g2: `¥${fmt(rec.g2.paymentAmount)}`, total: `¥${fmt(t.pay)}`, green: true },
-                      { label: 'ROI', g1: rec.g1.grantAmount > 0 ? fmtR(rec.g1.paymentAmount / rec.g1.grantAmount) : '-', g2: rec.g2.grantAmount > 0 ? fmtR(rec.g2.paymentAmount / rec.g2.grantAmount) : '-', total: fmtR(t.roi) },
-                      { label: '支付买家数', g1: fmtInt(rec.g1.paymentBuyers), g2: fmtInt(rec.g2.paymentBuyers), total: fmtInt(rec.g1.paymentBuyers + rec.g2.paymentBuyers) },
-                      { label: '支付件数', g1: fmtInt(rec.g1.paymentItems), g2: fmtInt(rec.g2.paymentItems), total: fmtInt(rec.g1.paymentItems + rec.g2.paymentItems) },
+                      { label: '近2年', grant: `¥${fmt(rec.g1.grantAmount)}`, pay: `¥${fmt(rec.g1.paymentAmount)}`, roi: rec.g1.grantAmount > 0 ? fmtR(rec.g1.paymentAmount / rec.g1.grantAmount) : '-', buyers: fmtInt(rec.g1.paymentBuyers), items: fmtInt(rec.g1.paymentItems) },
+                      { label: '60天', grant: `¥${fmt(rec.g2.grantAmount)}`, pay: `¥${fmt(rec.g2.paymentAmount)}`, roi: rec.g2.grantAmount > 0 ? fmtR(rec.g2.paymentAmount / rec.g2.grantAmount) : '-', buyers: fmtInt(rec.g2.paymentBuyers), items: fmtInt(rec.g2.paymentItems) },
+                      { label: '合计', grant: `¥${fmt(t.grant)}`, pay: `¥${fmt(t.pay)}`, roi: fmtR(t.roi), buyers: fmtInt(rec.g1.paymentBuyers + rec.g2.paymentBuyers), items: fmtInt(rec.g1.paymentItems + rec.g2.paymentItems), bold: true },
                     ].map((row, i) => (
-                      <tr key={i} className="border-b last:border-0">
-                        <td className="px-4 py-3 font-medium text-left">{row.label}</td>
-                        <td className={`px-4 py-3 text-center tabular-nums ${row.red ? 'text-red-600 dark:text-red-400' : row.green ? 'text-green-600 dark:text-green-400' : ''}`}>{row.g1}</td>
-                        <td className={`px-4 py-3 text-center tabular-nums ${row.red ? 'text-red-600 dark:text-red-400' : row.green ? 'text-green-600 dark:text-green-400' : ''}`}>{row.g2}</td>
-                        <td className={`px-4 py-3 text-center font-bold tabular-nums ${row.red ? 'text-red-700 dark:text-red-300' : row.green ? 'text-green-700 dark:text-green-300' : ''}`}>{row.total}</td>
+                      <tr key={i} className="border-b last:border-0 hover:bg-red-500/5 transition-colors">
+                        <td className={`px-4 py-3 text-left ${row.bold ? 'font-bold' : 'font-medium'}`}>{row.label}</td>
+                        <td className={`px-4 py-3 text-center tabular-nums text-red-600 dark:text-red-400 ${row.bold ? 'font-bold text-red-700 dark:text-red-300' : ''}`}>{row.grant}</td>
+                        <td className={`px-4 py-3 text-center tabular-nums text-green-600 dark:text-green-400 ${row.bold ? 'font-bold text-green-700 dark:text-green-300' : ''}`}>{row.pay}</td>
+                        <td className={`px-4 py-3 text-center tabular-nums ${row.bold ? 'font-bold' : ''}`}>{row.roi}</td>
+                        <td className={`px-4 py-3 text-center tabular-nums ${row.bold ? 'font-bold' : ''}`}>{row.buyers}</td>
+                        <td className={`px-4 py-3 text-center tabular-nums ${row.bold ? 'font-bold' : ''}`}>{row.items}</td>
                       </tr>
                     ))}
                   </tbody>
