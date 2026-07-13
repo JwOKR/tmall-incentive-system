@@ -1195,14 +1195,15 @@ export default function RepeatDiscounts() {
                           <h3 className="text-sm font-bold">{label}</h3>
                         </div>
                         <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div className="kpi bg-red-500/5 dark:bg-red-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">发放金额</div><div className="value text-lg font-bold text-red-600 dark:text-red-400">{fmt(g.grantAmount)}</div></div>
-                          <div className="kpi bg-green-500/5 dark:bg-green-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付金额</div><div className="value text-lg font-bold text-green-600 dark:text-green-400">{fmt(g.paymentAmount)}</div></div>
+                          <div className="kpi bg-red-500/5 dark:bg-red-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">发放金额</div><div className="value text-lg font-bold text-red-600 dark:text-red-400">{fmt(g.grantAmount)}元</div></div>
+                          <div className="kpi bg-green-500/5 dark:bg-green-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付金额</div><div className="value text-lg font-bold text-green-600 dark:text-green-400">{fmt(g.paymentAmount)}元</div></div>
                           <div className="kpi bg-muted/30 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付买家数</div><div className="value text-lg font-bold">{fmtInt(g.paymentBuyers)}人</div></div>
-                          <div className="kpi bg-muted/30 rounded-xl p-3">
-                            <div className="label text-xs text-muted-foreground">ROI</div>
-                            <div className={`value text-lg font-bold ${r >= 3 ? 'text-green-600 dark:text-green-400' : r >= 1 ? '' : 'text-red-600 dark:text-red-400'}`}>{fmtR(r)}</div>
-                            <div className="mt-0.5"><TrendArrow current={r} previous={pr} /></div>
-                          </div>
+                          <div className="kpi bg-muted/30 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付件数</div><div className="value text-lg font-bold">{fmtInt(g.paymentItems)}件</div></div>
+                        </div>
+                        <div className="mt-3 text-center">
+                          <div className="text-xs text-muted-foreground">ROI</div>
+                          <div className={`text-xl font-bold ${r >= 3 ? 'text-green-600 dark:text-green-400' : r >= 1 ? '' : 'text-red-600 dark:text-red-400'}`}>{fmtR(r)}</div>
+                          <div className="mt-0.5"><TrendArrow current={r} previous={pr} /></div>
                         </div>
                       </div>
                     );
@@ -1217,18 +1218,18 @@ export default function RepeatDiscounts() {
                   <thead>
                     <tr className="border-b bg-muted/30">
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground">人群</th>
-                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">发放金额</th>
-                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付金额</th>
-                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付买家数</th>
-                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付件数</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">发放金额 (元)</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付金额 (元)</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付买家数 (人)</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付件数 (件)</th>
                       <th className="text-center px-4 py-3 font-semibold text-red-600 dark:text-red-400">ROI</th>
                     </tr>
                   </thead>
                   <tbody>
                     {[
-                      { label: '近2年已购用户人群', grant: `${fmt(rec.g1.grantAmount)}`, pay: `${fmt(rec.g1.paymentAmount)}`, buyers: fmtInt(rec.g1.paymentBuyers), items: fmtInt(rec.g1.paymentItems), roi: rec.g1.grantAmount > 0 ? fmtR(rec.g1.paymentAmount / rec.g1.grantAmount) : '-' },
-                      { label: '365天内有购买且60天无购买人群', grant: `${fmt(rec.g2.grantAmount)}`, pay: `${fmt(rec.g2.paymentAmount)}`, buyers: fmtInt(rec.g2.paymentBuyers), items: fmtInt(rec.g2.paymentItems), roi: rec.g2.grantAmount > 0 ? fmtR(rec.g2.paymentAmount / rec.g2.grantAmount) : '-' },
-                      { label: '合计', grant: `${fmt(t.grant)}`, pay: `${fmt(t.pay)}`, buyers: fmtInt(rec.g1.paymentBuyers + rec.g2.paymentBuyers), items: fmtInt(rec.g1.paymentItems + rec.g2.paymentItems), roi: fmtR(t.roi), bold: true },
+                      { label: '近2年已购用户人群', grant: fmt(rec.g1.grantAmount), pay: fmt(rec.g1.paymentAmount), buyers: fmtInt(rec.g1.paymentBuyers), items: fmtInt(rec.g1.paymentItems), roi: rec.g1.grantAmount > 0 ? fmtR(rec.g1.paymentAmount / rec.g1.grantAmount) : '-' },
+                      { label: '365天内有购买且60天无购买人群', grant: fmt(rec.g2.grantAmount), pay: fmt(rec.g2.paymentAmount), buyers: fmtInt(rec.g2.paymentBuyers), items: fmtInt(rec.g2.paymentItems), roi: rec.g2.grantAmount > 0 ? fmtR(rec.g2.paymentAmount / rec.g2.grantAmount) : '-' },
+                      { label: '合计', grant: fmt(t.grant), pay: fmt(t.pay), buyers: fmtInt(rec.g1.paymentBuyers + rec.g2.paymentBuyers), items: fmtInt(rec.g1.paymentItems + rec.g2.paymentItems), roi: fmtR(t.roi), bold: true },
                     ].map((row, i) => (
                       <tr key={i} className="border-b last:border-0 hover:bg-red-500/5 transition-colors">
                         <td className={`px-4 py-3 text-left ${row.bold ? 'font-bold' : 'font-medium'}`}>{row.label}</td>
@@ -1252,9 +1253,9 @@ export default function RepeatDiscounts() {
                       <thead>
                         <tr className="border-b bg-muted/30">
                           <th className="text-left px-4 py-3 font-semibold text-muted-foreground">日期</th>
-                          <th className="text-center px-4 py-3 font-semibold text-muted-foreground">合计发放</th>
-                          <th className="text-center px-4 py-3 font-semibold text-muted-foreground">合计支付</th>
-                          <th className="text-center px-4 py-3 font-semibold text-muted-foreground">合计ROI</th>
+                          <th className="text-center px-4 py-3 font-semibold text-muted-foreground">合计发放 (元)</th>
+                          <th className="text-center px-4 py-3 font-semibold text-muted-foreground">合计支付 (元)</th>
+                          <th className="text-center px-4 py-3 font-semibold text-red-600 dark:text-red-400">合计ROI</th>
                         </tr>
                       </thead>
                       <tbody>
