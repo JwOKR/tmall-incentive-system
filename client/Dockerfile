@@ -1,32 +1,11 @@
-# Build stage
-FROM node:18-bullseye-slim as build
-
-ARG VITE_API_URL=/api
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy source code
-COPY . .
-
-# Build
-RUN npx vite build
-
-# Production stage
 FROM nginx:alpine
 
 # Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-# Copy built files
-COPY --from=build /app/dist /usr/share/nginx/html
+# Copy pre-built dist (built locally or in CI)
+COPY dist /usr/share/nginx/html
 
-# Expose port
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]
