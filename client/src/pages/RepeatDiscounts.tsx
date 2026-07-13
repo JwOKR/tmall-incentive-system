@@ -398,7 +398,7 @@ export default function RepeatDiscounts() {
       },
       {
         title: '人群效率对比',
-        content: `近2年已购用户：累计发放 ¥${fmt(summary.g1GrantAmount)}，累计支付 ¥${fmt(summary.g1PaymentAmount)}，ROI ${fmtR(summary.g1ROI)}，买家 ${fmtInt(summary.g1PaymentBuyers)} 人。60天沉睡用户：累计发放 ¥${fmt(summary.g2GrantAmount)}，累计支付 ¥${fmt(summary.g2PaymentAmount)}，ROI ${fmtR(summary.g2ROI)}，买家 ${fmtInt(summary.g2PaymentBuyers)} 人。${summary.g1ROI > summary.g2ROI ? '近2年已购用户转化效率更高，建议加大该人群投放预算。' : summary.g2ROI > summary.g1ROI ? '沉睡用户唤醒效果更佳，值得深入挖掘该人群潜力。' : '两个人群效率接近，建议A/B测试寻找更优策略。'}`
+        content: `近2年已购用户人群：累计发放 ¥${fmt(summary.g1GrantAmount)}，累计支付 ¥${fmt(summary.g1PaymentAmount)}，ROI ${fmtR(summary.g1ROI)}，买家 ${fmtInt(summary.g1PaymentBuyers)} 人。365天内有购买且60天无购买人群：累计发放 ¥${fmt(summary.g2GrantAmount)}，累计支付 ¥${fmt(summary.g2PaymentAmount)}，ROI ${fmtR(summary.g2ROI)}，买家 ${fmtInt(summary.g2PaymentBuyers)} 人。${summary.g1ROI > summary.g2ROI ? '近2年已购用户人群转化效率更高，建议加大该人群投放预算。' : summary.g2ROI > summary.g1ROI ? '沉睡用户唤醒效果更佳，值得深入挖掘该人群潜力。' : '两个人群效率接近，建议A/B测试寻找更优策略。'}`
       },
       {
         title: '成本效率分析',
@@ -407,12 +407,12 @@ export default function RepeatDiscounts() {
       {
         title: '策略优化建议',
         content: summary.totalROI < 2
-          ? `建议：1) 缩小发放范围至高价值用户，集中预算；2) 降低优惠力度或设置满减门槛；3) 重点投入 ROI 更高的人群（${summary.g1ROI > summary.g2ROI ? '近2年已购用户' : '60天沉睡用户'}）；4) 关注最低 ROI 日 ${minDay} 的数据异常原因。`
+          ? `建议：1) 缩小发放范围至高价值用户，集中预算；2) 降低优惠力度或设置满减门槛；3) 重点投入 ROI 更高的人群（${summary.g1ROI > summary.g2ROI ? '近2年已购用户人群' : '365天内有购买且60天无购买人群'}）；4) 关注最低 ROI 日 ${minDay} 的数据异常原因。`
           : `建议：1) 维持当前投放策略，ROI 表现良好；2) 可适当扩展人群覆盖以获取更多用户；3) 持续监控 ROI 趋势，防止下滑；4) 在最高 ROI 日 ${maxDay} 的基础上总结成功经验并复制。`
       },
       {
         title: '风险预警',
-        content: `${summary.totalROI < 1 ? '⚠ 累计 ROI 低于 1，存在亏损风险，需立即调整策略。' : ''}${summary.g2ROI < 1 && summary.g2GrantAmount > 0 ? '⚠ 60天沉睡用户 ROI 偏低，该人群可能已流失，建议降低投放。' : ''}${(maxROI - minROI) > 3 ? '⚠ 日间 ROI 波动较大，投放稳定性不足。' : ''}关注竞品动态及平台规则变化对活动效果的持续影响，建议建立日报监控机制。`
+        content: `${summary.totalROI < 1 ? '⚠ 累计 ROI 低于 1，存在亏损风险，需立即调整策略。' : ''}${summary.g2ROI < 1 && summary.g2GrantAmount > 0 ? '⚠ 365天内有购买且60天无购买人群 ROI 偏低，该人群可能已流失，建议降低投放。' : ''}${(maxROI - minROI) > 3 ? '⚠ 日间 ROI 波动较大，投放稳定性不足。' : ''}关注竞品动态及平台规则变化对活动效果的持续影响，建议建立日报监控机制。`
       },
     ];
   };
@@ -617,7 +617,7 @@ export default function RepeatDiscounts() {
       {/* Two group cards */}
       <div className="flex flex-col lg:flex-row gap-5">
         <GroupInputCard
-          label="人群1：近2年已购用户"
+          label="人群1：近2年已购用户人群"
           sublabel="近2年内有过购买行为的用户人群"
           data={form.g1}
           accent="blue"
@@ -627,7 +627,7 @@ export default function RepeatDiscounts() {
           onPaste={() => handlePaste('g1', pasteText1)}
         />
         <GroupInputCard
-          label="人群2：60天无购买用户"
+          label="人群2：365天内有购买且60天无购买人群"
           sublabel="365天内有购买且60天无购买的用户人群"
           data={form.g2}
           accent="orange"
@@ -826,12 +826,12 @@ export default function RepeatDiscounts() {
               <thead>
                 <tr className="border-b bg-muted/40">
                   <th className="text-left px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">日期</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">近2年发放</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">近2年支付</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">近2年ROI</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">60天发放</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">60天支付</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">60天ROI</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">已购人群发放</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">已购人群支付</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">已购人群ROI</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">沉睡人群发放</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">沉睡人群支付</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">沉睡人群ROI</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-red-700 dark:text-red-300 whitespace-nowrap">合计发放</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-green-700 dark:text-green-300 whitespace-nowrap">合计支付</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">合计ROI</th>
@@ -915,7 +915,7 @@ export default function RepeatDiscounts() {
               </div>
               <div className="flex flex-col lg:flex-row gap-5">
                 <div className="flex-1">
-                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500" />人群1：近2年已购用户</h4>
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500" />人群1：近2年已购用户人群</h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g1.grantAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
                     <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g1.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
@@ -924,7 +924,7 @@ export default function RepeatDiscounts() {
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-500" />人群2：60天无购买用户</h4>
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-500" />人群2：365天内有购买且60天无购买人群</h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g2.grantAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
                     <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g2.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
@@ -996,8 +996,8 @@ export default function RepeatDiscounts() {
       else if (t.roi > 0) insights.push(`合计ROI仅 ${fmtR(t.roi)}，需关注投放效率`);
       const g1Eff = rec.g1.grantAmount > 0 ? rec.g1.paymentAmount / rec.g1.grantAmount : 0;
       const g2Eff = rec.g2.grantAmount > 0 ? rec.g2.paymentAmount / rec.g2.grantAmount : 0;
-      if (g1Eff > g2Eff) insights.push(`近2年用户人群ROI（${fmtR(g1Eff)}）优于60天无购人群（${fmtR(g2Eff)}），老客转化更高效`);
-      else if (g2Eff > g1Eff) insights.push(`60天无购人群ROI（${fmtR(g2Eff)}）优于近2年用户人群（${fmtR(g1Eff)}），沉睡用户唤醒效果好`);
+      if (g1Eff > g2Eff) insights.push(`近2年已购用户人群ROI（${fmtR(g1Eff)}）优于365天内有购买且60天无购买人群（${fmtR(g2Eff)}），老客转化更高效`);
+      else if (g2Eff > g1Eff) insights.push(`365天内有购买且60天无购买人群ROI（${fmtR(g2Eff)}）优于近2年已购用户人群（${fmtR(g1Eff)}），沉睡用户唤醒效果好`);
       if (rec.g1.paymentBuyers + rec.g2.paymentBuyers > 50) insights.push('日均支付买家数表现良好，人群覆盖面广');
       return insights.length > 0 ? insights : ['数据表现平稳，建议持续观察趋势变化'];
     };
@@ -1009,7 +1009,7 @@ export default function RepeatDiscounts() {
       const g2R = rec.g2.grantAmount > 0 ? rec.g2.paymentAmount / rec.g2.grantAmount : 0;
       const sections = [
         { title: '综合评估', content: `当日回头客立减活动共投入 ¥${fmt(t.grant)}，带来 ¥${fmt(t.pay)} 支付，综合ROI ${fmtR(t.roi)}。${t.roi >= 3 ? '整体投放效率良好，建议维持当前策略。' : t.roi >= 1 ? '投放效率尚可，建议优化人群定向以提升ROI。' : 'ROI偏低，建议调整优惠力度或筛选更精准的人群。'}` },
-        { title: '人群效率分析', content: `近2年已购用户人群：发放 ¥${fmt(rec.g1.grantAmount)}，支付 ¥${fmt(rec.g1.paymentAmount)}，ROI ${fmtR(g1R)}，覆盖 ${fmtInt(rec.g1.paymentBuyers)} 位买家。60天无购买人群：发放 ¥${fmt(rec.g2.grantAmount)}，支付 ¥${fmt(rec.g2.paymentAmount)}，ROI ${fmtR(g2R)}，覆盖 ${fmtInt(rec.g2.paymentBuyers)} 位买家。${g1R > g2R ? '老客人群转化效率更高，建议加大该人群投放。' : g2R > g1R ? '沉睡用户唤醒效果更佳，值得深入挖掘该人群潜力。' : '两个人群效率接近，建议A/B测试寻找更优策略。'}` },
+        { title: '人群效率分析', content: `近2年已购用户人群：发放 ¥${fmt(rec.g1.grantAmount)}，支付 ¥${fmt(rec.g1.paymentAmount)}，ROI ${fmtR(g1R)}，覆盖 ${fmtInt(rec.g1.paymentBuyers)} 位买家。365天内有购买且60天无购买人群：发放 ¥${fmt(rec.g2.grantAmount)}，支付 ¥${fmt(rec.g2.paymentAmount)}，ROI ${fmtR(g2R)}，覆盖 ${fmtInt(rec.g2.paymentBuyers)} 位买家。${g1R > g2R ? '老客人群转化效率更高，建议加大该人群投放。' : g2R > g1R ? '沉睡用户唤醒效果更佳，值得深入挖掘该人群潜力。' : '两个人群效率接近，建议A/B测试寻找更优策略。'}` },
         { title: '趋势分析', content: prev ? (() => {
           const pt = calcTotals(prev);
           const roiChange = pt.roi > 0 ? ((t.roi - pt.roi) / pt.roi * 100).toFixed(1) : 'N/A';
@@ -1018,7 +1018,7 @@ export default function RepeatDiscounts() {
         })() : '首次记录，暂无趋势数据可比。' },
         { title: '成本效率', content: `人均发放金额：¥${(t.grant / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1)).toFixed(2)}；人均支付金额：¥${(t.pay / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1)).toFixed(2)}；件均支付金额：¥${(t.pay / (rec.g1.paymentItems + rec.g2.paymentItems || 1)).toFixed(2)}。${t.grant / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1) < 10 ? '单客获取成本较低，效率可观。' : '单客成本偏高，建议优化优惠策略。'}` },
         { title: '策略建议', content: t.roi < 2 ? '建议：1) 缩小发放范围至高价值用户；2) 降低优惠力度或设置满减门槛；3) 优化人群标签精准度。' : '建议：1) 维持当前投放策略；2) 可适当扩展人群覆盖；3) 关注复购率变化，持续优化。' },
-        { title: '风险提示', content: `${t.roi < 1 ? '当前ROI低于1，存在亏损风险，需立即调整策略。' : ''}${g2R < 1 ? '60天无购人群ROI偏低，该人群可能已流失，建议降低投放。' : ''}关注竞品动态及平台规则变化对活动效果的影响。` },
+        { title: '风险提示', content: `${t.roi < 1 ? '当前ROI低于1，存在亏损风险，需立即调整策略。' : ''}${g2R < 1 ? '365天内有购买且60天无购买人群ROI偏低，该人群可能已流失，建议降低投放。' : ''}关注竞品动态及平台规则变化对活动效果的影响。` },
       ];
       return sections;
     };
@@ -1140,8 +1140,8 @@ export default function RepeatDiscounts() {
                 <h2 className="text-base font-bold text-red-600 dark:text-red-400 mb-4">分人群效果</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {[
-                    { label: '近2年已购用户', g: rec.g1, pg: prev?.g1, color: 'blue' },
-                    { label: '60天无购买用户', g: rec.g2, pg: prev?.g2, color: 'orange' },
+                    { label: '近2年已购用户人群', g: rec.g1, pg: prev?.g1, color: 'blue' },
+                    { label: '365天内有购买且60天无购买人群', g: rec.g2, pg: prev?.g2, color: 'orange' },
                   ].map(({ label, g, pg, color }) => {
                     const r = g.grantAmount > 0 ? g.paymentAmount / g.grantAmount : 0;
                     const pr = pg && pg.grantAmount > 0 ? pg.paymentAmount / pg.grantAmount : undefined;
@@ -1183,8 +1183,8 @@ export default function RepeatDiscounts() {
                   </thead>
                   <tbody>
                     {[
-                      { label: '近2年', grant: `¥${fmt(rec.g1.grantAmount)}`, pay: `¥${fmt(rec.g1.paymentAmount)}`, roi: rec.g1.grantAmount > 0 ? fmtR(rec.g1.paymentAmount / rec.g1.grantAmount) : '-', buyers: fmtInt(rec.g1.paymentBuyers), items: fmtInt(rec.g1.paymentItems) },
-                      { label: '60天', grant: `¥${fmt(rec.g2.grantAmount)}`, pay: `¥${fmt(rec.g2.paymentAmount)}`, roi: rec.g2.grantAmount > 0 ? fmtR(rec.g2.paymentAmount / rec.g2.grantAmount) : '-', buyers: fmtInt(rec.g2.paymentBuyers), items: fmtInt(rec.g2.paymentItems) },
+                      { label: '近2年已购用户人群', grant: `¥${fmt(rec.g1.grantAmount)}`, pay: `¥${fmt(rec.g1.paymentAmount)}`, roi: rec.g1.grantAmount > 0 ? fmtR(rec.g1.paymentAmount / rec.g1.grantAmount) : '-', buyers: fmtInt(rec.g1.paymentBuyers), items: fmtInt(rec.g1.paymentItems) },
+                      { label: '365天内有购买且60天无购买人群', grant: `¥${fmt(rec.g2.grantAmount)}`, pay: `¥${fmt(rec.g2.paymentAmount)}`, roi: rec.g2.grantAmount > 0 ? fmtR(rec.g2.paymentAmount / rec.g2.grantAmount) : '-', buyers: fmtInt(rec.g2.paymentBuyers), items: fmtInt(rec.g2.paymentItems) },
                       { label: '合计', grant: `¥${fmt(t.grant)}`, pay: `¥${fmt(t.pay)}`, roi: fmtR(t.roi), buyers: fmtInt(rec.g1.paymentBuyers + rec.g2.paymentBuyers), items: fmtInt(rec.g1.paymentItems + rec.g2.paymentItems), bold: true },
                     ].map((row, i) => (
                       <tr key={i} className="border-b last:border-0 hover:bg-red-500/5 transition-colors">

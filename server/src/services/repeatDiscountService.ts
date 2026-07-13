@@ -19,8 +19,8 @@ export interface GroupData {
 
 export interface RepeatDiscountCreateInput {
   recordDate: string;     // YYYY-MM-DD
-  g1?: GroupData;         // 近2年已购用户
-  g2?: GroupData;         // 60天沉睡人群
+  g1?: GroupData;         // 近2年已购用户人群
+  g2?: GroupData;         // 365天内有购买且60天无购买人群
 }
 
 export interface RepeatDiscountUpdateInput {

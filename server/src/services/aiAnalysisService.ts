@@ -29,7 +29,7 @@ function buildPrompt(data: any, prevData: any) {
     prevSection = `
 前一天数据对比：
 - 前一天合计发放：¥${fmt(pTotalGrant)}，合计支付：¥${fmt(pTotalPayment)}，合计ROI：${pTotalROI}
-- 前一天近2年用户ROI：${pG1R}，60天沉睡用户ROI：${pG2R}
+- 前一天近2年已购用户人群ROI：${pG1R}，365天内有购买且60天无购买人群ROI：${pG2R}
 - 前一天合计支付买家数：${pTotalBuyers}
 
 环比变化：
@@ -44,14 +44,14 @@ function buildPrompt(data: any, prevData: any) {
 ## 当前日期数据
 日期：${data.recordDate}
 
-### 人群1：近2年已购用户
+### 人群1：近2年已购用户人群
 - 发放金额：¥${fmt(data.g1GrantAmount)}
 - 支付金额：¥${fmt(data.g1PaymentAmount)}
 - 支付买家数：${data.g1PaymentBuyers} 人
 - 支付件数：${data.g1PaymentItems} 件
 - ROI：${g1R}
 
-### 人群2：60天沉睡用户（365天内有购买且60天无购买）
+### 人群2：365天内有购买且60天无购买人群
 - 发放金额：¥${fmt(data.g2GrantAmount)}
 - 支付金额：¥${fmt(data.g2PaymentAmount)}
 - 支付买家数：${data.g2PaymentBuyers} 人
@@ -219,13 +219,13 @@ function buildOverallPrompt(records: any[], summary: any) {
 - 平均日支付：¥${fmt(summary.totalPaymentAmount / days)}
 - 平均日ROI：${summary.totalROI.toFixed(2)}
 
-## 人群1（近2年已购用户）汇总
+## 人群1（近2年已购用户人群）汇总
 - 累计发放：¥${fmt(summary.g1GrantAmount)}
 - 累计支付：¥${fmt(summary.g1PaymentAmount)}
 - 累计ROI：${summary.g1ROI.toFixed(2)}
 - 累计买家数：${summary.g1PaymentBuyers} 人
 
-## 人群2（60天沉睡用户）汇总
+## 人群2（365天内有购买且60天无购买人群）汇总
 - 累计发放：¥${fmt(summary.g2GrantAmount)}
 - 累计支付：¥${fmt(summary.g2PaymentAmount)}
 - 累计ROI：${summary.g2ROI.toFixed(2)}
