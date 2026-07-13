@@ -146,6 +146,8 @@ export const repeatDiscountApi = {
   update: (id: string, data: any) => api.put(`/repeat-discounts/${id}`, data),
   delete: (id: string) => api.delete(`/repeat-discounts/${id}`),
   aiAnalysis: (recordId: string) => api.post('/repeat-discounts/ai-analysis', { recordId }, { timeout: 60000 }),
+  aiAnalysisOverall: (startDate?: string, endDate?: string) =>
+    api.post('/repeat-discounts/ai-analysis-overall', { startDate, endDate }, { timeout: 90000 }),
 };
 
 export default api;

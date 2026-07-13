@@ -154,6 +154,13 @@ export default function RepeatDiscounts() {
   const [aiSource, setAiSource] = useState<'ai' | 'local' | null>(null);
   const [aiModel, setAiModel] = useState('');
 
+  // 总体AI分析状态（历史数据页面）
+  const [overallAiSections, setOverallAiSections] = useState<{ title: string; content: string }[] | null>(null);
+  const [overallAiLoading, setOverallAiLoading] = useState(false);
+  const [overallAiError, setOverallAiError] = useState('');
+  const [overallAiSource, setOverallAiSource] = useState<'ai' | 'local' | null>(null);
+  const [overallAiModel, setOverallAiModel] = useState('');
+
   // 切换日期时重置AI分析状态
   useEffect(() => {
     setAiSections(null);
@@ -161,6 +168,14 @@ export default function RepeatDiscounts() {
     setAiModel('');
     setAiError('');
   }, [previewDate]);
+
+  // 筛选日期变化时重置总体分析
+  useEffect(() => {
+    setOverallAiSections(null);
+    setOverallAiSource(null);
+    setOverallAiModel('');
+    setOverallAiError('');
+  }, [startDate, endDate]);
 
   // ─── Queries ─────────────────────────────────────────────────────────────
 
@@ -342,6 +357,93 @@ export default function RepeatDiscounts() {
   const handleDelete = async (id: string, date: string) => {
     const ok = await confirm({ title: '确认删除', message: `确定删除 ${formatDate(date)} 的记录吗？` });
     if (ok) deleteMutation.mutate(id);
+  };
+
+  // ─── 总体AI分析（历史数据页面） ─────────────────────────────────────────
+
+  const genOverallLocalAnalysis = (): { title: string; content: string }[] => {
+    if (!summary || !allRecords.length) return [];
+    const days = summary.totalDays || 1;
+    const fmtR = (v: number) => v.toFixed(2);
+    const avgDailyGrant = summary.totalGrantAmount / days;
+    const avgDailyPay = summary.totalPaymentAmount / days;
+    const avgBuyers = summary.totalPaymentBuyers / days;
+    const perBuyerCost = summary.totalPaymentBuyers > 0 ? summary.totalGrantAmount / summary.totalPaymentBuyers : 0;
+    const perItemPay = summary.totalPaymentItems > 0 ? summary.totalPaymentAmount / summary.totalPaymentItems : 0;
+
+    // 趋势分析
+    const firstR = allRecords[0];
+    const lastR = allRecords[allRecords.length - 1];
+    const firstROI = calcTotals(firstR).roi;
+    const lastROI = calcTotals(lastR).roi;
+    const roiTrend = firstROI > 0 ? ((lastROI - firstROI) / firstROI * 100).toFixed(1) : 'N/A';
+
+    // 找最高/最低ROI日
+    let maxROI = -Infinity, minROI = Infinity, maxDay = '', minDay = '';
+    for (const r of allRecords) {
+      const t = calcTotals(r);
+      if (t.grant <= 0) continue;
+      if (t.roi > maxROI) { maxROI = t.roi; maxDay = r.recordDate.slice(0, 10); }
+      if (t.roi < minROI) { minROI = t.roi; minDay = r.recordDate.slice(0, 10); }
+    }
+
+    return [
+      {
+        title: '整体概况',
+        content: `统计周期内共 ${days} 天数据，累计发放 ¥${fmt(summary.totalGrantAmount)}，累计支付 ¥${fmt(summary.totalPaymentAmount)}，综合 ROI ${fmtR(summary.totalROI)}。日均发放 ¥${fmt(avgDailyGrant)}，日均支付 ¥${fmt(avgDailyPay)}，日均买家 ${fmtInt(Math.round(avgBuyers))} 人。${summary.totalROI >= 3 ? '整体投放效率优秀，投入产出比高。' : summary.totalROI >= 1 ? '整体投放效率尚可，仍有优化空间。' : 'ROI 偏低，需调整投放策略。'}`
+      },
+      {
+        title: '趋势分析',
+        content: `首日 ROI ${fmtR(firstROI)} → 末日 ROI ${fmtR(lastROI)}，整体变化 ${roiTrend === 'N/A' ? '无法计算' : (parseFloat(roiTrend) >= 0 ? `提升 ${roiTrend}%` : `下降 ${Math.abs(parseFloat(roiTrend))}%`)}。最高 ROI 日为 ${maxDay}（${fmtR(maxROI)}），最低 ROI 日为 ${minDay}（${fmtR(minROI)}），日间波动幅度 ${fmtR(maxROI - minROI)}，${(maxROI - minROI) > 2 ? '波动较大，投放稳定性有待提升。' : '波动较小，投放较为稳定。'}`
+      },
+      {
+        title: '人群效率对比',
+        content: `近2年已购用户：累计发放 ¥${fmt(summary.g1GrantAmount)}，累计支付 ¥${fmt(summary.g1PaymentAmount)}，ROI ${fmtR(summary.g1ROI)}，买家 ${fmtInt(summary.g1PaymentBuyers)} 人。60天沉睡用户：累计发放 ¥${fmt(summary.g2GrantAmount)}，累计支付 ¥${fmt(summary.g2PaymentAmount)}，ROI ${fmtR(summary.g2ROI)}，买家 ${fmtInt(summary.g2PaymentBuyers)} 人。${summary.g1ROI > summary.g2ROI ? '近2年已购用户转化效率更高，建议加大该人群投放预算。' : summary.g2ROI > summary.g1ROI ? '沉睡用户唤醒效果更佳，值得深入挖掘该人群潜力。' : '两个人群效率接近，建议A/B测试寻找更优策略。'}`
+      },
+      {
+        title: '成本效率分析',
+        content: `人均获取成本 ¥${fmt(perBuyerCost)}，件均支付金额 ¥${fmt(perItemPay)}。${perBuyerCost < 10 ? '单客获取成本较低，效率可观。' : perBuyerCost < 30 ? '单客成本处于中等水平。' : '单客成本偏高，建议优化优惠策略。'}日均支付买家 ${fmtInt(Math.round(avgBuyers))} 人，${avgBuyers > 30 ? '人群覆盖面广。' : '人群覆盖面有限，可考虑扩展人群范围。'}`
+      },
+      {
+        title: '策略优化建议',
+        content: summary.totalROI < 2
+          ? `建议：1) 缩小发放范围至高价值用户，集中预算；2) 降低优惠力度或设置满减门槛；3) 重点投入 ROI 更高的人群（${summary.g1ROI > summary.g2ROI ? '近2年已购用户' : '60天沉睡用户'}）；4) 关注最低 ROI 日 ${minDay} 的数据异常原因。`
+          : `建议：1) 维持当前投放策略，ROI 表现良好；2) 可适当扩展人群覆盖以获取更多用户；3) 持续监控 ROI 趋势，防止下滑；4) 在最高 ROI 日 ${maxDay} 的基础上总结成功经验并复制。`
+      },
+      {
+        title: '风险预警',
+        content: `${summary.totalROI < 1 ? '⚠ 累计 ROI 低于 1，存在亏损风险，需立即调整策略。' : ''}${summary.g2ROI < 1 && summary.g2GrantAmount > 0 ? '⚠ 60天沉睡用户 ROI 偏低，该人群可能已流失，建议降低投放。' : ''}${(maxROI - minROI) > 3 ? '⚠ 日间 ROI 波动较大，投放稳定性不足。' : ''}关注竞品动态及平台规则变化对活动效果的持续影响，建议建立日报监控机制。`
+      },
+    ];
+  };
+
+  const handleOverallAiAnalysis = async () => {
+    setOverallAiLoading(true);
+    setOverallAiError('');
+    try {
+      const result = await repeatDiscountApi.aiAnalysisOverall(
+        startDate || undefined,
+        endDate || undefined,
+      ) as any;
+      if (result.success) {
+        setOverallAiSections(result.data.sections);
+        setOverallAiSource('ai');
+        setOverallAiModel(result.data.model || '');
+      } else {
+        setOverallAiError(result.message || 'AI总分析失败，使用本地规则引擎生成');
+        setOverallAiSections(genOverallLocalAnalysis());
+        setOverallAiSource('local');
+        setOverallAiModel('');
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err.message || 'AI总分析请求失败';
+      setOverallAiError(msg + '（已降级为本地规则引擎）');
+      setOverallAiSections(genOverallLocalAnalysis());
+      setOverallAiSource('local');
+      setOverallAiModel('');
+    } finally {
+      setOverallAiLoading(false);
+    }
   };
 
   // ─── Chart Data ──────────────────────────────────────────────────────────
@@ -614,6 +716,108 @@ export default function RepeatDiscounts() {
             <StatCard icon={BarChart3} label="单日最高支付" value={<span>¥{fmt(summary.maxDailyPayment || 0)}</span>} accent="purple" delay={240} />
           </div>
         )}
+
+        {/* AI 总数据分析 */}
+        <div className="animate-fade-up" style={{ animationDelay: '250ms' }}>
+          {/* 按钮栏 */}
+          <div className="flex items-center gap-3 flex-wrap mb-4">
+            <button onClick={handleOverallAiAnalysis}
+              disabled={overallAiLoading || !summary}
+              className={`magnetic-btn inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-lg disabled:opacity-50 ${
+                overallAiSource === 'ai'
+                  ? 'bg-gradient-to-r from-green-600 to-emerald-500 shadow-green-500/25 hover:shadow-green-500/40'
+                  : overallAiSource === 'local'
+                  ? 'bg-gradient-to-r from-slate-600 to-slate-500 shadow-slate-500/25 hover:shadow-slate-500/40'
+                  : 'bg-gradient-to-r from-purple-600 to-blue-500 shadow-purple-500/25 hover:shadow-purple-500/40'
+              }`}>
+              {overallAiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : overallAiSource === 'ai' ? <Sparkles className="h-4 w-4" /> : overallAiSource === 'local' ? <Cpu className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+              {overallAiLoading ? 'AI总分析中...' : overallAiSource === 'ai' ? '重新总分析' : overallAiSource === 'local' ? '重试AI总分析' : 'AI总数据分析'}
+            </button>
+            <span className="text-sm text-muted-foreground">
+              {startDate || endDate
+                ? `分析范围：${startDate || '起始'} ~ ${endDate || '至今'}`
+                : '分析范围：全部数据'}
+            </span>
+          </div>
+
+          {/* 降级警告 */}
+          {overallAiError && overallAiSource === 'local' && (
+            <div className="rounded-xl bg-yellow-500/10 dark:bg-yellow-500/15 border border-yellow-500/30 px-4 py-2.5 text-xs text-yellow-700 dark:text-yellow-400 mb-3">
+              ⚠ {overallAiError}
+            </div>
+          )}
+
+          {/* 分析结果 */}
+          {overallAiSections && overallAiSections.length > 0 && (() => {
+            const currentSource = overallAiSource || 'local';
+            const s = summary;
+            const days = s?.totalDays || 1;
+            return (
+              <div className="glass-card rounded-2xl shadow-sm overflow-hidden">
+                {/* 分析报告 Header */}
+                <div className="px-6 py-5 border-b border-border/50 bg-gradient-to-r from-purple-500/10 to-blue-500/10 dark:from-purple-500/15 dark:to-blue-500/15">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    {currentSource === 'ai' ? (
+                      <>
+                        <div className="icon-badge bg-purple-500/15 text-purple-600 dark:text-purple-400"><Sparkles className="h-4 w-4" /></div>
+                        <h3 className="text-base font-bold text-purple-600 dark:text-purple-400">AI 总数据分析报告</h3>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 dark:bg-purple-500/20 px-2.5 py-0.5 text-xs font-semibold text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                          <Sparkles className="h-3 w-3" /> AI 生成{overallAiModel ? ` · ${overallAiModel}` : ''}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="icon-badge bg-slate-500/15 text-slate-600 dark:text-slate-400"><Cpu className="h-4 w-4" /></div>
+                        <h3 className="text-base font-bold text-slate-600 dark:text-slate-400">本地规则引擎总分析报告</h3>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-500/10 dark:bg-slate-500/20 px-2.5 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-400 border border-slate-500/20">
+                          <Cpu className="h-3 w-3" /> 规则引擎
+                        </span>
+                      </>
+                    )}
+                    <span className="text-sm text-muted-foreground ml-auto">
+                      {days} 天数据 · 累计ROI {s?.totalROI?.toFixed(2) || '-'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 累计汇总 mini-cards */}
+                {s && (
+                  <div className="px-6 py-4 border-b border-border/50 grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    {[
+                      { label: '累计发放', value: `¥${fmt(s.totalGrantAmount || 0)}`, color: 'text-red-600 dark:text-red-400' },
+                      { label: '累计支付', value: `¥${fmt(s.totalPaymentAmount || 0)}`, color: 'text-green-600 dark:text-green-400' },
+                      { label: '累计买家', value: `${fmtInt(s.totalPaymentBuyers || 0)} 人`, color: '' },
+                      { label: '累计件数', value: `${fmtInt(s.totalPaymentItems || 0)} 件`, color: '' },
+                    ].map(({ label, value, color }) => (
+                      <div key={label} className="bg-muted/30 rounded-xl p-3">
+                        <div className="text-xs text-muted-foreground mb-0.5">{label}</div>
+                        <div className={`text-lg font-bold tabular-nums ${color}`}>{value}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 分析 sections */}
+                <div className="px-6 py-5 space-y-4">
+                  {overallAiSections.map((sec, i) => (
+                    <div key={i} className={`rounded-xl p-4 border ${
+                      currentSource === 'ai'
+                        ? 'bg-purple-500/5 dark:bg-purple-500/10 border-purple-500/10'
+                        : 'bg-slate-500/5 dark:bg-slate-500/10 border-slate-500/10'
+                    }`}>
+                      <h4 className={`text-sm font-bold mb-1.5 ${
+                        currentSource === 'ai'
+                          ? 'text-purple-700 dark:text-purple-300'
+                          : 'text-slate-700 dark:text-slate-300'
+                      }`}>{i + 1}. {sec.title}</h4>
+                      <p className="text-sm text-foreground/80 leading-relaxed">{sec.content}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
+        </div>
 
         {/* Table */}
         <div className="glass-card rounded-2xl shadow-sm overflow-hidden animate-fade-up" style={{ animationDelay: '300ms' }}>

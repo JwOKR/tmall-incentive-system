@@ -7,11 +7,23 @@ import {
   update,
   remove,
 } from '../controllers/repeatDiscountController';
-import { generateAIAnalysis } from '../services/aiAnalysisService';
+import { generateAIAnalysis, generateOverallAIAnalysis } from '../services/aiAnalysisService';
 
 const router = Router();
 
-// AI 分析（必须在 /:id 之前）
+// 总体AI分析（必须在 /:id 之前）
+router.post('/ai-analysis-overall', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.body || {};
+    const result = await generateOverallAIAnalysis(startDate, endDate);
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('Overall AI analysis error:', error);
+    res.status(500).json({ success: false, message: error.message || '总体AI分析失败' });
+  }
+});
+
+// 单日AI分析（必须在 /:id 之前）
 router.post('/ai-analysis', async (req, res) => {
   try {
     const { recordId } = req.body;
