@@ -13,7 +13,8 @@ async function saveAnalysis(
   rawText: string | null,
   recordId?: string,
 ) {
-  return prisma.repeatDiscountAnalysis.upsert({
+  console.log('[AI-Save] Saving analysis:', { type, scopeKey, source, sectionsCount: sections.length });
+  const result = await prisma.repeatDiscountAnalysis.upsert({
     where: { scopeKey },
     create: {
       type,
@@ -31,6 +32,8 @@ async function saveAnalysis(
       rawText: rawText || null,
     },
   });
+  console.log('[AI-Save] Saved successfully, id:', result.id);
+  return result;
 }
 
 // ──────────────────────────────────────

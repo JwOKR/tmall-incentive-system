@@ -301,19 +301,24 @@ export default function RepeatDiscounts() {
     }
     let cancelled = false;
     setAiError('');
+    console.log('[AI] Loading saved analysis for recordId:', previewRecord.id);
     repeatDiscountApi.getSavedAnalysis(previewRecord.id).then((res: any) => {
       if (cancelled) return;
+      console.log('[AI] API response:', res?.data);
       const data = res?.data?.data;
       if (data) {
+        console.log('[AI] Found saved analysis, sections count:', data.sections?.length);
         setAiSections(data.sections);
         setAiSource(data.source);
         setAiModel(data.model || '');
       } else {
+        console.log('[AI] No saved analysis found');
         setAiSections(null);
         setAiSource(null);
         setAiModel('');
       }
-    }).catch(() => {
+    }).catch((err) => {
+      console.error('[AI] Error loading saved analysis:', err);
       if (!cancelled) {
         setAiSections(null);
         setAiSource(null);
