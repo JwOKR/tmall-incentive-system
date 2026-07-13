@@ -15,7 +15,7 @@ RUN npm install
 COPY . .
 
 # Build
-RUN npm run build
+RUN npx vite build
 
 # Production stage
 FROM nginx:alpine
