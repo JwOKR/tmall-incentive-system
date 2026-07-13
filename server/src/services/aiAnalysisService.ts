@@ -195,51 +195,32 @@ function parseAnalysis(rawText: string) {
 
   const result: { title: string; content: string }[] = [];
 
-  // 按数字编号分割段落（如 "1. " "2. "）
-  const parts = rawText.split(/\n\s*\d+\.\s*/).filter(p => p.trim());
+  // 按行分割并清理
+  const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
 
-  for (const title of sectionTitles) {
+  for (let i = 0; i < sectionTitles.length; i++) {
+    const title = sectionTitles[i];
+    const nextTitle = sectionTitles[i + 1];
     let content = '';
 
-    // 方法1: 在分割后的段落中查找
-    for (const part of parts) {
-      if (part.includes(title)) {
-        // 提取标题后面的内容
-        const titleIdx = part.indexOf(title);
-        content = part.slice(titleIdx + title.length)
-          .replace(/^[：:]\s*/, '')  // 移除标题后的冒号
-          .replace(/\*\*/g, '')      // 移除加粗标记
-          .trim();
-        if (content) break;
-      }
-    }
+    // 找到标题所在行
+    const titleIdx = lines.findIndex(l => {
+      const clean = l.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
+      return clean.includes(title);
+    });
 
-    // 方法2: 直接用正则匹配
-    if (!content) {
-      const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const match = rawText.match(new RegExp(`${escapedTitle}[：:]?\\s*([\\s\\S]*?)(?=\\n\\s*\\d+\\.|$)`, 'i'));
-      if (match) {
-        content = match[1].replace(/\*\*/g, '').trim();
+    if (titleIdx >= 0) {
+      // 收集标题后的内容，直到遇到下一个标题或数字编号段落
+      const contentLines: string[] = [];
+      for (let j = titleIdx + 1; j < lines.length; j++) {
+        const line = lines[j];
+        // 检查是否是下一个段落标题
+        const isNextSection = nextTitle && line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '').includes(nextTitle);
+        const isNumberedSection = /^\d+[.、]/.test(line) && sectionTitles.some(t => line.includes(t));
+        if (isNextSection || isNumberedSection) break;
+        contentLines.push(line);
       }
-    }
-
-    // 方法3: 按行查找
-    if (!content) {
-      const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-      const idx = lines.findIndex(l => l.includes(title));
-      if (idx >= 0) {
-        // 收集标题后的所有行，直到遇到下一个标题或数字编号
-        const nextSectionIdx = lines.findIndex((l, i) => i > idx && /^\d+[.、]/.test(l));
-        const endIdx = nextSectionIdx > idx ? nextSectionIdx : lines.length;
-        content = lines.slice(idx + 1, endIdx)
-          .join(' ')
-          .replace(/\*\*/g, '')
-          .trim();
-        if (!content) {
-          // 尝试从当前行提取
-          content = lines[idx].replace(new RegExp(`.*${title}[：:]?\\s*`), '').trim();
-        }
-      }
+      content = contentLines.join(' ').replace(/\*\*/g, '').trim();
     }
 
     result.push({
@@ -347,48 +328,32 @@ function parseOverallAnalysis(rawText: string) {
 
   const result: { title: string; content: string }[] = [];
 
-  // 按数字编号分割段落
-  const parts = rawText.split(/\n\s*\d+\.\s*/).filter(p => p.trim());
+  // 按行分割并清理
+  const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
 
-  for (const title of sectionTitles) {
+  for (let i = 0; i < sectionTitles.length; i++) {
+    const title = sectionTitles[i];
+    const nextTitle = sectionTitles[i + 1];
     let content = '';
 
-    // 方法1: 在分割后的段落中查找
-    for (const part of parts) {
-      if (part.includes(title)) {
-        const titleIdx = part.indexOf(title);
-        content = part.slice(titleIdx + title.length)
-          .replace(/^[：:]\s*/, '')
-          .replace(/\*\*/g, '')
-          .trim();
-        if (content) break;
-      }
-    }
+    // 找到标题所在行
+    const titleIdx = lines.findIndex(l => {
+      const clean = l.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
+      return clean.includes(title);
+    });
 
-    // 方法2: 直接用正则匹配
-    if (!content) {
-      const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const match = rawText.match(new RegExp(`${escapedTitle}[：:]?\\s*([\\s\\S]*?)(?=\\n\\s*\\d+\\.|$)`, 'i'));
-      if (match) {
-        content = match[1].replace(/\*\*/g, '').trim();
+    if (titleIdx >= 0) {
+      // 收集标题后的内容，直到遇到下一个标题或数字编号段落
+      const contentLines: string[] = [];
+      for (let j = titleIdx + 1; j < lines.length; j++) {
+        const line = lines[j];
+        // 检查是否是下一个段落标题
+        const isNextSection = nextTitle && line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '').includes(nextTitle);
+        const isNumberedSection = /^\d+[.、]/.test(line) && sectionTitles.some(t => line.includes(t));
+        if (isNextSection || isNumberedSection) break;
+        contentLines.push(line);
       }
-    }
-
-    // 方法3: 按行查找
-    if (!content) {
-      const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
-      const idx = lines.findIndex(l => l.includes(title));
-      if (idx >= 0) {
-        const nextSectionIdx = lines.findIndex((l, i) => i > idx && /^\d+[.、]/.test(l));
-        const endIdx = nextSectionIdx > idx ? nextSectionIdx : lines.length;
-        content = lines.slice(idx + 1, endIdx)
-          .join(' ')
-          .replace(/\*\*/g, '')
-          .trim();
-        if (!content) {
-          content = lines[idx].replace(new RegExp(`.*${title}[：:]?\\s*`), '').trim();
-        }
-      }
+      content = contentLines.join(' ').replace(/\*\*/g, '').trim();
     }
 
     result.push({ title, content: content || `${title}分析数据暂不可用` });
