@@ -7,8 +7,23 @@ import {
   update,
   remove,
 } from '../controllers/repeatDiscountController';
+import { generateAIAnalysis } from '../services/aiAnalysisService';
 
 const router = Router();
+
+// AI 分析（必须在 /:id 之前）
+router.post('/ai-analysis', async (req, res) => {
+  try {
+    const { recordId } = req.body;
+    if (!recordId) return res.status(400).json({ success: false, message: '请提供 recordId' });
+
+    const result = await generateAIAnalysis(recordId);
+    res.json({ success: true, data: result });
+  } catch (error: any) {
+    console.error('AI analysis error:', error);
+    res.status(500).json({ success: false, message: error.message || 'AI分析失败' });
+  }
+});
 
 // 汇总统计（必须在 /:id 之前）
 router.get('/summary', getSummary);

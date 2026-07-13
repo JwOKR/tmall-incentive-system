@@ -5,7 +5,7 @@ import { formatDate } from '@/lib/utils';
 import {
   Pencil, Trash2, TrendingUp, DollarSign, Package,
   Calendar, Loader2, Save, X, Clipboard, ArrowUp, ArrowDown, Minus,
-  BarChart3, FileText, Download, ChevronDown,
+  BarChart3, FileText, Download, ChevronDown, Sparkles,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -115,6 +115,9 @@ export default function RepeatDiscounts() {
   const [pasteText1, setPasteText1] = useState('');
   const [pasteText2, setPasteText2] = useState('');
   const [previewDate, setPreviewDate] = useState('');
+  const [aiSections, setAiSections] = useState<{ title: string; content: string }[] | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
 
   // ─── Queries ─────────────────────────────────────────────────────────────
 
@@ -724,6 +727,24 @@ export default function RepeatDiscounts() {
       return sections;
     };
 
+    const handleAiAnalysis = async () => {
+      if (!rec) return;
+      setAiLoading(true);
+      setAiError('');
+      try {
+        const result = await repeatDiscountApi.aiAnalysis(rec.id) as any;
+        if (result.success) {
+          setAiSections(result.data.sections);
+        } else {
+          setAiError(result.message || 'AI分析失败');
+        }
+      } catch (err: any) {
+        setAiError(err?.response?.data?.message || err.message || 'AI分析请求失败');
+      } finally {
+        setAiLoading(false);
+      }
+    };
+
     const downloadHtml = () => {
       const el = document.getElementById('preview-report');
       if (!el) return;
@@ -753,13 +774,19 @@ export default function RepeatDiscounts() {
             className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
             <Download className="h-4 w-4" />下载HTML
           </button>
+          <button onClick={handleAiAnalysis} disabled={!rec || aiLoading}
+            className="inline-flex items-center gap-2 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-all">
+            {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            {aiLoading ? 'AI分析中...' : 'AI智能分析'}
+          </button>
+          {aiError && <span className="text-sm text-destructive">{aiError}</span>}
         </div>
 
         {!rec ? (
           <div className="text-center py-20 text-muted-foreground">暂无数据</div>
         ) : (() => {
           const t = calcTotals(rec);
-          const sections = genAiAnalysis();
+          const sections = aiSections || genAiAnalysis();
           return (
             <div id="preview-report" className="rounded-lg border bg-card shadow-sm overflow-hidden">
               {/* Header */}
