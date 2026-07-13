@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { backupApi, adminApi } from '@/lib/api';
+import { backupApi, adminApi, settingsApi } from '@/lib/api';
 import {
   User,
   Lock,
@@ -16,6 +16,8 @@ import {
   Pencil,
   Trash2,
   X,
+  Sparkles,
+  Save,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -25,7 +27,7 @@ export default function Settings() {
   const { user } = useAuth();
   const { success: toastSuccess, error: toastError } = useToast();
   const { confirm } = useConfirm();
-  const [activeTab, setActiveTab] = useState<'account' | 'password' | 'shortcuts' | 'backup' | 'users'>('account');
+  const [activeTab, setActiveTab] = useState<'account' | 'password' | 'shortcuts' | 'backup' | 'users' | 'ai'>('account');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,6 +35,11 @@ export default function Settings() {
   const [backingUp, setBackingUp] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importMode, setImportMode] = useState<'merge' | 'overwrite'>('merge');
+
+  // AI配置状态
+  const [aiSettings, setAiSettings] = useState<Record<string, string>>({});
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [savingAi, setSavingAi] = useState(false);
 
   // 用户管理状态
   const [users, setUsers] = useState<any[]>([]);
@@ -86,7 +93,32 @@ export default function Settings() {
 
   useEffect(() => {
     if (activeTab === 'users') loadUsers();
+    if (activeTab === 'ai') loadAiSettings();
   }, [activeTab]);
+
+  const loadAiSettings = async () => {
+    setLoadingAi(true);
+    try {
+      const res: any = await settingsApi.get('ai');
+      if (res.success) {
+        const map: Record<string, string> = {};
+        (res.data || []).forEach((s: any) => { map[s.key] = s.value; });
+        setAiSettings(map);
+      }
+    } catch { toastError('加载AI配置失败'); }
+    finally { setLoadingAi(false); }
+  };
+
+  const handleSaveAiSettings = async () => {
+    setSavingAi(true);
+    try {
+      const settings = Object.entries(aiSettings).map(([key, value]) => ({ key, value }));
+      const res: any = await settingsApi.update(settings);
+      if (res.success) toastSuccess('AI配置已保存');
+      else toastError(res.message || '保存失败');
+    } catch (err: any) { toastError(err?.response?.data?.message || '保存失败'); }
+    finally { setSavingAi(false); }
+  };
 
   const handleSaveUser = async () => {
     if (!userForm.username) { toastError('请输入用户名'); return; }
@@ -180,6 +212,7 @@ export default function Settings() {
     { id: 'password' as const, label: '修改密码', icon: Lock },
     { id: 'backup' as const, label: '数据备份', icon: Download },
     { id: 'users' as const, label: '用户管理', icon: Users },
+    { id: 'ai' as const, label: 'AI模型', icon: Sparkles },
     { id: 'shortcuts' as const, label: '快捷键', icon: Keyboard },
   ];
 
@@ -505,6 +538,72 @@ export default function Settings() {
                         {editingUser ? '保存修改' : '创建用户'}
                       </button>
                     </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'ai' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">AI 模型配置</h3>
+                <p className="text-sm text-muted-foreground mt-1">配置用于「回头客立减」日报AI分析的大模型接口</p>
+              </div>
+              <button
+                onClick={handleSaveAiSettings}
+                disabled={savingAi}
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {savingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {savingAi ? '保存中...' : '保存配置'}
+              </button>
+            </div>
+
+            {loadingAi ? (
+              <div className="flex items-center gap-2 text-muted-foreground py-8">
+                <Loader2 className="h-4 w-4 animate-spin" /> 加载中...
+              </div>
+            ) : (
+              <div className="grid gap-5 max-w-xl">
+                <div className="rounded-lg border bg-muted/30 p-4">
+                  <p className="text-xs text-muted-foreground flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>
+                      支持所有 OpenAI 兼容格式的 API（DeepSeek、千问、豆包、OpenAI、Claude 等）。
+                      配置保存后立即生效，无需重启服务。
+                    </span>
+                  </p>
+                </div>
+
+                {[
+                  { key: 'ai_api_url', label: 'API 地址', placeholder: 'https://api.deepseek.com/chat/completions', type: 'text' },
+                  { key: 'ai_api_key', label: 'API Key', placeholder: 'sk-...', type: 'password' },
+                  { key: 'ai_model', label: '模型名称', placeholder: 'deepseek-chat', type: 'text' },
+                  { key: 'ai_max_tokens', label: '最大 Token 数', placeholder: '1000', type: 'number' },
+                  { key: 'ai_temperature', label: '温度 (Temperature)', placeholder: '0.7', type: 'number' },
+                ].map(field => (
+                  <div key={field.key}>
+                    <label className="text-sm font-medium">{field.label}</label>
+                    <input
+                      type={field.type}
+                      value={aiSettings[field.key] || ''}
+                      onChange={e => setAiSettings(prev => ({ ...prev, [field.key]: e.target.value }))}
+                      placeholder={field.placeholder}
+                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                  </div>
+                ))}
+
+                <div className="rounded-lg border p-4">
+                  <h4 className="text-sm font-medium mb-2">常见模型配置参考</h4>
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p><strong>DeepSeek：</strong>https://api.deepseek.com/chat/completions · deepseek-chat</p>
+                    <p><strong>千问 (Qwen)：</strong>https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions · qwen-plus</p>
+                    <p><strong>豆包 (Doubao)：</strong>https://ark.cn-beijing.volces.com/api/v3/chat/completions · doubao-pro-32k</p>
+                    <p><strong>OpenAI：</strong>https://api.openai.com/v1/chat/completions · gpt-4o</p>
                   </div>
                 </div>
               </div>

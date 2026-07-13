@@ -1,11 +1,5 @@
 import prisma from '../utils/db';
-
-// ──────────────────────────────────────
-// DeepSeek API 配置（OpenAI 兼容格式）
-// ──────────────────────────────────────
-const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY || '';
-const DEEPSEEK_API_URL = process.env.DEEPSEEK_API_URL || 'https://api.deepseek.com/chat/completions';
-const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-chat';
+import { getAIConfig } from './systemSettingService';
 
 // ──────────────────────────────────────
 // 构建 Prompt
@@ -86,21 +80,23 @@ ${prevSection}
 }
 
 // ──────────────────────────────────────
-// 调用 DeepSeek API
+// 调用 AI API（OpenAI 兼容格式）
 // ──────────────────────────────────────
-async function callDeepSeek(prompt: string): Promise<string> {
-  if (!DEEPSEEK_API_KEY) {
-    throw new Error('DEEPSEEK_API_KEY 未配置，请在 .env 文件中设置');
+async function callAIApi(prompt: string): Promise<string> {
+  const config = await getAIConfig();
+
+  if (!config.apiKey) {
+    throw new Error('AI API Key 未配置，请在系统设置 → AI模型配置中设置');
   }
 
-  const response = await fetch(DEEPSEEK_API_URL, {
+  const response = await fetch(config.apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+      'Authorization': `Bearer ${config.apiKey}`,
     },
     body: JSON.stringify({
-      model: DEEPSEEK_MODEL,
+      model: config.model,
       messages: [
         {
           role: 'system',
@@ -111,14 +107,14 @@ async function callDeepSeek(prompt: string): Promise<string> {
           content: prompt,
         },
       ],
-      temperature: 0.7,
-      max_tokens: 1000,
+      temperature: config.temperature,
+      max_tokens: config.maxTokens,
     }),
   });
 
   if (!response.ok) {
     const errText = await response.text();
-    throw new Error(`DeepSeek API 调用失败 (${response.status}): ${errText}`);
+    throw new Error(`AI API 调用失败 (${response.status}): ${errText}`);
   }
 
   const result = await response.json();
@@ -185,7 +181,7 @@ export async function generateAIAnalysis(recordId: string) {
   });
 
   const prompt = buildPrompt(record, prevRecord);
-  const rawAnalysis = await callDeepSeek(prompt);
+  const rawAnalysis = await callAIApi(prompt);
   const sections = parseAnalysis(rawAnalysis);
 
   return {

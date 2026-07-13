@@ -130,6 +130,12 @@ export const adminApi = {
   deleteUser: (id: string) => api.delete(`/admin/${id}`),
 };
 
+// Settings API（系统设置）
+export const settingsApi = {
+  get: (group: string) => api.get('/settings', { params: { group } }),
+  update: (settings: { key: string; value: string }[]) => api.put('/settings', { settings }),
+};
+
 // Repeat Discount API（回头客立减）
 export const repeatDiscountApi = {
   getAll: (params?: any) => api.get('/repeat-discounts', { params }),
