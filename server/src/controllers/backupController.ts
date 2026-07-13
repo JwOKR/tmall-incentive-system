@@ -180,10 +180,14 @@ export const importBackup = async (req: Request, res: Response) => {
             data: {
               id: rd.id,
               recordDate: new Date(rd.recordDate),
-              grantAmount: rd.grantAmount ?? 0,
-              paymentAmount: rd.paymentAmount ?? 0,
-              paymentBuyers: rd.paymentBuyers ?? 0,
-              paymentItems: rd.paymentItems ?? 0,
+              g1GrantAmount: rd.g1GrantAmount ?? 0,
+              g1PaymentAmount: rd.g1PaymentAmount ?? 0,
+              g1PaymentBuyers: rd.g1PaymentBuyers ?? 0,
+              g1PaymentItems: rd.g1PaymentItems ?? 0,
+              g2GrantAmount: rd.g2GrantAmount ?? 0,
+              g2PaymentAmount: rd.g2PaymentAmount ?? 0,
+              g2PaymentBuyers: rd.g2PaymentBuyers ?? 0,
+              g2PaymentItems: rd.g2PaymentItems ?? 0,
             },
           });
           result.repeatDiscounts.created++;

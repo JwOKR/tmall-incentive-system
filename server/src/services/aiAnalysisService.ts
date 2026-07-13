@@ -117,7 +117,7 @@ async function callAIApi(prompt: string): Promise<string> {
     throw new Error(`AI API 调用失败 (${response.status}): ${errText}`);
   }
 
-  const result = await response.json();
+  const result: any = await response.json();
   return result.choices?.[0]?.message?.content || '未能获取分析结果';
 }
 
