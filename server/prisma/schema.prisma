@@ -171,10 +171,10 @@ model RepeatDiscountAnalysis {
   type      String   // 'daily' | 'overall'
   recordId  String?  // 单日分析关联的记录ID
   scopeKey  String   @unique // daily: recordId; overall: "startDate_endDate" or "all_all"
-  sections  String   // JSON string of [{ title, content }]
+  sections  String   @db.Text // JSON string of [{ title, content }]
   source    String   // 'ai' | 'local'
   model     String?  // AI模型名称
-  rawText   String?  // AI原始返回文本
+  rawText   String?  @db.Text // AI原始返回文本
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
