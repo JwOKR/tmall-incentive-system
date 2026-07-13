@@ -189,35 +189,56 @@ async function callAIApi(prompt: string): Promise<string> {
 // 解析AI返回的结构化分析
 // ──────────────────────────────────────
 function parseAnalysis(rawText: string) {
-  const sections = [
+  const sectionTitles = [
     '综合评估', '人群效率分析', '趋势分析', '成本效率', '策略建议', '风险提示'
   ];
 
   const result: { title: string; content: string }[] = [];
 
-  for (const title of sections) {
-    // 匹配 "1. 综合评估" 或 "**综合评估**" 等格式
-    const patterns = [
-      new RegExp(`${title}[：:]\\s*([\\s\\S]*?)(?=\\d+\\.|\\*\\*[^*]|$)`, 'i'),
-      new RegExp(`\\*\\*${title}\\*\\*[：:]?\\s*([\\s\\S]*?)(?=\\d+\\.|\\*\\*[^*]|$)`, 'i'),
-      new RegExp(`${title}[：:]\\s*(.+?)(?=\\n\\d+|\\n\\*\\*|$)`, 'i'),
-    ];
+  // 按数字编号分割段落（如 "1. " "2. "）
+  const parts = rawText.split(/\n\s*\d+\.\s*/).filter(p => p.trim());
 
+  for (const title of sectionTitles) {
     let content = '';
-    for (const pattern of patterns) {
-      const match = rawText.match(pattern);
-      if (match) {
-        content = match[1].trim().replace(/\n+/g, ' ');
-        break;
+
+    // 方法1: 在分割后的段落中查找
+    for (const part of parts) {
+      if (part.includes(title)) {
+        // 提取标题后面的内容
+        const titleIdx = part.indexOf(title);
+        content = part.slice(titleIdx + title.length)
+          .replace(/^[：:]\s*/, '')  // 移除标题后的冒号
+          .replace(/\*\*/g, '')      // 移除加粗标记
+          .trim();
+        if (content) break;
       }
     }
 
+    // 方法2: 直接用正则匹配
     if (!content) {
-      // 如果没匹配到，尝试按段落分割
-      const lines = rawText.split('\n').filter(l => l.trim());
+      const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const match = rawText.match(new RegExp(`${escapedTitle}[：:]?\\s*([\\s\\S]*?)(?=\\n\\s*\\d+\\.|$)`, 'i'));
+      if (match) {
+        content = match[1].replace(/\*\*/g, '').trim();
+      }
+    }
+
+    // 方法3: 按行查找
+    if (!content) {
+      const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
       const idx = lines.findIndex(l => l.includes(title));
-      if (idx >= 0 && idx < lines.length - 1) {
-        content = lines[idx + 1]?.trim() || lines[idx].replace(title, '').trim();
+      if (idx >= 0) {
+        // 收集标题后的所有行，直到遇到下一个标题或数字编号
+        const nextSectionIdx = lines.findIndex((l, i) => i > idx && /^\d+[.、]/.test(l));
+        const endIdx = nextSectionIdx > idx ? nextSectionIdx : lines.length;
+        content = lines.slice(idx + 1, endIdx)
+          .join(' ')
+          .replace(/\*\*/g, '')
+          .trim();
+        if (!content) {
+          // 尝试从当前行提取
+          content = lines[idx].replace(new RegExp(`.*${title}[：:]?\\s*`), '').trim();
+        }
       }
     }
 
@@ -320,33 +341,53 @@ ${dailyLines}
 // 解析总体分析（与单日相同的section结构）
 // ──────────────────────────────────────
 function parseOverallAnalysis(rawText: string) {
-  const sections = [
+  const sectionTitles = [
     '整体概况', '趋势分析', '人群效率对比', '成本效率分析', '策略优化建议', '风险预警'
   ];
 
   const result: { title: string; content: string }[] = [];
 
-  for (const title of sections) {
-    const patterns = [
-      new RegExp(`${title}[：:]\\s*([\\s\\S]*?)(?=\\d+\\.|\\*\\*[^*]|$)`, 'i'),
-      new RegExp(`\\*\\*${title}\\*\\*[：:]?\\s*([\\s\\S]*?)(?=\\d+\\.|\\*\\*[^*]|$)`, 'i'),
-      new RegExp(`${title}[：:]\\s*(.+?)(?=\\n\\d+|\\n\\*\\*|$)`, 'i'),
-    ];
+  // 按数字编号分割段落
+  const parts = rawText.split(/\n\s*\d+\.\s*/).filter(p => p.trim());
 
+  for (const title of sectionTitles) {
     let content = '';
-    for (const pattern of patterns) {
-      const match = rawText.match(pattern);
-      if (match) {
-        content = match[1].trim().replace(/\n+/g, ' ');
-        break;
+
+    // 方法1: 在分割后的段落中查找
+    for (const part of parts) {
+      if (part.includes(title)) {
+        const titleIdx = part.indexOf(title);
+        content = part.slice(titleIdx + title.length)
+          .replace(/^[：:]\s*/, '')
+          .replace(/\*\*/g, '')
+          .trim();
+        if (content) break;
       }
     }
 
+    // 方法2: 直接用正则匹配
     if (!content) {
-      const lines = rawText.split('\n').filter(l => l.trim());
+      const escapedTitle = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const match = rawText.match(new RegExp(`${escapedTitle}[：:]?\\s*([\\s\\S]*?)(?=\\n\\s*\\d+\\.|$)`, 'i'));
+      if (match) {
+        content = match[1].replace(/\*\*/g, '').trim();
+      }
+    }
+
+    // 方法3: 按行查找
+    if (!content) {
+      const lines = rawText.split('\n').map(l => l.trim()).filter(Boolean);
       const idx = lines.findIndex(l => l.includes(title));
-      if (idx >= 0 && idx < lines.length - 1) {
-        content = lines[idx + 1]?.trim() || lines[idx].replace(title, '').trim();
+      if (idx >= 0) {
+        const nextSectionIdx = lines.findIndex((l, i) => i > idx && /^\d+[.、]/.test(l));
+        const endIdx = nextSectionIdx > idx ? nextSectionIdx : lines.length;
+        content = lines.slice(idx + 1, endIdx)
+          .join(' ')
+          .replace(/\*\*/g, '')
+          .trim();
+        if (!content) {
+          content = lines[idx].replace(new RegExp(`.*${title}[：:]?\\s*`), '').trim();
+        }
       }
     }
 
