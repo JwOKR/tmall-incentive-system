@@ -1,0 +1,122 @@
+[
+  {
+    "date": "2026-07-05",
+    "g1": {
+      "grantAmount": 117.0,
+      "paymentAmount": 2221.25,
+      "paymentBuyers": 12,
+      "paymentItems": 13
+    },
+    "g2": {
+      "grantAmount": 93.0,
+      "paymentAmount": 2182.65,
+      "paymentBuyers": 9,
+      "paymentItems": 9
+    }
+  },
+  {
+    "date": "2026-07-06",
+    "g1": {
+      "grantAmount": 163.0,
+      "paymentAmount": 2516.11,
+      "paymentBuyers": 18,
+      "paymentItems": 18
+    },
+    "g2": {
+      "grantAmount": 152.0,
+      "paymentAmount": 3328.29,
+      "paymentBuyers": 15,
+      "paymentItems": 15
+    }
+  },
+  {
+    "date": "2026-07-07",
+    "g1": {
+      "grantAmount": 1142.0,
+      "paymentAmount": 12707.2,
+      "paymentBuyers": 81,
+      "paymentItems": 108
+    },
+    "g2": {
+      "grantAmount": 95.0,
+      "paymentAmount": 1501.74,
+      "paymentBuyers": 9,
+      "paymentItems": 9
+    }
+  },
+  {
+    "date": "2026-07-08",
+    "g1": {
+      "grantAmount": 917.0,
+      "paymentAmount": 14351.18,
+      "paymentBuyers": 77,
+      "paymentItems": 88
+    },
+    "g2": {
+      "grantAmount": 419.0,
+      "paymentAmount": 7427.43,
+      "paymentBuyers": 33,
+      "paymentItems": 38
+    }
+  },
+  {
+    "date": "2026-07-09",
+    "g1": {
+      "grantAmount": 684.0,
+      "paymentAmount": 11909.12,
+      "paymentBuyers": 61,
+      "paymentItems": 69
+    },
+    "g2": {
+      "grantAmount": 395.0,
+      "paymentAmount": 7429.86,
+      "paymentBuyers": 37,
+      "paymentItems": 41
+    }
+  },
+  {
+    "date": "2026-07-10",
+    "g1": {
+      "grantAmount": 255.0,
+      "paymentAmount": 4253.64,
+      "paymentBuyers": 27,
+      "paymentItems": 31
+    },
+    "g2": {
+      "grantAmount": 101.0,
+      "paymentAmount": 2328.45,
+      "paymentBuyers": 9,
+      "paymentItems": 10
+    }
+  },
+  {
+    "date": "2026-07-11",
+    "g1": {
+      "grantAmount": 153.0,
+      "paymentAmount": 2573.6,
+      "paymentBuyers": 15,
+      "paymentItems": 16
+    },
+    "g2": {
+      "grantAmount": 67.0,
+      "paymentAmount": 1241.52,
+      "paymentBuyers": 5,
+      "paymentItems": 5
+    }
+  },
+  {
+    "date": "2026-07-12",
+    "g1": {
+      "grantAmount": 217.0,
+      "paymentAmount": 3789.49,
+      "paymentBuyers": 21,
+      "paymentItems": 21
+    },
+    "g2": {
+      "grantAmount": 134.0,
+      "paymentAmount": 2629.98,
+      "paymentBuyers": 12,
+      "paymentItems": 12
+    }
+  }
+]

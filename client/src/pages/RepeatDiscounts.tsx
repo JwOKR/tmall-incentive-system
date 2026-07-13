@@ -185,12 +185,30 @@ export default function RepeatDiscounts() {
 
   // ─── Derived Data ────────────────────────────────────────────────────────
 
+  // 后端返回扁平字段(g1GrantAmount)，前端用嵌套结构(g1.grantAmount)
+  const mapRecord = (r: any): RecordItem => ({
+    id: r.id,
+    recordDate: r.recordDate,
+    g1: {
+      grantAmount: r.g1?.grantAmount ?? r.g1GrantAmount ?? 0,
+      paymentAmount: r.g1?.paymentAmount ?? r.g1PaymentAmount ?? 0,
+      paymentBuyers: r.g1?.paymentBuyers ?? r.g1PaymentBuyers ?? 0,
+      paymentItems: r.g1?.paymentItems ?? r.g1PaymentItems ?? 0,
+    },
+    g2: {
+      grantAmount: r.g2?.grantAmount ?? r.g2GrantAmount ?? 0,
+      paymentAmount: r.g2?.paymentAmount ?? r.g2PaymentAmount ?? 0,
+      paymentBuyers: r.g2?.paymentBuyers ?? r.g2PaymentBuyers ?? 0,
+      paymentItems: r.g2?.paymentItems ?? r.g2PaymentItems ?? 0,
+    },
+  });
+
   const summary = (summaryData as any)?.data;
-  const list: RecordItem[] = (listData as any)?.data?.list || [];
+  const list: RecordItem[] = ((listData as any)?.data?.list || []).map(mapRecord);
   const total = (listData as any)?.data?.total || 0;
   const totalPages = Math.ceil(total / 20);
   const allRecords: RecordItem[] = useMemo(() => {
-    const d = (allData as any)?.data?.list || [];
+    const d = ((allData as any)?.data?.list || []).map(mapRecord);
     return d.sort((a: RecordItem, b: RecordItem) => a.recordDate.localeCompare(b.recordDate));
   }, [allData]);
 
