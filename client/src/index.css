@@ -126,4 +126,112 @@
   .card-hover {
     @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5;
   }
+
+  /* ─── Premium utilities for RepeatDiscounts ─── */
+
+  /* Glass morphism card */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04);
+  }
+  .dark .glass-card {
+    background: rgba(30, 41, 59, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    box-shadow: 0 4px 24px -8px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Gradient text */
+  .gradient-text-red {
+    background: linear-gradient(135deg, #ef4444 0%, #f97316 50%, #fbbf24 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  /* Magnetic button base */
+  .magnetic-btn {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, background-color 0.2s ease;
+  }
+  .magnetic-btn:hover {
+    transform: translateY(-1px) scale(1.02);
+  }
+  .magnetic-btn:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  /* Tab pill style */
+  .tab-pill {
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .tab-pill-active {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(249, 115, 22, 0.08));
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+  .dark .tab-pill-active {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.12), rgba(249, 115, 22, 0.12));
+    border: 1px solid rgba(239, 68, 68, 0.25);
+  }
+
+  /* Stat card gradient accent */
+  .stat-accent-red {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(239, 68, 68, 0.02));
+  }
+  .stat-accent-green {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1), rgba(34, 197, 94, 0.02));
+  }
+  .stat-accent-blue {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(59, 130, 246, 0.02));
+  }
+  .stat-accent-orange {
+    background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), rgba(249, 115, 22, 0.02));
+  }
+  .stat-accent-purple {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.1), rgba(168, 85, 247, 0.02));
+  }
+
+  /* Icon badge */
+  .icon-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+
+  /* Fade-in entrance animation */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .animate-fade-up {
+    animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* Premium input focus */
+  .premium-input {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  .premium-input:focus {
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+    outline: none;
+  }
+
+  /* Report gradient header */
+  .report-gradient {
+    background: linear-gradient(135deg, #dc2626 0%, #ea580c 40%, #f59e0b 100%);
+  }
+
+  /* ROI ring background */
+  .roi-ring {
+    background: conic-gradient(from 180deg, #ef4444 0%, #f97316 50%, #fbbf24 100%);
+    padding: 2px;
+    border-radius: 12px;
+  }
 }

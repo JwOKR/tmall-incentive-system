@@ -92,9 +92,42 @@ function parsePastedText(text: string): Partial<GroupData> {
 function TrendArrow({ current, previous }: { current: number; previous?: number }) {
   if (previous === undefined || previous === null || previous === 0) return <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
   const pct = ((current - previous) / Math.abs(previous)) * 100;
-  if (pct > 0) return <span className="text-green-600 inline-flex items-center gap-0.5"><ArrowUp className="h-3.5 w-3.5" />{pct.toFixed(1)}%</span>;
-  if (pct < 0) return <span className="text-red-600 inline-flex items-center gap-0.5"><ArrowDown className="h-3.5 w-3.5" />{Math.abs(pct).toFixed(1)}%</span>;
+  if (pct > 0) return <span className="text-green-600 dark:text-green-400 inline-flex items-center gap-0.5 text-xs font-medium"><ArrowUp className="h-3 w-3" />{pct.toFixed(1)}%</span>;
+  if (pct < 0) return <span className="text-red-600 dark:text-red-400 inline-flex items-center gap-0.5 text-xs font-medium"><ArrowDown className="h-3 w-3" />{Math.abs(pct).toFixed(1)}%</span>;
   return <Minus className="h-3.5 w-3.5 text-muted-foreground" />;
+}
+
+// ─── Stat Card Component ─────────────────────────────────────────────────────
+
+function StatCard({
+  icon: Icon, label, value, sub, accent, delay,
+}: {
+  icon: any; label: string; value: React.ReactNode; sub?: React.ReactNode;
+  accent: 'red' | 'green' | 'blue' | 'orange' | 'purple'; delay: number;
+}) {
+  const accentMap = {
+    red: { bg: 'stat-accent-red', icon: 'bg-red-500/15 text-red-600 dark:text-red-400' },
+    green: { bg: 'stat-accent-green', icon: 'bg-green-500/15 text-green-600 dark:text-green-400' },
+    blue: { bg: 'stat-accent-blue', icon: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
+    orange: { bg: 'stat-accent-orange', icon: 'bg-orange-500/15 text-orange-600 dark:text-orange-400' },
+    purple: { bg: 'stat-accent-purple', icon: 'bg-purple-500/15 text-purple-600 dark:text-purple-400' },
+  };
+  const a = accentMap[accent];
+  return (
+    <div
+      className={`glass-card rounded-2xl p-5 animate-fade-up card-hover ${a.bg}`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className={`icon-badge ${a.icon}`}>
+          <Icon className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} />
+        </div>
+        {sub}
+      </div>
+      <p className="text-xs font-medium text-muted-foreground mb-1">{label}</p>
+      <p className="text-2xl font-bold tracking-tight">{value}</p>
+    </div>
+  );
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
@@ -185,7 +218,6 @@ export default function RepeatDiscounts() {
 
   // ─── Derived Data ────────────────────────────────────────────────────────
 
-  // 后端返回扁平字段(g1GrantAmount)，前端用嵌套结构(g1.grantAmount)
   const mapRecord = (r: any): RecordItem => ({
     id: r.id,
     recordDate: r.recordDate,
@@ -314,6 +346,7 @@ export default function RepeatDiscounts() {
         data: allRecords.map(r => calcTotals(r).grant),
         backgroundColor: 'rgba(239,68,68,0.7)',
         borderColor: 'rgba(239,68,68,1)',
+        borderRadius: 6,
         borderWidth: 1,
         yAxisID: 'y',
         order: 2,
@@ -323,6 +356,7 @@ export default function RepeatDiscounts() {
         data: allRecords.map(r => calcTotals(r).pay),
         backgroundColor: 'rgba(34,197,94,0.7)',
         borderColor: 'rgba(34,197,94,1)',
+        borderRadius: 6,
         borderWidth: 1,
         yAxisID: 'y',
         order: 3,
@@ -331,11 +365,14 @@ export default function RepeatDiscounts() {
         label: '合计ROI',
         data: allRecords.map(r => calcTotals(r).roi),
         type: 'line' as const,
-        borderColor: 'rgba(239,68,68,1)',
-        backgroundColor: 'rgba(239,68,68,0.1)',
-        borderWidth: 2,
-        pointRadius: 3,
-        tension: 0.3,
+        borderColor: 'rgba(249,115,22,1)',
+        backgroundColor: 'rgba(249,115,22,0.1)',
+        borderWidth: 2.5,
+        pointRadius: 4,
+        pointBackgroundColor: 'rgba(249,115,22,1)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1.5,
+        tension: 0.35,
         yAxisID: 'y1',
         order: 1,
       },
@@ -346,19 +383,32 @@ export default function RepeatDiscounts() {
     responsive: true,
     maintainAspectRatio: false,
     interaction: { intersect: false, mode: 'index' as const },
-    plugins: { legend: { position: 'top' as const }, tooltip: { mode: 'index' as const } },
+    plugins: {
+      legend: {
+        position: 'top' as const,
+        labels: { usePointStyle: true, pointStyle: 'circle' as const, padding: 16, font: { size: 12 } },
+      },
+      tooltip: {
+        mode: 'index' as const,
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        padding: 12,
+        cornerRadius: 8,
+        titleFont: { size: 13, weight: 600 as const },
+        bodyFont: { size: 12 },
+      },
+    },
     scales: {
-      y: { type: 'linear' as const, position: 'left' as const, title: { display: true, text: '金额（元）' } },
-      y1: { type: 'linear' as const, position: 'right' as const, title: { display: true, text: 'ROI' }, grid: { drawOnChartArea: false } },
+      y: { type: 'linear' as const, position: 'left' as const, title: { display: true, text: '金额（元）', font: { size: 11 } }, grid: { color: 'rgba(128,128,128,0.1)' } },
+      y1: { type: 'linear' as const, position: 'right' as const, title: { display: true, text: 'ROI', font: { size: 11 } }, grid: { drawOnChartArea: false } },
     },
   }), []);
 
   const lineChartData = useMemo(() => ({
     labels: chartLabels,
     datasets: [
-      { label: 'g1 ROI', data: allRecords.map(r => r.g1.grantAmount > 0 ? r.g1.paymentAmount / r.g1.grantAmount : 0), borderColor: 'rgba(59,130,246,1)', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2, pointRadius: 3, tension: 0.3 },
-      { label: 'g2 ROI', data: allRecords.map(r => r.g2.grantAmount > 0 ? r.g2.paymentAmount / r.g2.grantAmount : 0), borderColor: 'rgba(249,115,22,1)', backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 2, pointRadius: 3, tension: 0.3 },
-      { label: '合计 ROI', data: allRecords.map(r => calcTotals(r).roi), borderColor: 'rgba(239,68,68,1)', backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 2, borderDash: [6, 3], pointRadius: 3, tension: 0.3 },
+      { label: 'g1 ROI', data: allRecords.map(r => r.g1.grantAmount > 0 ? r.g1.paymentAmount / r.g1.grantAmount : 0), borderColor: 'rgba(59,130,246,1)', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: 'rgba(59,130,246,1)', pointBorderColor: '#fff', pointBorderWidth: 1.5, tension: 0.35 },
+      { label: 'g2 ROI', data: allRecords.map(r => r.g2.grantAmount > 0 ? r.g2.paymentAmount / r.g2.grantAmount : 0), borderColor: 'rgba(249,115,22,1)', backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: 'rgba(249,115,22,1)', pointBorderColor: '#fff', pointBorderWidth: 1.5, tension: 0.35 },
+      { label: '合计 ROI', data: allRecords.map(r => calcTotals(r).roi), borderColor: 'rgba(239,68,68,1)', backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 2.5, borderDash: [6, 3], pointRadius: 4, pointBackgroundColor: 'rgba(239,68,68,1)', pointBorderColor: '#fff', pointBorderWidth: 1.5, tension: 0.35 },
     ],
   }), [chartLabels, allRecords]);
 
@@ -366,64 +416,68 @@ export default function RepeatDiscounts() {
     responsive: true,
     maintainAspectRatio: false,
     interaction: { intersect: false, mode: 'index' as const },
-    plugins: { legend: { position: 'top' as const }, tooltip: { mode: 'index' as const } },
-    scales: { y: { title: { display: true, text: 'ROI' } } },
+    plugins: {
+      legend: { position: 'top' as const, labels: { usePointStyle: true, pointStyle: 'circle' as const, padding: 16, font: { size: 12 } } },
+      tooltip: { mode: 'index' as const, backgroundColor: 'rgba(0,0,0,0.8)', padding: 12, cornerRadius: 8, titleFont: { size: 13, weight: 600 as const }, bodyFont: { size: 12 } },
+    },
+    scales: { y: { title: { display: true, text: 'ROI', font: { size: 11 } }, grid: { color: 'rgba(128,128,128,0.1)' } } },
   }), []);
 
   // ─── Group Input Card (reusable) ─────────────────────────────────────────
 
   const GroupInputCard = ({
-    label, sublabel, data, onChange, pasteText, onPasteText, onPaste,
+    label, sublabel, data, onChange, pasteText, onPasteText, onPaste, accent,
   }: {
     label: string; sublabel: string; data: GroupData;
     onChange: (field: keyof GroupData, val: string) => void;
     pasteText: string; onPasteText: (t: string) => void; onPaste: () => void;
+    accent: 'blue' | 'orange';
   }) => {
     const roi = calcRoi(parseFloat(data.grantAmount) || 0, parseFloat(data.paymentAmount) || 0);
+    const accentRing = accent === 'blue' ? 'from-blue-500/20 to-blue-500/5' : 'from-orange-500/20 to-orange-500/5';
+    const accentText = accent === 'blue' ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400';
+    const accentDot = accent === 'blue' ? 'bg-blue-500' : 'bg-orange-500';
     return (
-      <div className="rounded-lg border bg-card p-5 shadow-sm flex-1 min-w-[300px]">
-        <div className="mb-4">
-          <h4 className="text-base font-semibold text-foreground">{label}</h4>
-          <p className="text-xs text-muted-foreground">{sublabel}</p>
+      <div className={`glass-card rounded-2xl p-6 flex-1 min-w-[300px] animate-fade-up bg-gradient-to-br ${accentRing} card-hover`}>
+        <div className="mb-5 flex items-center gap-2.5">
+          <div className={`w-2.5 h-2.5 rounded-full ${accentDot} ring-2 ring-offset-2 ring-offset-transparent`} style={{ '--tw-ring-color': accent === 'blue' ? 'rgba(59,130,246,0.3)' : 'rgba(249,115,22,0.3)' } as React.CSSProperties} />
+          <div>
+            <h4 className="text-base font-bold text-foreground">{label}</h4>
+            <p className="text-xs text-muted-foreground">{sublabel}</p>
+          </div>
         </div>
         {/* Paste area */}
-        <div className="mb-4">
-          <label className="text-xs font-medium text-muted-foreground mb-1 block">粘贴生意参谋数据</label>
+        <div className="mb-5">
+          <label className="text-xs font-medium text-muted-foreground mb-1.5 block flex items-center gap-1">
+            <Clipboard className="h-3 w-3" /> 粘贴生意参谋数据
+          </label>
           <textarea
             value={pasteText}
             onChange={e => onPasteText(e.target.value)}
             onBlur={onPaste}
             placeholder="粘贴数据后自动解析..."
-            className="w-full h-20 rounded-md border border-dashed border-input bg-muted/30 px-3 py-2 text-xs resize-none focus:border-red-400 focus:outline-none"
+            className="w-full h-20 rounded-xl border border-dashed border-input bg-muted/20 px-3 py-2.5 text-xs resize-none premium-input placeholder:text-muted-foreground/60"
           />
         </div>
         {/* Input fields */}
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">发放金额（元）</label>
-            <input type="number" step="0.01" value={data.grantAmount} onChange={e => onChange('grantAmount', e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" placeholder="0.00" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">支付金额（元）</label>
-            <input type="number" step="0.01" value={data.paymentAmount} onChange={e => onChange('paymentAmount', e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" placeholder="0.00" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">支付买家数（人）</label>
-            <input type="number" value={data.paymentBuyers} onChange={e => onChange('paymentBuyers', e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" placeholder="0" />
-          </div>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">支付件数（件）</label>
-            <input type="number" value={data.paymentItems} onChange={e => onChange('paymentItems', e.target.value)}
-              className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" placeholder="0" />
-          </div>
+          {([
+            { field: 'grantAmount', label: '发放金额（元）', step: '0.01', ph: '0.00' },
+            { field: 'paymentAmount', label: '支付金额（元）', step: '0.01', ph: '0.00' },
+            { field: 'paymentBuyers', label: '支付买家数（人）', step: '1', ph: '0' },
+            { field: 'paymentItems', label: '支付件数（件）', step: '1', ph: '0' },
+          ] as const).map(({ field, label: lbl, step, ph }) => (
+            <div key={field}>
+              <label className="text-xs font-medium text-muted-foreground">{lbl}</label>
+              <input type="number" step={step} value={data[field]} onChange={e => onChange(field, e.target.value)}
+                className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" placeholder={ph} />
+            </div>
+          ))}
         </div>
         {/* ROI display */}
-        <div className="mt-4 rounded-md bg-muted/50 px-3 py-2 flex items-center justify-between">
+        <div className="mt-5 rounded-xl bg-muted/40 px-4 py-3 flex items-center justify-between border border-border/50">
           <span className="text-xs font-medium text-muted-foreground">实时 ROI</span>
-          <span className={`text-lg font-bold ${roi >= 3 ? 'text-green-600' : roi >= 1 ? 'text-yellow-600' : 'text-red-600'}`}>
+          <span className={`text-xl font-bold tabular-nums ${roi >= 3 ? 'text-green-600 dark:text-green-400' : roi >= 1 ? accentText : 'text-red-600 dark:text-red-400'}`}>
             {roi > 0 ? roi.toFixed(2) : '-'}
           </span>
         </div>
@@ -434,13 +488,18 @@ export default function RepeatDiscounts() {
   // ─── Tab: Entry ──────────────────────────────────────────────────────────
 
   const renderEntryTab = () => (
-    <div className="space-y-5">
+    <div className="space-y-6">
       {/* Date picker */}
-      <div className="flex items-center gap-3">
-        <label className="text-sm font-medium">登记日期</label>
+      <div className="flex items-center gap-3 animate-fade-up">
+        <div className="flex items-center gap-2.5">
+          <div className="icon-badge bg-red-500/15 text-red-600 dark:text-red-400">
+            <Calendar className="h-4.5 w-4.5" style={{ width: 18, height: 18 }} />
+          </div>
+          <label className="text-sm font-semibold">登记日期</label>
+        </div>
         <input type="date" value={form.recordDate}
           onChange={e => setForm(f => ({ ...f, recordDate: e.target.value }))}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm" />
+          className="rounded-xl border border-input bg-background/50 px-4 py-2.5 text-sm premium-input" />
       </div>
 
       {/* Two group cards */}
@@ -449,6 +508,7 @@ export default function RepeatDiscounts() {
           label="人群1：近2年已购用户"
           sublabel="近2年内有过购买行为的用户人群"
           data={form.g1}
+          accent="blue"
           onChange={(field, val) => setForm(f => ({ ...f, g1: { ...f.g1, [field]: val } }))}
           pasteText={pasteText1}
           onPasteText={setPasteText1}
@@ -458,6 +518,7 @@ export default function RepeatDiscounts() {
           label="人群2：60天无购买用户"
           sublabel="365天内有购买且60天无购买的用户人群"
           data={form.g2}
+          accent="orange"
           onChange={(field, val) => setForm(f => ({ ...f, g2: { ...f.g2, [field]: val } }))}
           pasteText={pasteText2}
           onPasteText={setPasteText2}
@@ -466,26 +527,38 @@ export default function RepeatDiscounts() {
       </div>
 
       {/* Summary row */}
-      <div className="rounded-lg border bg-card p-4 shadow-sm flex items-center gap-6 flex-wrap">
-        <div className="text-sm"><span className="text-muted-foreground">合计发放：</span><span className="font-semibold text-red-600">¥{fmt((parseFloat(form.g1.grantAmount) || 0) + (parseFloat(form.g2.grantAmount) || 0))}</span></div>
-        <div className="text-sm"><span className="text-muted-foreground">合计支付：</span><span className="font-semibold text-green-600">¥{fmt((parseFloat(form.g1.paymentAmount) || 0) + (parseFloat(form.g2.paymentAmount) || 0))}</span></div>
-        <div className="text-sm"><span className="text-muted-foreground">合计ROI：</span><span className="font-semibold">{(() => {
-          const tg = (parseFloat(form.g1.grantAmount) || 0) + (parseFloat(form.g2.grantAmount) || 0);
-          const tp = (parseFloat(form.g1.paymentAmount) || 0) + (parseFloat(form.g2.paymentAmount) || 0);
-          return tg > 0 ? (tp / tg).toFixed(2) : '-';
-        })()}</span></div>
+      <div className="glass-card rounded-2xl p-5 animate-fade-up flex items-center gap-8 flex-wrap" style={{ animationDelay: '100ms' }}>
+        <div className="flex items-center gap-2.5">
+          <div className="text-xs font-medium text-muted-foreground">合计发放</div>
+          <span className="text-lg font-bold text-red-600 dark:text-red-400 tabular-nums">¥{fmt((parseFloat(form.g1.grantAmount) || 0) + (parseFloat(form.g2.grantAmount) || 0))}</span>
+        </div>
+        <div className="w-px h-8 bg-border" />
+        <div className="flex items-center gap-2.5">
+          <div className="text-xs font-medium text-muted-foreground">合计支付</div>
+          <span className="text-lg font-bold text-green-600 dark:text-green-400 tabular-nums">¥{fmt((parseFloat(form.g1.paymentAmount) || 0) + (parseFloat(form.g2.paymentAmount) || 0))}</span>
+        </div>
+        <div className="w-px h-8 bg-border" />
+        <div className="flex items-center gap-2.5">
+          <div className="text-xs font-medium text-muted-foreground">合计ROI</div>
+          {(() => {
+            const tg = (parseFloat(form.g1.grantAmount) || 0) + (parseFloat(form.g2.grantAmount) || 0);
+            const tp = (parseFloat(form.g1.paymentAmount) || 0) + (parseFloat(form.g2.paymentAmount) || 0);
+            const roi = tg > 0 ? tp / tg : 0;
+            return <span className={`text-lg font-bold tabular-nums ${roi >= 3 ? 'text-green-600 dark:text-green-400' : roi >= 1 ? 'text-yellow-600 dark:text-yellow-400' : 'text-red-600 dark:text-red-400'}`}>{tg > 0 ? roi.toFixed(2) : '-'}</span>;
+          })()}
+        </div>
       </div>
 
       {/* Action buttons */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 animate-fade-up" style={{ animationDelay: '150ms' }}>
         <button onClick={handleSave}
           disabled={createMutation.isPending || updateMutation.isPending}
-          className="inline-flex items-center gap-2 rounded-md bg-red-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-all hover:scale-[1.02] active:scale-[0.98]">
+          className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed">
           {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {editingId ? '保存修改' : '保存登记'}
         </button>
         <button onClick={() => { setForm(emptyForm); setPasteText1(''); setPasteText2(''); setEditingId(null); }}
-          className="inline-flex items-center gap-2 rounded-md border px-4 py-2.5 text-sm font-medium hover:bg-accent transition-colors">
+          className="magnetic-btn inline-flex items-center gap-2 rounded-xl border border-border bg-background/50 px-5 py-3 text-sm font-medium hover:bg-accent">
           <X className="h-4 w-4" /> 清空
         </button>
       </div>
@@ -499,22 +572,22 @@ export default function RepeatDiscounts() {
     const prevDay = list.length > 1 ? list[list.length - 2] : null;
 
     return (
-      <div className="space-y-5">
+      <div className="space-y-6">
         {/* Filters */}
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap animate-fade-up">
           <div className="flex items-center gap-2">
             <label className="text-sm text-muted-foreground">起始日期</label>
             <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1); }}
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm" />
+              className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" />
           </div>
           <div className="flex items-center gap-2">
             <label className="text-sm text-muted-foreground">结束日期</label>
             <input type="date" value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }}
-              className="rounded-md border border-input bg-background px-3 py-1.5 text-sm" />
+              className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" />
           </div>
           {(startDate || endDate) && (
             <button onClick={() => { setStartDate(''); setEndDate(''); setPage(1); }}
-              className="text-sm text-muted-foreground hover:text-foreground">清除筛选</button>
+              className="text-sm text-muted-foreground hover:text-foreground magnetic-btn rounded-lg px-2 py-1">清除筛选</button>
           )}
           <span className="text-sm text-muted-foreground ml-auto">共 {total} 条</span>
         </div>
@@ -522,89 +595,71 @@ export default function RepeatDiscounts() {
         {/* Summary Stats */}
         {summary && (
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <Calendar className="h-3.5 w-3.5" /> 记录天数
-              </div>
-              <p className="text-2xl font-bold">{summary.totalDays}</p>
-            </div>
-            <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <DollarSign className="h-3.5 w-3.5" /> 最新合计ROI
-              </div>
-              <p className="text-2xl font-bold text-red-600">
-                {latestDay ? calcTotals(latestDay).roi.toFixed(2) : '-'}
-              </p>
-              {latestDay && prevDay && <TrendArrow current={calcTotals(latestDay).roi} previous={calcTotals(prevDay).roi} />}
-            </div>
-            <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <TrendingUp className="h-3.5 w-3.5" /> 平均ROI
-              </div>
-              <p className="text-2xl font-bold">{summary.avgRoi?.toFixed(2) || '-'}</p>
-            </div>
-            <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <Package className="h-3.5 w-3.5" /> 累计支付
-              </div>
-              <p className="text-2xl font-bold text-green-600">¥{fmt(summary.totalPaymentAmount || 0)}</p>
-            </div>
-            <div className="rounded-lg border bg-card p-4 shadow-sm">
-              <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-                <BarChart3 className="h-3.5 w-3.5" /> 单日最高支付
-              </div>
-              <p className="text-2xl font-bold">¥{fmt(summary.maxDailyPayment || 0)}</p>
-            </div>
+            <StatCard icon={Calendar} label="记录天数" value={summary.totalDays} accent="blue" delay={0} />
+            <StatCard icon={DollarSign} label="最新合计ROI" value={latestDay ? calcTotals(latestDay).roi.toFixed(2) : '-'} accent="red" delay={60}
+              sub={latestDay && prevDay ? <TrendArrow current={calcTotals(latestDay).roi} previous={calcTotals(prevDay).roi} /> : undefined}
+            />
+            <StatCard icon={TrendingUp} label="平均ROI" value={summary.avgRoi?.toFixed(2) || '-'} accent="orange" delay={120} />
+            <StatCard icon={Package} label="累计支付" value={<span className="text-green-600 dark:text-green-400">¥{fmt(summary.totalPaymentAmount || 0)}</span>} accent="green" delay={180} />
+            <StatCard icon={BarChart3} label="单日最高支付" value={<span>¥{fmt(summary.maxDailyPayment || 0)}</span>} accent="purple" delay={240} />
           </div>
         )}
 
         {/* Table */}
-        <div className="rounded-lg border bg-card shadow-sm overflow-hidden">
+        <div className="glass-card rounded-2xl shadow-sm overflow-hidden animate-fade-up" style={{ animationDelay: '300ms' }}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-muted/50">
-                  <th className="text-left px-3 py-3 font-medium text-muted-foreground whitespace-nowrap">日期</th>
-                  <th className="text-right px-3 py-3 font-medium text-red-600 whitespace-nowrap">近2年发放</th>
-                  <th className="text-right px-3 py-3 font-medium text-green-600 whitespace-nowrap">近2年支付</th>
-                  <th className="text-right px-3 py-3 font-medium text-muted-foreground whitespace-nowrap">近2年ROI</th>
-                  <th className="text-right px-3 py-3 font-medium text-red-600 whitespace-nowrap">60天发放</th>
-                  <th className="text-right px-3 py-3 font-medium text-green-600 whitespace-nowrap">60天支付</th>
-                  <th className="text-right px-3 py-3 font-medium text-muted-foreground whitespace-nowrap">60天ROI</th>
-                  <th className="text-right px-3 py-3 font-medium text-red-700 whitespace-nowrap">合计发放</th>
-                  <th className="text-right px-3 py-3 font-medium text-green-700 whitespace-nowrap">合计支付</th>
-                  <th className="text-right px-3 py-3 font-medium text-muted-foreground whitespace-nowrap">合计ROI</th>
-                  <th className="text-center px-3 py-3 font-medium text-muted-foreground w-20">操作</th>
+                <tr className="border-b bg-muted/40">
+                  <th className="text-left px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">日期</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">近2年发放</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">近2年支付</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">近2年ROI</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">60天发放</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">60天支付</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">60天ROI</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-red-700 dark:text-red-300 whitespace-nowrap">合计发放</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-green-700 dark:text-green-300 whitespace-nowrap">合计支付</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">合计ROI</th>
+                  <th className="text-center px-4 py-3.5 font-semibold text-muted-foreground w-20">操作</th>
                 </tr>
               </thead>
               <tbody>
                 {listLoading ? (
-                  <tr><td colSpan={11} className="text-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mx-auto mb-2" />加载中...</td></tr>
+                  <tr><td colSpan={11} className="text-center py-16 text-muted-foreground"><Loader2 className="h-6 w-6 animate-spin mx-auto mb-3 text-red-500" />加载中...</td></tr>
                 ) : list.length === 0 ? (
-                  <tr><td colSpan={11} className="text-center py-12 text-muted-foreground">暂无数据</td></tr>
+                  <tr><td colSpan={11} className="text-center py-16 text-muted-foreground">暂无数据</td></tr>
                 ) : (
-                  list.map((item) => {
+                  list.map((item, idx) => {
                     const totals = calcTotals(item);
                     return (
-                      <tr key={item.id} className="border-b last:border-b-0 hover:bg-muted/30 transition-colors">
-                        <td className="px-3 py-3 font-medium whitespace-nowrap">
+                      <tr key={item.id} className={`border-b last:border-b-0 transition-all hover:bg-red-500/5 dark:hover:bg-red-500/10 ${idx % 2 === 1 ? 'bg-muted/20' : ''}`}>
+                        <td className="px-4 py-3.5 font-medium whitespace-nowrap">
                           <div className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-muted-foreground" />{formatDate(item.recordDate)}</div>
                         </td>
-                        <td className="px-3 py-3 text-right text-red-600">¥{fmt(item.g1.grantAmount)}</td>
-                        <td className="px-3 py-3 text-right text-green-600">¥{fmt(item.g1.paymentAmount)}</td>
-                        <td className="px-3 py-3 text-right font-medium">{item.g1.grantAmount > 0 ? (item.g1.paymentAmount / item.g1.grantAmount).toFixed(2) : '-'}</td>
-                        <td className="px-3 py-3 text-right text-red-600">¥{fmt(item.g2.grantAmount)}</td>
-                        <td className="px-3 py-3 text-right text-green-600">¥{fmt(item.g2.paymentAmount)}</td>
-                        <td className="px-3 py-3 text-right font-medium">{item.g2.grantAmount > 0 ? (item.g2.paymentAmount / item.g2.grantAmount).toFixed(2) : '-'}</td>
-                        <td className="px-3 py-3 text-right text-red-700 font-medium">¥{fmt(totals.grant)}</td>
-                        <td className="px-3 py-3 text-right text-green-700 font-medium">¥{fmt(totals.pay)}</td>
-                        <td className="px-3 py-3 text-right font-bold">{totals.grant > 0 ? totals.roi.toFixed(2) : '-'}</td>
-                        <td className="px-3 py-3 text-center">
+                        <td className="px-4 py-3.5 text-right text-red-600 dark:text-red-400 tabular-nums">¥{fmt(item.g1.grantAmount)}</td>
+                        <td className="px-4 py-3.5 text-right text-green-600 dark:text-green-400 tabular-nums">¥{fmt(item.g1.paymentAmount)}</td>
+                        <td className="px-4 py-3.5 text-right font-medium tabular-nums">{item.g1.grantAmount > 0 ? (item.g1.paymentAmount / item.g1.grantAmount).toFixed(2) : '-'}</td>
+                        <td className="px-4 py-3.5 text-right text-red-600 dark:text-red-400 tabular-nums">¥{fmt(item.g2.grantAmount)}</td>
+                        <td className="px-4 py-3.5 text-right text-green-600 dark:text-green-400 tabular-nums">¥{fmt(item.g2.paymentAmount)}</td>
+                        <td className="px-4 py-3.5 text-right font-medium tabular-nums">{item.g2.grantAmount > 0 ? (item.g2.paymentAmount / item.g2.grantAmount).toFixed(2) : '-'}</td>
+                        <td className="px-4 py-3.5 text-right text-red-700 dark:text-red-300 font-semibold tabular-nums">¥{fmt(totals.grant)}</td>
+                        <td className="px-4 py-3.5 text-right text-green-700 dark:text-green-300 font-semibold tabular-nums">¥{fmt(totals.pay)}</td>
+                        <td className="px-4 py-3.5 text-right">
+                          <span className={`inline-flex items-center justify-center rounded-lg px-2 py-0.5 text-xs font-bold tabular-nums ${
+                            totals.roi >= 3 ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+                            totals.roi >= 1 ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
+                            'bg-red-500/15 text-red-600 dark:text-red-400'
+                          }`}>
+                            {totals.grant > 0 ? totals.roi.toFixed(2) : '-'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            <button onClick={() => handleEdit(item)} className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors" title="编辑">
+                            <button onClick={() => handleEdit(item)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground magnetic-btn" title="编辑">
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
-                            <button onClick={() => handleDelete(item.id, item.recordDate)} className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="删除">
+                            <button onClick={() => handleDelete(item.id, item.recordDate)} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive magnetic-btn" title="删除">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
@@ -617,56 +672,59 @@ export default function RepeatDiscounts() {
             </table>
           </div>
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-4 py-3 border-t">
+            <div className="flex items-center justify-between px-5 py-4 border-t">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-accent">上一页</button>
-              <span className="text-sm text-muted-foreground">第 {page} / {totalPages} 页</span>
+                className="magnetic-btn px-4 py-2 rounded-xl border text-sm disabled:opacity-40 hover:bg-accent">上一页</button>
+              <span className="text-sm text-muted-foreground font-medium">第 {page} / {totalPages} 页</span>
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                className="px-3 py-1.5 rounded-md border text-sm disabled:opacity-50 hover:bg-accent">下一页</button>
+                className="magnetic-btn px-4 py-2 rounded-xl border text-sm disabled:opacity-40 hover:bg-accent">下一页</button>
             </div>
           )}
         </div>
 
         {/* Edit Modal */}
         {showEditModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowEditModal(false)}>
-            <div className="bg-card rounded-lg shadow-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold">编辑记录</h3>
-                <button onClick={() => setShowEditModal(false)} className="p-1 rounded hover:bg-accent"><X className="h-4 w-4" /></button>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-up" onClick={() => setShowEditModal(false)}>
+            <div className="glass-card rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2.5">
+                  <div className="icon-badge bg-red-500/15 text-red-600 dark:text-red-400"><Pencil className="h-4 w-4" /></div>
+                  <h3 className="text-lg font-bold">编辑记录</h3>
+                </div>
+                <button onClick={() => setShowEditModal(false)} className="p-2 rounded-lg hover:bg-accent magnetic-btn"><X className="h-4 w-4" /></button>
               </div>
-              <div className="mb-4">
+              <div className="mb-5">
                 <label className="text-sm font-medium">日期</label>
                 <input type="date" value={editForm.recordDate}
                   onChange={e => setEditForm(f => ({ ...f, recordDate: e.target.value }))}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+                  className="mt-1.5 w-full rounded-xl border border-input bg-background/50 px-4 py-2.5 text-sm premium-input" />
               </div>
               <div className="flex flex-col lg:flex-row gap-5">
                 <div className="flex-1">
-                  <h4 className="text-sm font-semibold mb-2">人群1：近2年已购用户</h4>
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500" />人群1：近2年已购用户</h4>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g1.grantAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g1.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付买家数</label><input type="number" value={editForm.g1.paymentBuyers} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentBuyers: e.target.value } }))} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付件数</label><input type="number" value={editForm.g1.paymentItems} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentItems: e.target.value } }))} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" /></div>
+                    <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g1.grantAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g1.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付买家数</label><input type="number" value={editForm.g1.paymentBuyers} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentBuyers: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付件数</label><input type="number" value={editForm.g1.paymentItems} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentItems: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-sm font-semibold mb-2">人群2：60天无购买用户</h4>
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-500" />人群2：60天无购买用户</h4>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g2.grantAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g2.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付买家数</label><input type="number" value={editForm.g2.paymentBuyers} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentBuyers: e.target.value } }))} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付件数</label><input type="number" value={editForm.g2.paymentItems} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentItems: e.target.value } }))} className="mt-1 w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm" /></div>
+                    <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g2.grantAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g2.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付买家数</label><input type="number" value={editForm.g2.paymentBuyers} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentBuyers: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付件数</label><input type="number" value={editForm.g2.paymentItems} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentItems: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2 mt-5">
+              <div className="flex gap-2 mt-6">
                 <button onClick={handleSaveEdit} disabled={updateMutation.isPending}
-                  className="inline-flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
+                  className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-500/25 disabled:opacity-50">
                   {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}保存修改
                 </button>
-                <button onClick={() => setShowEditModal(false)} className="inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium hover:bg-accent">取消</button>
+                <button onClick={() => setShowEditModal(false)} className="magnetic-btn inline-flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium hover:bg-accent">取消</button>
               </div>
             </div>
           </div>
@@ -680,17 +738,23 @@ export default function RepeatDiscounts() {
   const renderChartTab = () => (
     <div className="space-y-6">
       {allRecords.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground">暂无数据，请先登记数据</div>
+        <div className="text-center py-24 text-muted-foreground glass-card rounded-2xl">暂无数据，请先登记数据</div>
       ) : (
         <>
-          <div className="rounded-lg border bg-card p-5 shadow-sm">
-            <h3 className="text-sm font-semibold mb-3">发放/支付金额 & 合计ROI趋势</h3>
+          <div className="glass-card rounded-2xl p-6 animate-fade-up">
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="icon-badge bg-red-500/15 text-red-600 dark:text-red-400"><BarChart3 className="h-4 w-4" /></div>
+              <h3 className="text-base font-bold">发放/支付金额 & 合计ROI趋势</h3>
+            </div>
             <div style={{ height: 400 }}>
               <Bar data={barChartData} options={barChartOptions} />
             </div>
           </div>
-          <div className="rounded-lg border bg-card p-5 shadow-sm">
-            <h3 className="text-sm font-semibold mb-3">分人群ROI趋势对比</h3>
+          <div className="glass-card rounded-2xl p-6 animate-fade-up" style={{ animationDelay: '100ms' }}>
+            <div className="flex items-center gap-2.5 mb-4">
+              <div className="icon-badge bg-orange-500/15 text-orange-600 dark:text-orange-400"><TrendingUp className="h-4 w-4" /></div>
+              <h3 className="text-base font-bold">分人群ROI趋势对比</h3>
+            </div>
             <div style={{ height: 400 }}>
               <Line data={lineChartData} options={lineChartOptions} />
             </div>
@@ -700,7 +764,7 @@ export default function RepeatDiscounts() {
     </div>
   );
 
-  // ─── Tab: Preview ────────────────────────────────────────────────────────
+  // ─── Tab: Preview ────────────────────────────────────────────────────────────
 
   const renderPreviewTab = () => {
     const rec = previewRecord;
@@ -766,7 +830,7 @@ export default function RepeatDiscounts() {
     const downloadHtml = () => {
       const el = document.getElementById('preview-report');
       if (!el) return;
-      const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>日报 - ${rec?.recordDate || ''}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:20px;background:#f5f5f5;color:#333}.report{max-width:800px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,.1)}.header{background:linear-gradient(135deg,#dc2626,#f97316);color:#fff;padding:30px}.header h1{margin:0;font-size:24px}.header p{margin:5px 0 0;opacity:.9}.section{padding:20px;border-bottom:1px solid #eee}.section h2{font-size:16px;color:#dc2626;margin:0 0 12px}.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.kpi{background:#f9fafb;border-radius:8px;padding:12px}.kpi .label{font-size:12px;color:#666}.kpi .value{font-size:20px;font-weight:700;margin-top:4px}.kpi .value.red{color:#dc2626}.kpi .value.green{color:#16a34a}.table{width:100%;border-collapse:collapse;font-size:13px}.table th,.table td{padding:8px 12px;border:1px solid #e5e7eb;text-align:right}.table th{background:#f9fafb;font-weight:600;text-align:center}.insight{background:#fef3c7;border-left:4px solid #f59e0b;padding:10px 14px;margin:8px 0;border-radius:0 6px 6px 0;font-size:13px}.ai-section{margin:12px 0}.ai-section h3{font-size:14px;color:#1e40af;margin:0 0 6px}.ai-section p{font-size:13px;color:#555;margin:0;line-height:1.6}</style></head><body><div class="report">${el.innerHTML}</div></body></html>`;
+      const html = `<!DOCTYPE html><html lang="zh-CN"><head><meta charset="UTF-8"><title>日报 - ${rec?.recordDate || ''}</title><style>body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;margin:0;padding:20px;background:#f5f5f5;color:#333}.report{max-width:800px;margin:0 auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.1)}.header{background:linear-gradient(135deg,#dc2626,#ea580c,#f59e0b);color:#fff;padding:36px}.header h1{margin:0;font-size:26px;font-weight:800}.header p{margin:6px 0 0;opacity:.9;font-size:14px}.section{padding:24px;border-bottom:1px solid #eee}.section h2{font-size:17px;color:#dc2626;margin:0 0 14px;font-weight:700}.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.kpi{background:#f9fafb;border-radius:10px;padding:14px}.kpi .label{font-size:12px;color:#666}.kpi .value{font-size:22px;font-weight:700;margin-top:4px}.kpi .value.red{color:#dc2626}.kpi .value.green{color:#16a34a}.table{width:100%;border-collapse:collapse;font-size:13px}.table th,.table td{padding:10px 14px;border:1px solid #e5e7eb;text-align:right}.table th{background:#f9fafb;font-weight:600;text-align:center}.insight{background:#fef3c7;border-left:4px solid #f59e0b;padding:12px 16px;margin:8px 0;border-radius:0 8px 8px 0;font-size:13px}.ai-section{margin:14px 0}.ai-section h3{font-size:15px;color:#1e40af;margin:0 0 8px;font-weight:600}.ai-section p{font-size:13px;color:#555;margin:0;line-height:1.7}</style></head><body><div class="report">${el.innerHTML}</div></body></html>`;
       const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -776,24 +840,28 @@ export default function RepeatDiscounts() {
 
     return (
       <div className="space-y-5">
-        <div className="flex items-center gap-3">
-          <label className="text-sm font-medium">选择日期</label>
+        {/* Toolbar */}
+        <div className="flex items-center gap-3 flex-wrap animate-fade-up">
+          <div className="flex items-center gap-2.5">
+            <div className="icon-badge bg-red-500/15 text-red-600 dark:text-red-400"><FileText className="h-4 w-4" /></div>
+            <label className="text-sm font-semibold">选择日期</label>
+          </div>
           <div className="relative">
             <select value={previewDate} onChange={e => setPreviewDate(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm pr-8 appearance-none">
+              className="rounded-xl border border-input bg-background/50 px-4 py-2.5 text-sm pr-10 appearance-none premium-input cursor-pointer">
               {allRecords.length === 0 && <option value="">暂无数据</option>}
               {allRecords.slice().reverse().map(r => (
                 <option key={r.id} value={r.recordDate.slice(0, 10)}>{r.recordDate.slice(0, 10)}</option>
               ))}
             </select>
-            <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-muted-foreground" />
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-muted-foreground" />
           </div>
           <button onClick={downloadHtml} disabled={!rec}
-            className="inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50">
+            className="magnetic-btn inline-flex items-center gap-2 rounded-xl border border-border bg-background/50 px-4 py-2.5 text-sm font-medium hover:bg-accent disabled:opacity-50">
             <Download className="h-4 w-4" />下载HTML
           </button>
           <button onClick={handleAiAnalysis} disabled={!rec || aiLoading}
-            className="inline-flex items-center gap-2 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50 transition-all">
+            className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 disabled:opacity-50">
             {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             {aiLoading ? 'AI分析中...' : 'AI智能分析'}
           </button>
@@ -801,47 +869,65 @@ export default function RepeatDiscounts() {
         </div>
 
         {!rec ? (
-          <div className="text-center py-20 text-muted-foreground">暂无数据</div>
+          <div className="text-center py-24 text-muted-foreground glass-card rounded-2xl">暂无数据</div>
         ) : (() => {
           const t = calcTotals(rec);
           const sections = aiSections || genAiAnalysis();
           return (
-            <div id="preview-report" className="rounded-lg border bg-card shadow-sm overflow-hidden">
+            <div id="preview-report" className="glass-card rounded-2xl shadow-sm overflow-hidden animate-fade-up" style={{ animationDelay: '100ms' }}>
               {/* Header */}
-              <div className="bg-gradient-to-r from-red-600 to-orange-500 text-white px-6 py-8">
-                <h1 className="text-2xl font-bold">{shopName} · 回头客立减日报</h1>
-                <p className="text-sm opacity-90 mt-1">{rec.recordDate.slice(0, 10)}</p>
+              <div className="report-gradient text-white px-8 py-10 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
+                <div className="absolute bottom-0 left-0 w-40 h-40 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/4" />
+                <div className="relative">
+                  <h1 className="text-2xl font-extrabold tracking-tight">{shopName} · 回头客立减日报</h1>
+                  <p className="text-sm opacity-90 mt-1.5">{rec.recordDate.slice(0, 10)}</p>
+                </div>
               </div>
 
               {/* 活动信息 */}
-              <div className="px-6 py-5 border-b">
-                <h2 className="text-base font-bold text-red-600 mb-3">活动信息</h2>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                  <div className="bg-muted/30 rounded-md p-3"><span className="text-muted-foreground">活动类型：</span><span className="font-medium">回头客立减</span></div>
-                  <div className="bg-muted/30 rounded-md p-3"><span className="text-muted-foreground">记录日期：</span><span className="font-medium">{rec.recordDate.slice(0, 10)}</span></div>
-                  <div className="bg-muted/30 rounded-md p-3"><span className="text-muted-foreground">覆盖人群：</span><span className="font-medium">2组</span></div>
-                  <div className="bg-muted/30 rounded-md p-3"><span className="text-muted-foreground">数据来源：</span><span className="font-medium">生意参谋</span></div>
+              <div className="px-8 py-6 border-b border-border/50">
+                <h2 className="text-base font-bold text-red-600 dark:text-red-400 mb-4">活动信息</h2>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
+                  {[
+                    { label: '活动类型', value: '回头客立减' },
+                    { label: '记录日期', value: rec.recordDate.slice(0, 10) },
+                    { label: '覆盖人群', value: '2组' },
+                    { label: '数据来源', value: '生意参谋' },
+                  ].map(({ label, value }) => (
+                    <div key={label} className="bg-muted/30 rounded-xl p-3.5">
+                      <div className="text-xs text-muted-foreground mb-0.5">{label}</div>
+                      <div className="font-semibold">{value}</div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
               {/* 分人群效果 */}
-              <div className="px-6 py-5 border-b">
-                <h2 className="text-base font-bold text-red-600 mb-3">分人群效果</h2>
+              <div className="px-8 py-6 border-b border-border/50">
+                <h2 className="text-base font-bold text-red-600 dark:text-red-400 mb-4">分人群效果</h2>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   {[
-                    { label: '近2年已购用户', g: rec.g1, pg: prev?.g1 },
-                    { label: '60天无购买用户', g: rec.g2, pg: prev?.g2 },
-                  ].map(({ label, g, pg }) => {
+                    { label: '近2年已购用户', g: rec.g1, pg: prev?.g1, color: 'blue' },
+                    { label: '60天无购买用户', g: rec.g2, pg: prev?.g2, color: 'orange' },
+                  ].map(({ label, g, pg, color }) => {
                     const r = g.grantAmount > 0 ? g.paymentAmount / g.grantAmount : 0;
                     const pr = pg && pg.grantAmount > 0 ? pg.paymentAmount / pg.grantAmount : undefined;
                     return (
-                      <div key={label} className="bg-muted/20 rounded-lg p-4 border">
-                        <h3 className="text-sm font-semibold mb-2">{label}</h3>
+                      <div key={label} className="bg-muted/20 rounded-2xl p-5 border border-border/40">
+                        <div className="flex items-center gap-2 mb-3">
+                          <span className={`w-2.5 h-2.5 rounded-full ${color === 'blue' ? 'bg-blue-500' : 'bg-orange-500'}`} />
+                          <h3 className="text-sm font-bold">{label}</h3>
+                        </div>
                         <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div className="kpi"><div className="label">发放金额</div><div className="value red">¥{fmt(g.grantAmount)}</div></div>
-                          <div className="kpi"><div className="label">支付金额</div><div className="value green">¥{fmt(g.paymentAmount)}</div></div>
-                          <div className="kpi"><div className="label">支付买家数</div><div className="value">{fmtInt(g.paymentBuyers)}人</div></div>
-                          <div className="kpi"><div className="label">ROI</div><div className={`value ${r >= 3 ? 'green' : r >= 1 ? '' : 'red'}`}>{fmtR(r)}</div><TrendArrow current={r} previous={pr} /></div>
+                          <div className="kpi bg-red-500/5 dark:bg-red-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">发放金额</div><div className="value text-lg font-bold text-red-600 dark:text-red-400">¥{fmt(g.grantAmount)}</div></div>
+                          <div className="kpi bg-green-500/5 dark:bg-green-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付金额</div><div className="value text-lg font-bold text-green-600 dark:text-green-400">¥{fmt(g.paymentAmount)}</div></div>
+                          <div className="kpi bg-muted/30 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付买家数</div><div className="value text-lg font-bold">{fmtInt(g.paymentBuyers)}人</div></div>
+                          <div className="kpi bg-muted/30 rounded-xl p-3">
+                            <div className="label text-xs text-muted-foreground">ROI</div>
+                            <div className={`value text-lg font-bold ${r >= 3 ? 'text-green-600 dark:text-green-400' : r >= 1 ? '' : 'text-red-600 dark:text-red-400'}`}>{fmtR(r)}</div>
+                            <div className="mt-0.5"><TrendArrow current={r} previous={pr} /></div>
+                          </div>
                         </div>
                       </div>
                     );
@@ -850,35 +936,59 @@ export default function RepeatDiscounts() {
               </div>
 
               {/* 汇总对比 */}
-              <div className="px-6 py-5 border-b">
-                <h2 className="text-base font-bold text-red-600 mb-3">汇总对比</h2>
-                <table className="table">
-                  <thead><tr><th></th><th>近2年</th><th>60天</th><th>合计</th></tr></thead>
+              <div className="px-8 py-6 border-b border-border/50">
+                <h2 className="text-base font-bold text-red-600 dark:text-red-400 mb-4">汇总对比</h2>
+                <table className="table w-full">
+                  <thead>
+                    <tr className="border-b bg-muted/30">
+                      <th className="text-left px-4 py-3 font-semibold text-muted-foreground"></th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">近2年</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">60天</th>
+                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">合计</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    <tr><td className="font-medium" style={{textAlign:'left'}}>发放金额</td><td>¥{fmt(rec.g1.grantAmount)}</td><td>¥{fmt(rec.g2.grantAmount)}</td><td className="font-bold">¥{fmt(t.grant)}</td></tr>
-                    <tr><td className="font-medium" style={{textAlign:'left'}}>支付金额</td><td>¥{fmt(rec.g1.paymentAmount)}</td><td>¥{fmt(rec.g2.paymentAmount)}</td><td className="font-bold">¥{fmt(t.pay)}</td></tr>
-                    <tr><td className="font-medium" style={{textAlign:'left'}}>ROI</td><td>{rec.g1.grantAmount > 0 ? fmtR(rec.g1.paymentAmount / rec.g1.grantAmount) : '-'}</td><td>{rec.g2.grantAmount > 0 ? fmtR(rec.g2.paymentAmount / rec.g2.grantAmount) : '-'}</td><td className="font-bold">{fmtR(t.roi)}</td></tr>
-                    <tr><td className="font-medium" style={{textAlign:'left'}}>支付买家数</td><td>{fmtInt(rec.g1.paymentBuyers)}</td><td>{fmtInt(rec.g2.paymentBuyers)}</td><td className="font-bold">{fmtInt(rec.g1.paymentBuyers + rec.g2.paymentBuyers)}</td></tr>
-                    <tr><td className="font-medium" style={{textAlign:'left'}}>支付件数</td><td>{fmtInt(rec.g1.paymentItems)}</td><td>{fmtInt(rec.g2.paymentItems)}</td><td className="font-bold">{fmtInt(rec.g1.paymentItems + rec.g2.paymentItems)}</td></tr>
+                    {[
+                      { label: '发放金额', g1: `¥${fmt(rec.g1.grantAmount)}`, g2: `¥${fmt(rec.g2.grantAmount)}`, total: `¥${fmt(t.grant)}`, red: true },
+                      { label: '支付金额', g1: `¥${fmt(rec.g1.paymentAmount)}`, g2: `¥${fmt(rec.g2.paymentAmount)}`, total: `¥${fmt(t.pay)}`, green: true },
+                      { label: 'ROI', g1: rec.g1.grantAmount > 0 ? fmtR(rec.g1.paymentAmount / rec.g1.grantAmount) : '-', g2: rec.g2.grantAmount > 0 ? fmtR(rec.g2.paymentAmount / rec.g2.grantAmount) : '-', total: fmtR(t.roi) },
+                      { label: '支付买家数', g1: fmtInt(rec.g1.paymentBuyers), g2: fmtInt(rec.g2.paymentBuyers), total: fmtInt(rec.g1.paymentBuyers + rec.g2.paymentBuyers) },
+                      { label: '支付件数', g1: fmtInt(rec.g1.paymentItems), g2: fmtInt(rec.g2.paymentItems), total: fmtInt(rec.g1.paymentItems + rec.g2.paymentItems) },
+                    ].map((row, i) => (
+                      <tr key={i} className="border-b last:border-0">
+                        <td className="px-4 py-3 font-medium text-left">{row.label}</td>
+                        <td className={`px-4 py-3 text-center tabular-nums ${row.red ? 'text-red-600 dark:text-red-400' : row.green ? 'text-green-600 dark:text-green-400' : ''}`}>{row.g1}</td>
+                        <td className={`px-4 py-3 text-center tabular-nums ${row.red ? 'text-red-600 dark:text-red-400' : row.green ? 'text-green-600 dark:text-green-400' : ''}`}>{row.g2}</td>
+                        <td className={`px-4 py-3 text-center font-bold tabular-nums ${row.red ? 'text-red-700 dark:text-red-300' : row.green ? 'text-green-700 dark:text-green-300' : ''}`}>{row.total}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
 
               {/* 趋势对比 */}
               {allRecords.length > 1 && (
-                <div className="px-6 py-5 border-b">
-                  <h2 className="text-base font-bold text-red-600 mb-3">趋势对比</h2>
+                <div className="px-8 py-6 border-b border-border/50">
+                  <h2 className="text-base font-bold text-red-600 dark:text-red-400 mb-4">趋势对比</h2>
                   <div className="overflow-x-auto">
-                    <table className="table">
-                      <thead><tr><th>日期</th><th>合计发放</th><th>合计支付</th><th>合计ROI</th></tr></thead>
+                    <table className="table w-full">
+                      <thead>
+                        <tr className="border-b bg-muted/30">
+                          <th className="text-left px-4 py-3 font-semibold text-muted-foreground">日期</th>
+                          <th className="text-center px-4 py-3 font-semibold text-muted-foreground">合计发放</th>
+                          <th className="text-center px-4 py-3 font-semibold text-muted-foreground">合计支付</th>
+                          <th className="text-center px-4 py-3 font-semibold text-muted-foreground">合计ROI</th>
+                        </tr>
+                      </thead>
                       <tbody>
                         {allRecords.slice(-10).map(r => {
                           const rt = calcTotals(r);
                           return (
-                            <tr key={r.id} className={r.id === rec.id ? 'bg-red-50 dark:bg-red-950/20' : ''}>
-                              <td style={{textAlign:'left'}}>{r.recordDate.slice(0, 10)}</td>
-                              <td>¥{fmt(rt.grant)}</td><td>¥{fmt(rt.pay)}</td>
-                              <td className="font-bold">{fmtR(rt.roi)}</td>
+                            <tr key={r.id} className={`border-b last:border-0 ${r.id === rec.id ? 'bg-red-500/10 dark:bg-red-500/15 font-semibold' : ''}`}>
+                              <td className="px-4 py-3 text-left">{r.recordDate.slice(0, 10)}</td>
+                              <td className="px-4 py-3 text-center tabular-nums">¥{fmt(rt.grant)}</td>
+                              <td className="px-4 py-3 text-center tabular-nums">¥{fmt(rt.pay)}</td>
+                              <td className="px-4 py-3 text-center font-bold tabular-nums">{fmtR(rt.roi)}</td>
                             </tr>
                           );
                         })}
@@ -889,23 +999,32 @@ export default function RepeatDiscounts() {
               )}
 
               {/* 关键洞察 */}
-              <div className="px-6 py-5 border-b">
-                <h2 className="text-base font-bold text-red-600 mb-3">关键洞察</h2>
-                {genInsights().map((insight, i) => (
-                  <div key={i} className="insight">{insight}</div>
-                ))}
+              <div className="px-8 py-6 border-b border-border/50">
+                <h2 className="text-base font-bold text-red-600 dark:text-red-400 mb-4">关键洞察</h2>
+                <div className="space-y-2">
+                  {genInsights().map((insight, i) => (
+                    <div key={i} className="insight bg-yellow-500/10 dark:bg-yellow-500/15 border-l-4 border-yellow-500 rounded-r-xl px-4 py-3 text-sm">
+                      {insight}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* AI 模型分析 */}
               {sections && sections.length > 0 && (
-                <div className="px-6 py-5">
-                  <h2 className="text-base font-bold text-red-600 mb-3">AI 模型分析</h2>
-                  {sections.map((s, i) => (
-                    <div key={i} className="ai-section">
-                      <h3>{i + 1}. {s.title}</h3>
-                      <p>{s.content}</p>
-                    </div>
-                  ))}
+                <div className="px-8 py-6">
+                  <div className="flex items-center gap-2.5 mb-4">
+                    <div className="icon-badge bg-purple-500/15 text-purple-600 dark:text-purple-400"><Sparkles className="h-4 w-4" /></div>
+                    <h2 className="text-base font-bold text-purple-600 dark:text-purple-400">AI 模型分析</h2>
+                  </div>
+                  <div className="space-y-4">
+                    {sections.map((s, i) => (
+                      <div key={i} className="ai-section bg-purple-500/5 dark:bg-purple-500/10 rounded-xl p-4 border border-purple-500/10">
+                        <h3 className="text-sm font-bold text-purple-700 dark:text-purple-300 mb-1.5">{i + 1}. {s.title}</h3>
+                        <p className="text-sm text-foreground/80 leading-relaxed">{s.content}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
@@ -920,21 +1039,22 @@ export default function RepeatDiscounts() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight">回头客立减</h2>
-        <p className="text-muted-foreground">每日立减数据录入、分析与日报生成</p>
+      <div className="animate-fade-up">
+        <h2 className="text-3xl font-extrabold tracking-tight gradient-text-red">回头客立减</h2>
+        <p className="text-muted-foreground mt-1">每日立减数据录入、分析与日报生成</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b">
+      {/* Tabs - Pill Style */}
+      <div className="flex gap-2 flex-wrap animate-fade-up" style={{ animationDelay: '50ms' }}>
         {TABS.map(tab => {
           const Icon = tab.icon;
+          const active = activeTab === tab.key;
           return (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`inline-flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
-                activeTab === tab.key
-                  ? 'border-red-600 text-red-600'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+              className={`tab-pill inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all magnetic-btn ${
+                active
+                  ? 'tab-pill-active text-red-600 dark:text-red-400 shadow-sm'
+                  : 'border-border bg-background/40 text-muted-foreground hover:text-foreground hover:bg-accent'
               }`}>
               <Icon className="h-4 w-4" />{tab.label}
             </button>
