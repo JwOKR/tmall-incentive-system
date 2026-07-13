@@ -32,6 +32,8 @@ services:
       dockerfile: Dockerfile
       args:
         - VITE_API_URL=http://192.168.1.78:3001
+        - VITE_GIT_HASH=${VITE_GIT_HASH:-unknown}
+        - VITE_BUILD_TIME=${VITE_BUILD_TIME:-unknown}
     container_name: tmall-incentive-web
     ports:
       - "5678:80"

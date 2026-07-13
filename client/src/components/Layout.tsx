@@ -190,6 +190,12 @@ export default function Layout({ children }: LayoutProps) {
             <LogOut className="h-5 w-5" />
             退出登录
           </button>
+          {/* Version badge */}
+          <div className="px-3 pt-1.5 pb-1 text-center">
+            <span className="text-[10px] text-muted-foreground/50 font-mono tabular-nums select-none">
+              v{__APP_VERSION__} · {__BUILD_TIME__}
+            </span>
+          </div>
         </div>
       </aside>
 
