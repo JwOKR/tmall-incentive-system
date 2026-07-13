@@ -1,28 +1,36 @@
-FROM node:18-bullseye
-
+# ===== Stage 1: Builder =====
+FROM node:18-bullseye AS builder
 WORKDIR /app
 
-# Use npmmirror for better connectivity in China
 RUN npm config set registry https://registry.npmmirror.com
 
-# Copy package files
 COPY package*.json ./
 COPY prisma ./prisma/
 
-# Install dependencies
 RUN npm ci
-
-# Copy source code
-COPY . .
-
-# Generate Prisma client using locally installed binary (avoid npx network fetch)
 RUN ./node_modules/.bin/prisma generate
 
-# Build TypeScript
+COPY . .
 RUN npm run build
 
-# Expose port
+# ===== Stage 2: Runtime =====
+FROM node:18-bullseye-slim AS runtime
+WORKDIR /app
+
+RUN npm config set registry https://registry.npmmirror.com
+
+COPY package*.json ./
+COPY prisma ./prisma/
+RUN npm ci --omit=dev
+
+# Copy generated prisma client + CLI from builder
+COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+
+# Copy compiled dist
+COPY --from=builder /app/dist ./dist
+
 EXPOSE 3001
 
-# Start command
 CMD ["sh", "-c", "./node_modules/.bin/prisma db push && node dist/index.js"]

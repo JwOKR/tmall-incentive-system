@@ -1,11 +1,22 @@
+# ===== Stage 1: Builder =====
+FROM node:18-bullseye AS builder
+WORKDIR /app
+
+RUN npm config set registry https://registry.npmmirror.com
+
+COPY package*.json ./
+RUN npm ci
+
+COPY . .
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+RUN npm run build
+
+# ===== Stage 2: Serve =====
 FROM nginx:alpine
 
-# Copy nginx config
 COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Copy pre-built dist (built locally or in CI)
-COPY dist /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
 EXPOSE 80
-
 CMD ["nginx", "-g", "daemon off;"]
