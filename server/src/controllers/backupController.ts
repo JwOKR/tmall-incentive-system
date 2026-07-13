@@ -5,7 +5,7 @@ import { createAuditLog } from '../utils/auditLog';
 // 导出全部数据（JSON）
 export const exportBackup = async (req: Request, res: Response) => {
   try {
-    const [users, takers, tasks, orders, logs] = await Promise.all([
+    const [users, takers, tasks, orders, logs, repeatDiscounts] = await Promise.all([
       prisma.user.findMany({
         select: { id: true, username: true, role: true, createdAt: true },
       }),
@@ -13,10 +13,11 @@ export const exportBackup = async (req: Request, res: Response) => {
       prisma.task.findMany(),
       prisma.order.findMany(),
       prisma.log.findMany(),
+      prisma.repeatDiscount.findMany(),
     ]);
 
     const backup = {
-      version: '1.0',
+      version: '1.1',
       exportedAt: new Date().toISOString(),
       data: {
         users: users.map(u => ({ ...u, password: '[REDACTED]' })), // 不导出密码
@@ -24,6 +25,7 @@ export const exportBackup = async (req: Request, res: Response) => {
         tasks,
         orders,
         logs,
+        repeatDiscounts,
       },
       summary: {
         users: users.length,
@@ -31,6 +33,7 @@ export const exportBackup = async (req: Request, res: Response) => {
         tasks: tasks.length,
         orders: orders.length,
         logs: logs.length,
+        repeatDiscounts: repeatDiscounts.length,
       },
     };
 
@@ -41,7 +44,7 @@ export const exportBackup = async (req: Request, res: Response) => {
 
     await createAuditLog({
       action: 'backup_export',
-      detail: `导出数据备份: ${takers.length}接单人, ${tasks.length}任务, ${orders.length}订单, ${logs.length}日志`,
+      detail: `导出数据备份: ${takers.length}接单人, ${tasks.length}任务, ${orders.length}订单, ${logs.length}日志, ${repeatDiscounts.length}回头客立减`,
       ipAddress: req.ip,
     });
 
@@ -65,6 +68,7 @@ export const importBackup = async (req: Request, res: Response) => {
       takers: { created: 0, skipped: 0, errors: 0 },
       tasks: { created: 0, skipped: 0, errors: 0 },
       orders: { created: 0, skipped: 0, errors: 0 },
+      repeatDiscounts: { created: 0, skipped: 0, errors: 0 },
     };
 
     // 导入接单人
@@ -163,16 +167,40 @@ export const importBackup = async (req: Request, res: Response) => {
       }
     }
 
+    // 导入回头客立减
+    if (data.repeatDiscounts?.length) {
+      for (const rd of data.repeatDiscounts) {
+        try {
+          if (mode === 'merge') {
+            const recordDate = new Date(rd.recordDate);
+            const existing = await prisma.repeatDiscount.findUnique({ where: { recordDate } });
+            if (existing) { result.repeatDiscounts.skipped++; continue; }
+          }
+          await prisma.repeatDiscount.create({
+            data: {
+              id: rd.id,
+              recordDate: new Date(rd.recordDate),
+              grantAmount: rd.grantAmount ?? 0,
+              paymentAmount: rd.paymentAmount ?? 0,
+              paymentBuyers: rd.paymentBuyers ?? 0,
+              paymentItems: rd.paymentItems ?? 0,
+            },
+          });
+          result.repeatDiscounts.created++;
+        } catch { result.repeatDiscounts.errors++; }
+      }
+    }
+
     await createAuditLog({
       action: 'backup_import',
-      detail: `导入备份(${mode}): 接单人${result.takers.created}个, 任务${result.tasks.created}个, 订单${result.orders.created}个`,
+      detail: `导入备份(${mode}): 接单人${result.takers.created}个, 任务${result.tasks.created}个, 订单${result.orders.created}个, 回头客立减${result.repeatDiscounts.created}个`,
       ipAddress: req.ip,
     });
 
     res.json({
       success: true,
       data: result,
-      message: `导入完成: 接单人${result.takers.created}个, 任务${result.tasks.created}个, 订单${result.orders.created}个`,
+      message: `导入完成: 接单人${result.takers.created}个, 任务${result.tasks.created}个, 订单${result.orders.created}个, 回头客立减${result.repeatDiscounts.created}个`,
     });
   } catch (error) {
     console.error('Backup import error:', error);

@@ -55,6 +55,14 @@ export const orderColumns: ExportColumn[] = [
   { key: 'remark', label: '备注', selected: true },
 ];
 
+export const repeatDiscountColumns: ExportColumn[] = [
+  { key: 'recordDate', label: '日期', selected: true },
+  { key: 'grantAmount', label: '发放金额（元）', selected: true },
+  { key: 'paymentAmount', label: '支付金额（元）', selected: true },
+  { key: 'paymentBuyers', label: '支付买家数（人）', selected: true },
+  { key: 'paymentItems', label: '支付件数（件）', selected: true },
+];
+
 export const logColumns: ExportColumn[] = [
   { key: 'createdAt', label: '时间', selected: true },
   { key: 'action', label: '操作类型', selected: true },

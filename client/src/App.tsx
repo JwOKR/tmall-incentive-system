@@ -19,6 +19,7 @@ const ExportPage = lazy(() => import('./pages/ExportPage'));
 const IntervalStats = lazy(() => import('./pages/IntervalStats'));
 const CommissionStats = lazy(() => import('./pages/CommissionStats'));
 const AnomalyAlerts = lazy(() => import('./pages/AnomalyAlerts'));
+const RepeatDiscounts = lazy(() => import('./pages/RepeatDiscounts'));
 const TakerDetail = lazy(() => import('./pages/TakerDetail'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/Login'));
@@ -140,6 +141,14 @@ function AppRoutes() {
           element={
             <ProtectedLayout>
               <AnomalyAlerts />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/repeat-discounts"
+          element={
+            <ProtectedLayout>
+              <RepeatDiscounts />
             </ProtectedLayout>
           }
         />

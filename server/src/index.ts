@@ -17,6 +17,7 @@ import remindRoutes from './routes/reminds';
 import anomalyRoutes from './routes/anomalies';
 import backupRoutes from './routes/backups';
 import adminRoutes from './routes/admin';
+import repeatDiscountRoutes from './routes/repeatDiscounts';
 
 // Import middleware
 import { authMiddleware } from './middleware/auth';
@@ -64,6 +65,7 @@ app.use('/api/reminds', authMiddleware, remindRoutes);
 app.use('/api/anomalies', authMiddleware, anomalyRoutes);
 app.use('/api/backup', authMiddleware, backupRoutes);
 app.use('/api/admin', authMiddleware, adminRoutes);
+app.use('/api/repeat-discounts', authMiddleware, repeatDiscountRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

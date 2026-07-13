@@ -130,4 +130,15 @@ export const adminApi = {
   deleteUser: (id: string) => api.delete(`/admin/${id}`),
 };
 
+// Repeat Discount API（回头客立减）
+export const repeatDiscountApi = {
+  getAll: (params?: any) => api.get('/repeat-discounts', { params }),
+  getSummary: (params?: { startDate?: string; endDate?: string }) =>
+    api.get('/repeat-discounts/summary', { params }),
+  getById: (id: string) => api.get(`/repeat-discounts/${id}`),
+  create: (data: any) => api.post('/repeat-discounts', data),
+  update: (id: string, data: any) => api.put(`/repeat-discounts/${id}`, data),
+  delete: (id: string) => api.delete(`/repeat-discounts/${id}`),
+};
+
 export default api;

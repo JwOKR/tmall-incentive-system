@@ -126,3 +126,18 @@ model Log {
   @@index([createdAt])
   @@map("logs")
 }
+
+// 回头客立减（每天一条）
+model RepeatDiscount {
+  id              String   @id @default(cuid())
+  recordDate      DateTime @unique // 记录日期（每天唯一）
+  grantAmount     Float    @default(0) // 发放金额（元）
+  paymentAmount   Float    @default(0) // 支付金额（元）
+  paymentBuyers   Int      @default(0) // 支付买家数（人）
+  paymentItems    Int      @default(0) // 支付件数（件）
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([recordDate])
+  @@map("repeat_discounts")
+}

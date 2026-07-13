@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Download, FileSpreadsheet } from 'lucide-react';
-import { takersApi, tasksApi, ordersApi, logsApi } from '@/lib/api';
+import { takersApi, tasksApi, ordersApi, logsApi, repeatDiscountApi } from '@/lib/api';
 import { useToast } from '@/components/Toast';
-import { takerColumns, taskColumns, orderColumns, logColumns, exportCombined } from '@/lib/export';
+import { takerColumns, taskColumns, orderColumns, logColumns, repeatDiscountColumns, exportCombined } from '@/lib/export';
 
 export default function ExportPage() {
   const { error: toastError } = useToast();
@@ -12,6 +12,7 @@ export default function ExportPage() {
     tasks: true,
     orders: true,
     logs: false,
+    repeatDiscounts: false,
   });
   const [filename, setFilename] = useState('天猫激励数据导出');
   const [exporting, setExporting] = useState(false);
@@ -40,6 +41,12 @@ export default function ExportPage() {
     enabled: selectedSheets.logs,
   });
 
+  const { data: repeatDiscountsData } = useQuery({
+    queryKey: ['repeatDiscounts-export'],
+    queryFn: () => repeatDiscountApi.getAll({ pageSize: 10000 }),
+    enabled: selectedSheets.repeatDiscounts,
+  });
+
   const handleToggleSheet = (sheet: keyof typeof selectedSheets) => {
     setSelectedSheets(prev => ({
       ...prev,
@@ -49,7 +56,7 @@ export default function ExportPage() {
 
   const handleExport = () => {
     const sheets: { name: string; columns: any[]; data: any[] }[] = [];
-    
+
     if (selectedSheets.takers && takersData) {
       sheets.push({
         name: '接单人',
@@ -57,7 +64,7 @@ export default function ExportPage() {
         data: (takersData as any)?.data?.list || [],
       });
     }
-    
+
     if (selectedSheets.tasks && tasksData) {
       sheets.push({
         name: '任务',
@@ -65,7 +72,7 @@ export default function ExportPage() {
         data: (tasksData as any)?.data?.list || [],
       });
     }
-    
+
     if (selectedSheets.orders && ordersData) {
       sheets.push({
         name: '接单明细',
@@ -73,7 +80,7 @@ export default function ExportPage() {
         data: (ordersData as any)?.data?.list || [],
       });
     }
-    
+
     if (selectedSheets.logs && logsData) {
       sheets.push({
         name: '操作日志',
@@ -81,19 +88,27 @@ export default function ExportPage() {
         data: (logsData as any)?.data?.list || [],
       });
     }
-    
+
+    if (selectedSheets.repeatDiscounts && repeatDiscountsData) {
+      sheets.push({
+        name: '回头客立减',
+        columns: repeatDiscountColumns,
+        data: (repeatDiscountsData as any)?.data?.list || [],
+      });
+    }
+
     if (sheets.length === 0) {
       toastError('请至少选择一个表格');
       return;
     }
-    
+
     setExporting(true);
-    
+
     // 生成带日期的文件名
     const now = new Date();
     const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
     const finalFilename = `${dateStr}_${filename || '天猫激励数据导出'}`;
-    
+
     setTimeout(() => {
       exportCombined({
         filename: finalFilename,
@@ -107,6 +122,7 @@ export default function ExportPage() {
     { key: 'takers', label: '接单人', count: (takersData as any)?.data?.total || 0 },
     { key: 'tasks', label: '任务', count: (tasksData as any)?.data?.total || 0 },
     { key: 'orders', label: '接单明细', count: (ordersData as any)?.data?.total || 0 },
+    { key: 'repeatDiscounts', label: '回头客立减', count: (repeatDiscountsData as any)?.data?.total || 0 },
     { key: 'logs', label: '操作日志', count: (logsData as any)?.data?.total || 0 },
   ];
 
@@ -121,7 +137,7 @@ export default function ExportPage() {
         {/* Export Settings */}
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">导出设置</h3>
-          
+
           <div className="space-y-4">
             <div>
               <label className="text-sm font-medium">文件名</label>
@@ -133,7 +149,7 @@ export default function ExportPage() {
                 placeholder="输入导出文件名"
               />
             </div>
-            
+
             <div>
               <label className="text-sm font-medium mb-3 block">选择要导出的表格</label>
               <div className="space-y-3">
@@ -167,13 +183,13 @@ export default function ExportPage() {
         {/* Preview */}
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           <h3 className="text-lg font-semibold mb-4">导出预览</h3>
-          
+
           <div className="space-y-4">
             <div className="p-4 bg-muted/50 rounded-lg">
               <p className="text-sm text-muted-foreground mb-2">文件名</p>
               <p className="font-medium">{new Date().toISOString().split('T')[0]}_{filename || '天猫激励数据导出'}.xlsx</p>
             </div>
-            
+
             <div className="p-4 bg-muted/50 rounded-lg">
               <p className="text-sm text-muted-foreground mb-2">包含工作表</p>
               <div className="space-y-1">
@@ -191,7 +207,7 @@ export default function ExportPage() {
                 )}
               </div>
             </div>
-            
+
             <div className="p-4 bg-muted/50 rounded-lg">
               <p className="text-sm text-muted-foreground mb-2">导出说明</p>
               <ul className="text-xs text-muted-foreground space-y-1">
@@ -202,7 +218,7 @@ export default function ExportPage() {
                 <li>• 布尔值转换为"是/否"</li>
               </ul>
             </div>
-            
+
             <button
               onClick={handleExport}
               disabled={exporting || !Object.values(selectedSheets).some(v => v)}

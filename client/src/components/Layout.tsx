@@ -18,6 +18,7 @@ import {
   X,
   Settings as SettingsIcon,
   AlertTriangle,
+  TrendingDown,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,6 +36,7 @@ const navigation = [
   { name: '佣金分析', href: '/commissions', icon: DollarSign },
   { name: '操作日志', href: '/logs', icon: FileText },
   { name: '异常预警', href: '/anomalies', icon: AlertTriangle },
+  { name: '回头客立减', href: '/repeat-discounts', icon: TrendingDown },
   { name: '数据导出', href: '/export', icon: Download },
 ];
 
