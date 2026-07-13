@@ -2,6 +2,70 @@ import prisma from '../utils/db';
 import { getAIConfig } from './systemSettingService';
 
 // ──────────────────────────────────────
+// 保存分析结果到数据库
+// ──────────────────────────────────────
+async function saveAnalysis(
+  type: 'daily' | 'overall',
+  scopeKey: string,
+  sections: { title: string; content: string }[],
+  source: 'ai' | 'local',
+  model: string | null,
+  rawText: string | null,
+  recordId?: string,
+) {
+  return prisma.repeatDiscountAnalysis.upsert({
+    where: { scopeKey },
+    create: {
+      type,
+      recordId: recordId || null,
+      scopeKey,
+      sections: JSON.stringify(sections),
+      source,
+      model: model || null,
+      rawText: rawText || null,
+    },
+    update: {
+      sections: JSON.stringify(sections),
+      source,
+      model: model || null,
+      rawText: rawText || null,
+    },
+  });
+}
+
+// ──────────────────────────────────────
+// 读取已保存的分析结果
+// ──────────────────────────────────────
+export async function getSavedDailyAnalysis(recordId: string) {
+  const saved = await prisma.repeatDiscountAnalysis.findUnique({
+    where: { scopeKey: recordId },
+  });
+  if (!saved) return null;
+  return {
+    sections: JSON.parse(saved.sections),
+    source: saved.source as 'ai' | 'local',
+    model: saved.model || '',
+    rawText: saved.rawText || '',
+    updatedAt: saved.updatedAt,
+  };
+}
+
+export async function getSavedOverallAnalysis(startDate?: string, endDate?: string) {
+  const scopeKey = `${startDate || 'all'}_${endDate || 'all'}`;
+  const saved = await prisma.repeatDiscountAnalysis.findUnique({
+    where: { scopeKey },
+  });
+  if (!saved) return null;
+  return {
+    sections: JSON.parse(saved.sections),
+    source: saved.source as 'ai' | 'local',
+    model: saved.model || '',
+    rawText: saved.rawText || '',
+    updatedAt: saved.updatedAt,
+  };
+}
+
+// ──────────────────────────────────────
 // 构建 Prompt
 // ──────────────────────────────────────
 function buildPrompt(data: any, prevData: any) {
@@ -347,6 +411,10 @@ export async function generateOverallAIAnalysis(startDate?: string, endDate?: st
 
   const config = await getAIConfig();
 
+  // 保存到数据库
+  const scopeKey = `${startDate || 'all'}_${endDate || 'all'}`;
+  await saveAnalysis('overall', scopeKey, sections, 'ai', config.model || null, rawAnalysis);
+
   return {
     days: records.length,
     summary,
@@ -376,6 +444,9 @@ export async function generateAIAnalysis(recordId: string) {
   const sections = parseAnalysis(rawAnalysis);
 
   const config = await getAIConfig();
+
+  // 保存到数据库
+  await saveAnalysis('daily', recordId, sections, 'ai', config.model || null, rawAnalysis, recordId);
 
   return {
     recordDate: record.recordDate,

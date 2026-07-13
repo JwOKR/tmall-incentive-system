@@ -148,6 +148,9 @@ export const repeatDiscountApi = {
   aiAnalysis: (recordId: string) => api.post('/repeat-discounts/ai-analysis', { recordId }, { timeout: 60000 }),
   aiAnalysisOverall: (startDate?: string, endDate?: string) =>
     api.post('/repeat-discounts/ai-analysis-overall', { startDate, endDate }, { timeout: 90000 }),
+  getSavedAnalysis: (recordId: string) => api.get(`/repeat-discounts/ai-analysis/${recordId}`),
+  getSavedOverallAnalysis: (startDate?: string, endDate?: string) =>
+    api.get('/repeat-discounts/ai-analysis-overall', { params: { startDate, endDate } }),
 };
 
 export default api;

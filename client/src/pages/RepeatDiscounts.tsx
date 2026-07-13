@@ -161,20 +161,63 @@ export default function RepeatDiscounts() {
   const [overallAiSource, setOverallAiSource] = useState<'ai' | 'local' | null>(null);
   const [overallAiModel, setOverallAiModel] = useState('');
 
-  // 切换日期时重置AI分析状态
+  // 切换日期时从后端加载已保存的AI分析
   useEffect(() => {
-    setAiSections(null);
-    setAiSource(null);
-    setAiModel('');
+    if (!previewRecord?.id) {
+      setAiSections(null);
+      setAiSource(null);
+      setAiModel('');
+      setAiError('');
+      return;
+    }
+    let cancelled = false;
     setAiError('');
-  }, [previewDate]);
+    repeatDiscountApi.getSavedAnalysis(previewRecord.id).then((res: any) => {
+      if (cancelled) return;
+      const data = res?.data?.data;
+      if (data) {
+        setAiSections(data.sections);
+        setAiSource(data.source);
+        setAiModel(data.model || '');
+      } else {
+        setAiSections(null);
+        setAiSource(null);
+        setAiModel('');
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setAiSections(null);
+        setAiSource(null);
+        setAiModel('');
+      }
+    });
+    return () => { cancelled = true; };
+  }, [previewRecord?.id]);
 
-  // 筛选日期变化时重置总体分析
+  // 筛选日期变化时从后端加载已保存的总体分析
   useEffect(() => {
-    setOverallAiSections(null);
-    setOverallAiSource(null);
-    setOverallAiModel('');
+    let cancelled = false;
     setOverallAiError('');
+    repeatDiscountApi.getSavedOverallAnalysis(startDate || undefined, endDate || undefined).then((res: any) => {
+      if (cancelled) return;
+      const data = res?.data?.data;
+      if (data) {
+        setOverallAiSections(data.sections);
+        setOverallAiSource(data.source);
+        setOverallAiModel(data.model || '');
+      } else {
+        setOverallAiSections(null);
+        setOverallAiSource(null);
+        setOverallAiModel('');
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setOverallAiSections(null);
+        setOverallAiSource(null);
+        setOverallAiModel('');
+      }
+    });
+    return () => { cancelled = true; };
   }, [startDate, endDate]);
 
   // ─── Queries ─────────────────────────────────────────────────────────────

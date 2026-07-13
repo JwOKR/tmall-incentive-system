@@ -7,9 +7,46 @@ import {
   update,
   remove,
 } from '../controllers/repeatDiscountController';
-import { generateAIAnalysis, generateOverallAIAnalysis } from '../services/aiAnalysisService';
+import {
+  generateAIAnalysis,
+  generateOverallAIAnalysis,
+  getSavedDailyAnalysis,
+  getSavedOverallAnalysis,
+} from '../services/aiAnalysisService';
 
 const router = Router();
+
+// 读取已保存的总体AI分析（必须在 /:id 之前）
+router.get('/ai-analysis-overall', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query as any;
+    const result = await getSavedOverallAnalysis(startDate, endDate);
+    if (result) {
+      res.json({ success: true, data: result });
+    } else {
+      res.json({ success: true, data: null });
+    }
+  } catch (error: any) {
+    console.error('Get saved overall analysis error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// 读取已保存的单日AI分析（必须在 /:id 之前）
+router.get('/ai-analysis/:recordId', async (req, res) => {
+  try {
+    const { recordId } = req.params;
+    const result = await getSavedDailyAnalysis(recordId);
+    if (result) {
+      res.json({ success: true, data: result });
+    } else {
+      res.json({ success: true, data: null });
+    }
+  } catch (error: any) {
+    console.error('Get saved analysis error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 // 总体AI分析（必须在 /:id 之前）
 router.post('/ai-analysis-overall', async (req, res) => {
