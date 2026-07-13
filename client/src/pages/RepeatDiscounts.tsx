@@ -53,7 +53,7 @@ const calcTotals = (r: RecordItem) => ({
   roi: calcRoi(r.g1.grantAmount + r.g2.grantAmount, r.g1.paymentAmount + r.g2.paymentAmount),
 });
 
-const fmt = (v: number) => v.toFixed(2);
+const fmt = (v: number) => Number(v.toFixed(2)) % 1 === 0 ? Math.round(v).toString() : v.toFixed(2);
 const fmtInt = (v: number) => Math.round(v).toString();
 
 const TABS = [
