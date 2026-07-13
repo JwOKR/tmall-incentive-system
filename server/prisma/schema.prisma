@@ -127,14 +127,23 @@ model Log {
   @@map("logs")
 }
 
-// 回头客立减（每天一条）
+// 回头客立减（每天一条，两组人群）
 model RepeatDiscount {
   id              String   @id @default(cuid())
   recordDate      DateTime @unique // 记录日期（每天唯一）
-  grantAmount     Float    @default(0) // 发放金额（元）
-  paymentAmount   Float    @default(0) // 支付金额（元）
-  paymentBuyers   Int      @default(0) // 支付买家数（人）
-  paymentItems    Int      @default(0) // 支付件数（件）
+
+  // 近2年已购用户人群
+  g1GrantAmount   Float    @default(0) // 发放金额（元）
+  g1PaymentAmount Float    @default(0) // 支付金额（元）
+  g1PaymentBuyers Int      @default(0) // 支付买家数（人）
+  g1PaymentItems  Int      @default(0) // 支付件数（件）
+
+  // 365天内有购买且60天无购买人群
+  g2GrantAmount   Float    @default(0) // 发放金额（元）
+  g2PaymentAmount Float    @default(0) // 支付金额（元）
+  g2PaymentBuyers Int      @default(0) // 支付买家数（人）
+  g2PaymentItems  Int      @default(0) // 支付件数（件）
+
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
