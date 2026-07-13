@@ -19,6 +19,7 @@ import {
   Settings as SettingsIcon,
   AlertTriangle,
   TrendingDown,
+  Home,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,8 +28,9 @@ interface LayoutProps {
   children: ReactNode;
 }
 
-const navigation = [
-  { name: '数据汇总', href: '/', icon: LayoutDashboard },
+// 激励登记模块导航
+const incentiveNav = [
+  { name: '数据汇总', href: '/dashboard', icon: LayoutDashboard },
   { name: '接单人', href: '/takers', icon: Users },
   { name: '任务', href: '/tasks', icon: ClipboardList },
   { name: '订单明细', href: '/orders', icon: ShoppingCart },
@@ -36,8 +38,12 @@ const navigation = [
   { name: '佣金分析', href: '/commissions', icon: DollarSign },
   { name: '操作日志', href: '/logs', icon: FileText },
   { name: '异常预警', href: '/anomalies', icon: AlertTriangle },
-  { name: '回头客立减', href: '/repeat-discounts', icon: TrendingDown },
   { name: '数据导出', href: '/export', icon: Download },
+];
+
+// 回头客立减模块导航
+const discountNav = [
+  { name: '数据录入', href: '/repeat-discounts', icon: TrendingDown },
 ];
 
 export default function Layout({ children }: LayoutProps) {
@@ -54,6 +60,8 @@ export default function Layout({ children }: LayoutProps) {
 
   const closeSidebar = () => setSidebarOpen(false);
 
+  const isActive = (href: string) => location.pathname === href;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile overlay */}
@@ -68,12 +76,12 @@ export default function Layout({ children }: LayoutProps) {
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r flex flex-col transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Brand */}
         <div className="flex h-16 items-center justify-between px-6 border-b">
-          <div className="flex items-center gap-2.5">
+          <Link to="/" onClick={closeSidebar} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 shadow-sm">
               <Sparkles className="h-4 w-4 text-primary-foreground" />
             </div>
             <h1 className="text-lg font-bold tracking-tight">天猫激励系统</h1>
-          </div>
+          </Link>
           <div className="flex items-center gap-1">
             <button
               onClick={toggleTheme}
@@ -90,26 +98,70 @@ export default function Layout({ children }: LayoutProps) {
             </button>
           </div>
         </div>
-        
+
         {/* Navigation */}
-        <nav className="p-3 space-y-0.5 flex-1">
-          {navigation.map((item) => {
-            const isActive = location.pathname === item.href;
+        <nav className="p-3 space-y-0.5 flex-1 overflow-y-auto">
+          {/* 首页 */}
+          <Link
+            to="/"
+            onClick={closeSidebar}
+            className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              location.pathname === '/'
+                ? 'bg-primary text-primary-foreground shadow-sm'
+                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+            }`}
+          >
+            <Home className="h-5 w-5" />
+            首页
+          </Link>
+
+          {/* ── 激励登记 ── */}
+          <div className="pt-3 pb-1 px-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">激励登记</span>
+          </div>
+          {incentiveNav.map((item) => {
+            const active = isActive(item.href);
             return (
               <Link
                 key={item.name}
                 to={item.href}
                 onClick={closeSidebar}
                 className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  isActive
+                  active
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 }`}
               >
-                {isActive && (
+                {active && (
                   <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80" />
                 )}
-                <item.icon className={`h-5 w-5 transition-transform ${isActive ? '' : 'group-hover:scale-110'}`} />
+                <item.icon className={`h-5 w-5 transition-transform ${active ? '' : 'group-hover:scale-110'}`} />
+                {item.name}
+              </Link>
+            );
+          })}
+
+          {/* ── 回头客立减 ── */}
+          <div className="pt-3 pb-1 px-3">
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">回头客立减</span>
+          </div>
+          {discountNav.map((item) => {
+            const active = isActive(item.href);
+            return (
+              <Link
+                key={item.name}
+                to={item.href}
+                onClick={closeSidebar}
+                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                  active
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
+                }`}
+              >
+                {active && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80" />
+                )}
+                <item.icon className={`h-5 w-5 transition-transform ${active ? '' : 'group-hover:scale-110'}`} />
                 {item.name}
               </Link>
             );

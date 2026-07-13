@@ -10,6 +10,7 @@ import Layout from './components/Layout';
 import { Loader2 } from 'lucide-react';
 
 // 路由懒加载
+const Landing = lazy(() => import('./pages/Landing'));
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const Takers = lazy(() => import('./pages/Takers'));
 const Tasks = lazy(() => import('./pages/Tasks'));
@@ -74,6 +75,14 @@ function AppRoutes() {
         />
         <Route
           path="/"
+          element={
+            <ProtectedLayout>
+              <Landing />
+            </ProtectedLayout>
+          }
+        />
+        <Route
+          path="/dashboard"
           element={
             <ProtectedLayout>
               <Dashboard />
