@@ -53,8 +53,8 @@ const calcTotals = (r: RecordItem) => ({
   roi: calcRoi(r.g1.grantAmount + r.g2.grantAmount, r.g1.paymentAmount + r.g2.paymentAmount),
 });
 
-const fmt = (v: number) => v.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmtInt = (v: number) => v.toLocaleString('zh-CN');
+const fmt = (v: number) => v.toFixed(2);
+const fmtInt = (v: number) => Math.round(v).toString();
 
 const TABS = [
   { key: 'entry', label: '登记数据', icon: Clipboard },
@@ -433,7 +433,7 @@ export default function RepeatDiscounts() {
     return [
       {
         title: '整体概况',
-        content: `统计周期内共 ${days} 天数据，累计发放 ¥${fmt(summary.totalGrantAmount)}，累计支付 ¥${fmt(summary.totalPaymentAmount)}，综合 ROI ${fmtR(summary.totalROI)}。日均发放 ¥${fmt(avgDailyGrant)}，日均支付 ¥${fmt(avgDailyPay)}，日均买家 ${fmtInt(Math.round(avgBuyers))} 人。${summary.totalROI >= 3 ? '整体投放效率优秀，投入产出比高。' : summary.totalROI >= 1 ? '整体投放效率尚可，仍有优化空间。' : 'ROI 偏低，需调整投放策略。'}`
+        content: `统计周期内共 ${days} 天数据，累计发放 ${fmt(summary.totalGrantAmount)}，累计支付 ${fmt(summary.totalPaymentAmount)}，综合 ROI ${fmtR(summary.totalROI)}。日均发放 ${fmt(avgDailyGrant)}，日均支付 ${fmt(avgDailyPay)}，日均买家 ${fmtInt(Math.round(avgBuyers))} 人。${summary.totalROI >= 3 ? '整体投放效率优秀，投入产出比高。' : summary.totalROI >= 1 ? '整体投放效率尚可，仍有优化空间。' : 'ROI 偏低，需调整投放策略。'}`
       },
       {
         title: '趋势分析',
@@ -441,11 +441,11 @@ export default function RepeatDiscounts() {
       },
       {
         title: '人群效率对比',
-        content: `近2年已购用户人群：累计发放 ¥${fmt(summary.g1GrantAmount)}，累计支付 ¥${fmt(summary.g1PaymentAmount)}，ROI ${fmtR(summary.g1ROI)}，买家 ${fmtInt(summary.g1PaymentBuyers)} 人。365天内有购买且60天无购买人群：累计发放 ¥${fmt(summary.g2GrantAmount)}，累计支付 ¥${fmt(summary.g2PaymentAmount)}，ROI ${fmtR(summary.g2ROI)}，买家 ${fmtInt(summary.g2PaymentBuyers)} 人。${summary.g1ROI > summary.g2ROI ? '近2年已购用户人群转化效率更高，建议加大该人群投放预算。' : summary.g2ROI > summary.g1ROI ? '沉睡用户唤醒效果更佳，值得深入挖掘该人群潜力。' : '两个人群效率接近，建议A/B测试寻找更优策略。'}`
+        content: `近2年已购用户人群：累计发放 ${fmt(summary.g1GrantAmount)}，累计支付 ${fmt(summary.g1PaymentAmount)}，ROI ${fmtR(summary.g1ROI)}，买家 ${fmtInt(summary.g1PaymentBuyers)} 人。365天内有购买且60天无购买人群：累计发放 ${fmt(summary.g2GrantAmount)}，累计支付 ${fmt(summary.g2PaymentAmount)}，ROI ${fmtR(summary.g2ROI)}，买家 ${fmtInt(summary.g2PaymentBuyers)} 人。${summary.g1ROI > summary.g2ROI ? '近2年已购用户人群转化效率更高，建议加大该人群投放预算。' : summary.g2ROI > summary.g1ROI ? '沉睡用户唤醒效果更佳，值得深入挖掘该人群潜力。' : '两个人群效率接近，建议A/B测试寻找更优策略。'}`
       },
       {
         title: '成本效率分析',
-        content: `人均获取成本 ¥${fmt(perBuyerCost)}，件均支付金额 ¥${fmt(perItemPay)}。${perBuyerCost < 10 ? '单客获取成本较低，效率可观。' : perBuyerCost < 30 ? '单客成本处于中等水平。' : '单客成本偏高，建议优化优惠策略。'}日均支付买家 ${fmtInt(Math.round(avgBuyers))} 人，${avgBuyers > 30 ? '人群覆盖面广。' : '人群覆盖面有限，可考虑扩展人群范围。'}`
+        content: `人均获取成本 ${fmt(perBuyerCost)}，件均支付金额 ${fmt(perItemPay)}。${perBuyerCost < 10 ? '单客获取成本较低，效率可观。' : perBuyerCost < 30 ? '单客成本处于中等水平。' : '单客成本偏高，建议优化优惠策略。'}日均支付买家 ${fmtInt(Math.round(avgBuyers))} 人，${avgBuyers > 30 ? '人群覆盖面广。' : '人群覆盖面有限，可考虑扩展人群范围。'}`
       },
       {
         title: '策略优化建议',
@@ -685,12 +685,12 @@ export default function RepeatDiscounts() {
       <div className="glass-card rounded-2xl p-5 animate-fade-up flex items-center gap-8 flex-wrap" style={{ animationDelay: '100ms' }}>
         <div className="flex items-center gap-2.5">
           <div className="text-xs font-medium text-muted-foreground">合计发放</div>
-          <span className="text-lg font-bold text-red-600 dark:text-red-400 tabular-nums">¥{fmt((parseFloat(form.g1.grantAmount) || 0) + (parseFloat(form.g2.grantAmount) || 0))}</span>
+          <span className="text-lg font-bold text-red-600 dark:text-red-400 tabular-nums">{fmt((parseFloat(form.g1.grantAmount) || 0) + (parseFloat(form.g2.grantAmount) || 0))}</span>
         </div>
         <div className="w-px h-8 bg-border" />
         <div className="flex items-center gap-2.5">
           <div className="text-xs font-medium text-muted-foreground">合计支付</div>
-          <span className="text-lg font-bold text-green-600 dark:text-green-400 tabular-nums">¥{fmt((parseFloat(form.g1.paymentAmount) || 0) + (parseFloat(form.g2.paymentAmount) || 0))}</span>
+          <span className="text-lg font-bold text-green-600 dark:text-green-400 tabular-nums">{fmt((parseFloat(form.g1.paymentAmount) || 0) + (parseFloat(form.g2.paymentAmount) || 0))}</span>
         </div>
         <div className="w-px h-8 bg-border" />
         <div className="flex items-center gap-2.5">
@@ -755,8 +755,8 @@ export default function RepeatDiscounts() {
               sub={latestDay && prevDay ? <TrendArrow current={calcTotals(latestDay).roi} previous={calcTotals(prevDay).roi} /> : undefined}
             />
             <StatCard icon={TrendingUp} label="平均ROI" value={summary.avgRoi?.toFixed(2) || '-'} accent="orange" delay={120} />
-            <StatCard icon={Package} label="累计支付" value={<span className="text-green-600 dark:text-green-400">¥{fmt(summary.totalPaymentAmount || 0)}</span>} accent="green" delay={180} />
-            <StatCard icon={BarChart3} label="单日最高支付" value={<span>¥{fmt(summary.maxDailyPayment || 0)}</span>} accent="purple" delay={240} />
+            <StatCard icon={Package} label="累计支付" value={<span className="text-green-600 dark:text-green-400">{fmt(summary.totalPaymentAmount || 0)}</span>} accent="green" delay={180} />
+            <StatCard icon={BarChart3} label="单日最高支付" value={<span>{fmt(summary.maxDailyPayment || 0)}</span>} accent="purple" delay={240} />
           </div>
         )}
 
@@ -827,8 +827,8 @@ export default function RepeatDiscounts() {
                 {s && (
                   <div className="px-6 py-4 border-b border-border/50 grid grid-cols-2 lg:grid-cols-4 gap-3">
                     {[
-                      { label: '累计发放', value: `¥${fmt(s.totalGrantAmount || 0)}`, color: 'text-red-600 dark:text-red-400' },
-                      { label: '累计支付', value: `¥${fmt(s.totalPaymentAmount || 0)}`, color: 'text-green-600 dark:text-green-400' },
+                      { label: '累计发放', value: `${fmt(s.totalGrantAmount || 0)}`, color: 'text-red-600 dark:text-red-400' },
+                      { label: '累计支付', value: `${fmt(s.totalPaymentAmount || 0)}`, color: 'text-green-600 dark:text-green-400' },
                       { label: '累计买家', value: `${fmtInt(s.totalPaymentBuyers || 0)} 人`, color: '' },
                       { label: '累计件数', value: `${fmtInt(s.totalPaymentItems || 0)} 件`, color: '' },
                     ].map(({ label, value, color }) => (
@@ -894,14 +894,14 @@ export default function RepeatDiscounts() {
                         <td className="px-4 py-3.5 font-medium whitespace-nowrap">
                           <div className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-muted-foreground" />{formatDate(item.recordDate)}</div>
                         </td>
-                        <td className="px-4 py-3.5 text-right text-red-600 dark:text-red-400 tabular-nums">¥{fmt(item.g1.grantAmount)}</td>
-                        <td className="px-4 py-3.5 text-right text-green-600 dark:text-green-400 tabular-nums">¥{fmt(item.g1.paymentAmount)}</td>
+                        <td className="px-4 py-3.5 text-right text-red-600 dark:text-red-400 tabular-nums">{fmt(item.g1.grantAmount)}</td>
+                        <td className="px-4 py-3.5 text-right text-green-600 dark:text-green-400 tabular-nums">{fmt(item.g1.paymentAmount)}</td>
                         <td className="px-4 py-3.5 text-right font-medium tabular-nums">{item.g1.grantAmount > 0 ? (item.g1.paymentAmount / item.g1.grantAmount).toFixed(2) : '-'}</td>
-                        <td className="px-4 py-3.5 text-right text-red-600 dark:text-red-400 tabular-nums">¥{fmt(item.g2.grantAmount)}</td>
-                        <td className="px-4 py-3.5 text-right text-green-600 dark:text-green-400 tabular-nums">¥{fmt(item.g2.paymentAmount)}</td>
+                        <td className="px-4 py-3.5 text-right text-red-600 dark:text-red-400 tabular-nums">{fmt(item.g2.grantAmount)}</td>
+                        <td className="px-4 py-3.5 text-right text-green-600 dark:text-green-400 tabular-nums">{fmt(item.g2.paymentAmount)}</td>
                         <td className="px-4 py-3.5 text-right font-medium tabular-nums">{item.g2.grantAmount > 0 ? (item.g2.paymentAmount / item.g2.grantAmount).toFixed(2) : '-'}</td>
-                        <td className="px-4 py-3.5 text-right text-red-700 dark:text-red-300 font-semibold tabular-nums">¥{fmt(totals.grant)}</td>
-                        <td className="px-4 py-3.5 text-right text-green-700 dark:text-green-300 font-semibold tabular-nums">¥{fmt(totals.pay)}</td>
+                        <td className="px-4 py-3.5 text-right text-red-700 dark:text-red-300 font-semibold tabular-nums">{fmt(totals.grant)}</td>
+                        <td className="px-4 py-3.5 text-right text-green-700 dark:text-green-300 font-semibold tabular-nums">{fmt(totals.pay)}</td>
                         <td className="px-4 py-3.5 text-right">
                           <span className={`inline-flex items-center justify-center rounded-lg px-2 py-0.5 text-xs font-bold tabular-nums ${
                             totals.roi >= 3 ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
@@ -1051,15 +1051,15 @@ export default function RepeatDiscounts() {
       const g1R = rec.g1.grantAmount > 0 ? rec.g1.paymentAmount / rec.g1.grantAmount : 0;
       const g2R = rec.g2.grantAmount > 0 ? rec.g2.paymentAmount / rec.g2.grantAmount : 0;
       const sections = [
-        { title: '综合评估', content: `当日回头客立减活动共投入 ¥${fmt(t.grant)}，带来 ¥${fmt(t.pay)} 支付，综合ROI ${fmtR(t.roi)}。${t.roi >= 3 ? '整体投放效率良好，建议维持当前策略。' : t.roi >= 1 ? '投放效率尚可，建议优化人群定向以提升ROI。' : 'ROI偏低，建议调整优惠力度或筛选更精准的人群。'}` },
-        { title: '人群效率分析', content: `近2年已购用户人群：发放 ¥${fmt(rec.g1.grantAmount)}，支付 ¥${fmt(rec.g1.paymentAmount)}，ROI ${fmtR(g1R)}，覆盖 ${fmtInt(rec.g1.paymentBuyers)} 位买家。365天内有购买且60天无购买人群：发放 ¥${fmt(rec.g2.grantAmount)}，支付 ¥${fmt(rec.g2.paymentAmount)}，ROI ${fmtR(g2R)}，覆盖 ${fmtInt(rec.g2.paymentBuyers)} 位买家。${g1R > g2R ? '老客人群转化效率更高，建议加大该人群投放。' : g2R > g1R ? '沉睡用户唤醒效果更佳，值得深入挖掘该人群潜力。' : '两个人群效率接近，建议A/B测试寻找更优策略。'}` },
+        { title: '综合评估', content: `当日回头客立减活动共投入 ${fmt(t.grant)}，带来 ${fmt(t.pay)} 支付，综合ROI ${fmtR(t.roi)}。${t.roi >= 3 ? '整体投放效率良好，建议维持当前策略。' : t.roi >= 1 ? '投放效率尚可，建议优化人群定向以提升ROI。' : 'ROI偏低，建议调整优惠力度或筛选更精准的人群。'}` },
+        { title: '人群效率分析', content: `近2年已购用户人群：发放 ${fmt(rec.g1.grantAmount)}，支付 ${fmt(rec.g1.paymentAmount)}，ROI ${fmtR(g1R)}，覆盖 ${fmtInt(rec.g1.paymentBuyers)} 位买家。365天内有购买且60天无购买人群：发放 ${fmt(rec.g2.grantAmount)}，支付 ${fmt(rec.g2.paymentAmount)}，ROI ${fmtR(g2R)}，覆盖 ${fmtInt(rec.g2.paymentBuyers)} 位买家。${g1R > g2R ? '老客人群转化效率更高，建议加大该人群投放。' : g2R > g1R ? '沉睡用户唤醒效果更佳，值得深入挖掘该人群潜力。' : '两个人群效率接近，建议A/B测试寻找更优策略。'}` },
         { title: '趋势分析', content: prev ? (() => {
           const pt = calcTotals(prev);
           const roiChange = pt.roi > 0 ? ((t.roi - pt.roi) / pt.roi * 100).toFixed(1) : 'N/A';
           const payChange = pt.pay > 0 ? ((t.pay - pt.pay) / pt.pay * 100).toFixed(1) : 'N/A';
           return `与前日相比，ROI ${roiChange === 'N/A' ? '无法比较' : (parseFloat(roiChange) >= 0 ? `提升 ${roiChange}%` : `下降 ${Math.abs(parseFloat(roiChange))}%`)}，支付金额${payChange === 'N/A' ? '无法比较' : (parseFloat(payChange) >= 0 ? `增长 ${payChange}%` : `下降 ${Math.abs(parseFloat(payChange))}%`)}`;
         })() : '首次记录，暂无趋势数据可比。' },
-        { title: '成本效率', content: `人均发放金额：¥${(t.grant / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1)).toFixed(2)}；人均支付金额：¥${(t.pay / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1)).toFixed(2)}；件均支付金额：¥${(t.pay / (rec.g1.paymentItems + rec.g2.paymentItems || 1)).toFixed(2)}。${t.grant / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1) < 10 ? '单客获取成本较低，效率可观。' : '单客成本偏高，建议优化优惠策略。'}` },
+        { title: '成本效率', content: `人均发放金额：${(t.grant / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1)).toFixed(2)}；人均支付金额：${(t.pay / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1)).toFixed(2)}；件均支付金额：${(t.pay / (rec.g1.paymentItems + rec.g2.paymentItems || 1)).toFixed(2)}。${t.grant / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1) < 10 ? '单客获取成本较低，效率可观。' : '单客成本偏高，建议优化优惠策略。'}` },
         { title: '策略建议', content: t.roi < 2 ? '建议：1) 缩小发放范围至高价值用户；2) 降低优惠力度或设置满减门槛；3) 优化人群标签精准度。' : '建议：1) 维持当前投放策略；2) 可适当扩展人群覆盖；3) 关注复购率变化，持续优化。' },
         { title: '风险提示', content: `${t.roi < 1 ? '当前ROI低于1，存在亏损风险，需立即调整策略。' : ''}${g2R < 1 ? '365天内有购买且60天无购买人群ROI偏低，该人群可能已流失，建议降低投放。' : ''}关注竞品动态及平台规则变化对活动效果的影响。` },
       ];
@@ -1195,8 +1195,8 @@ export default function RepeatDiscounts() {
                           <h3 className="text-sm font-bold">{label}</h3>
                         </div>
                         <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div className="kpi bg-red-500/5 dark:bg-red-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">发放金额</div><div className="value text-lg font-bold text-red-600 dark:text-red-400">¥{fmt(g.grantAmount)}</div></div>
-                          <div className="kpi bg-green-500/5 dark:bg-green-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付金额</div><div className="value text-lg font-bold text-green-600 dark:text-green-400">¥{fmt(g.paymentAmount)}</div></div>
+                          <div className="kpi bg-red-500/5 dark:bg-red-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">发放金额</div><div className="value text-lg font-bold text-red-600 dark:text-red-400">{fmt(g.grantAmount)}</div></div>
+                          <div className="kpi bg-green-500/5 dark:bg-green-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付金额</div><div className="value text-lg font-bold text-green-600 dark:text-green-400">{fmt(g.paymentAmount)}</div></div>
                           <div className="kpi bg-muted/30 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付买家数</div><div className="value text-lg font-bold">{fmtInt(g.paymentBuyers)}人</div></div>
                           <div className="kpi bg-muted/30 rounded-xl p-3">
                             <div className="label text-xs text-muted-foreground">ROI</div>
@@ -1219,24 +1219,24 @@ export default function RepeatDiscounts() {
                       <th className="text-left px-4 py-3 font-semibold text-muted-foreground">人群</th>
                       <th className="text-center px-4 py-3 font-semibold text-muted-foreground">发放金额</th>
                       <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付金额</th>
-                      <th className="text-center px-4 py-3 font-semibold text-muted-foreground">ROI</th>
                       <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付买家数</th>
                       <th className="text-center px-4 py-3 font-semibold text-muted-foreground">支付件数</th>
+                      <th className="text-center px-4 py-3 font-semibold text-red-600 dark:text-red-400">ROI</th>
                     </tr>
                   </thead>
                   <tbody>
                     {[
-                      { label: '近2年已购用户人群', grant: `¥${fmt(rec.g1.grantAmount)}`, pay: `¥${fmt(rec.g1.paymentAmount)}`, roi: rec.g1.grantAmount > 0 ? fmtR(rec.g1.paymentAmount / rec.g1.grantAmount) : '-', buyers: fmtInt(rec.g1.paymentBuyers), items: fmtInt(rec.g1.paymentItems) },
-                      { label: '365天内有购买且60天无购买人群', grant: `¥${fmt(rec.g2.grantAmount)}`, pay: `¥${fmt(rec.g2.paymentAmount)}`, roi: rec.g2.grantAmount > 0 ? fmtR(rec.g2.paymentAmount / rec.g2.grantAmount) : '-', buyers: fmtInt(rec.g2.paymentBuyers), items: fmtInt(rec.g2.paymentItems) },
-                      { label: '合计', grant: `¥${fmt(t.grant)}`, pay: `¥${fmt(t.pay)}`, roi: fmtR(t.roi), buyers: fmtInt(rec.g1.paymentBuyers + rec.g2.paymentBuyers), items: fmtInt(rec.g1.paymentItems + rec.g2.paymentItems), bold: true },
+                      { label: '近2年已购用户人群', grant: `${fmt(rec.g1.grantAmount)}`, pay: `${fmt(rec.g1.paymentAmount)}`, buyers: fmtInt(rec.g1.paymentBuyers), items: fmtInt(rec.g1.paymentItems), roi: rec.g1.grantAmount > 0 ? fmtR(rec.g1.paymentAmount / rec.g1.grantAmount) : '-' },
+                      { label: '365天内有购买且60天无购买人群', grant: `${fmt(rec.g2.grantAmount)}`, pay: `${fmt(rec.g2.paymentAmount)}`, buyers: fmtInt(rec.g2.paymentBuyers), items: fmtInt(rec.g2.paymentItems), roi: rec.g2.grantAmount > 0 ? fmtR(rec.g2.paymentAmount / rec.g2.grantAmount) : '-' },
+                      { label: '合计', grant: `${fmt(t.grant)}`, pay: `${fmt(t.pay)}`, buyers: fmtInt(rec.g1.paymentBuyers + rec.g2.paymentBuyers), items: fmtInt(rec.g1.paymentItems + rec.g2.paymentItems), roi: fmtR(t.roi), bold: true },
                     ].map((row, i) => (
                       <tr key={i} className="border-b last:border-0 hover:bg-red-500/5 transition-colors">
                         <td className={`px-4 py-3 text-left ${row.bold ? 'font-bold' : 'font-medium'}`}>{row.label}</td>
                         <td className={`px-4 py-3 text-center tabular-nums text-red-600 dark:text-red-400 ${row.bold ? 'font-bold text-red-700 dark:text-red-300' : ''}`}>{row.grant}</td>
                         <td className={`px-4 py-3 text-center tabular-nums text-green-600 dark:text-green-400 ${row.bold ? 'font-bold text-green-700 dark:text-green-300' : ''}`}>{row.pay}</td>
-                        <td className={`px-4 py-3 text-center tabular-nums ${row.bold ? 'font-bold' : ''}`}>{row.roi}</td>
                         <td className={`px-4 py-3 text-center tabular-nums ${row.bold ? 'font-bold' : ''}`}>{row.buyers}</td>
                         <td className={`px-4 py-3 text-center tabular-nums ${row.bold ? 'font-bold' : ''}`}>{row.items}</td>
+                        <td className={`px-4 py-3 text-center tabular-nums font-bold text-red-600 dark:text-red-400`}>{row.roi}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1263,8 +1263,8 @@ export default function RepeatDiscounts() {
                           return (
                             <tr key={r.id} className={`border-b last:border-0 ${r.id === rec.id ? 'bg-red-500/10 dark:bg-red-500/15 font-semibold' : ''}`}>
                               <td className="px-4 py-3 text-left">{r.recordDate.slice(0, 10)}</td>
-                              <td className="px-4 py-3 text-center tabular-nums">¥{fmt(rt.grant)}</td>
-                              <td className="px-4 py-3 text-center tabular-nums">¥{fmt(rt.pay)}</td>
+                              <td className="px-4 py-3 text-center tabular-nums">{fmt(rt.grant)}</td>
+                              <td className="px-4 py-3 text-center tabular-nums">{fmt(rt.pay)}</td>
                               <td className="px-4 py-3 text-center font-bold tabular-nums">{fmtR(rt.roi)}</td>
                             </tr>
                           );
