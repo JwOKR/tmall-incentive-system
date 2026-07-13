@@ -161,39 +161,6 @@ export default function RepeatDiscounts() {
   const [overallAiSource, setOverallAiSource] = useState<'ai' | 'local' | null>(null);
   const [overallAiModel, setOverallAiModel] = useState('');
 
-  // 切换日期时从后端加载已保存的AI分析
-  useEffect(() => {
-    if (!previewRecord?.id) {
-      setAiSections(null);
-      setAiSource(null);
-      setAiModel('');
-      setAiError('');
-      return;
-    }
-    let cancelled = false;
-    setAiError('');
-    repeatDiscountApi.getSavedAnalysis(previewRecord.id).then((res: any) => {
-      if (cancelled) return;
-      const data = res?.data?.data;
-      if (data) {
-        setAiSections(data.sections);
-        setAiSource(data.source);
-        setAiModel(data.model || '');
-      } else {
-        setAiSections(null);
-        setAiSource(null);
-        setAiModel('');
-      }
-    }).catch(() => {
-      if (!cancelled) {
-        setAiSections(null);
-        setAiSource(null);
-        setAiModel('');
-      }
-    });
-    return () => { cancelled = true; };
-  }, [previewRecord?.id]);
-
   // 筛选日期变化时从后端加载已保存的总体分析
   useEffect(() => {
     let cancelled = false;
@@ -322,6 +289,39 @@ export default function RepeatDiscounts() {
     const idx = allRecords.findIndex(r => r.id === previewRecord.id);
     return idx > 0 ? allRecords[idx - 1] : null;
   }, [previewRecord, allRecords]);
+
+  // 切换日期时从后端加载已保存的AI分析
+  useEffect(() => {
+    if (!previewRecord?.id) {
+      setAiSections(null);
+      setAiSource(null);
+      setAiModel('');
+      setAiError('');
+      return;
+    }
+    let cancelled = false;
+    setAiError('');
+    repeatDiscountApi.getSavedAnalysis(previewRecord.id).then((res: any) => {
+      if (cancelled) return;
+      const data = res?.data?.data;
+      if (data) {
+        setAiSections(data.sections);
+        setAiSource(data.source);
+        setAiModel(data.model || '');
+      } else {
+        setAiSections(null);
+        setAiSource(null);
+        setAiModel('');
+      }
+    }).catch(() => {
+      if (!cancelled) {
+        setAiSections(null);
+        setAiSource(null);
+        setAiModel('');
+      }
+    });
+    return () => { cancelled = true; };
+  }, [previewRecord?.id]);
 
   // ─── Handlers ────────────────────────────────────────────────────────────
 
