@@ -184,9 +184,13 @@ export async function generateAIAnalysis(recordId: string) {
   const rawAnalysis = await callAIApi(prompt);
   const sections = parseAnalysis(rawAnalysis);
 
+  const config = await getAIConfig();
+
   return {
     recordDate: record.recordDate,
     sections,
     rawText: rawAnalysis,
+    source: 'ai' as const,
+    model: config.model || 'unknown',
   };
 }

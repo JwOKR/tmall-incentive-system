@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { repeatDiscountApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import {
   Pencil, Trash2, TrendingUp, DollarSign, Package,
   Calendar, Loader2, Save, X, Clipboard, ArrowUp, ArrowDown, Minus,
-  BarChart3, FileText, Download, ChevronDown, Sparkles,
+  BarChart3, FileText, Download, ChevronDown, Sparkles, Cpu,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -151,6 +151,16 @@ export default function RepeatDiscounts() {
   const [aiSections, setAiSections] = useState<{ title: string; content: string }[] | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [aiSource, setAiSource] = useState<'ai' | 'local' | null>(null);
+  const [aiModel, setAiModel] = useState('');
+
+  // 切换日期时重置AI分析状态
+  useEffect(() => {
+    setAiSections(null);
+    setAiSource(null);
+    setAiModel('');
+    setAiError('');
+  }, [previewDate]);
 
   // ─── Queries ─────────────────────────────────────────────────────────────
 
@@ -817,11 +827,22 @@ export default function RepeatDiscounts() {
         const result = await repeatDiscountApi.aiAnalysis(rec.id) as any;
         if (result.success) {
           setAiSections(result.data.sections);
+          setAiSource('ai');
+          setAiModel(result.data.model || '');
         } else {
-          setAiError(result.message || 'AI分析失败');
+          setAiError(result.message || 'AI分析失败，使用本地规则引擎生成');
+          // 降级：使用本地规则引擎
+          setAiSections(genAiAnalysis());
+          setAiSource('local');
+          setAiModel('');
         }
       } catch (err: any) {
-        setAiError(err?.response?.data?.message || err.message || 'AI分析请求失败');
+        const msg = err?.response?.data?.message || err.message || 'AI分析请求失败';
+        setAiError(msg + '（已降级为本地规则引擎）');
+        // 降级：使用本地规则引擎
+        setAiSections(genAiAnalysis());
+        setAiSource('local');
+        setAiModel('');
       } finally {
         setAiLoading(false);
       }
@@ -861,9 +882,15 @@ export default function RepeatDiscounts() {
             <Download className="h-4 w-4" />下载HTML
           </button>
           <button onClick={handleAiAnalysis} disabled={!rec || aiLoading}
-            className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 disabled:opacity-50">
-            {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {aiLoading ? 'AI分析中...' : 'AI智能分析'}
+            className={`magnetic-btn inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-lg disabled:opacity-50 ${
+              aiSource === 'ai'
+                ? 'bg-gradient-to-r from-green-600 to-emerald-500 shadow-green-500/25 hover:shadow-green-500/40'
+                : aiSource === 'local'
+                ? 'bg-gradient-to-r from-slate-600 to-slate-500 shadow-slate-500/25 hover:shadow-slate-500/40'
+                : 'bg-gradient-to-r from-purple-600 to-blue-500 shadow-purple-500/25 hover:shadow-purple-500/40'
+            }`}>
+            {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : aiSource === 'ai' ? <Sparkles className="h-4 w-4" /> : aiSource === 'local' ? <Cpu className="h-4 w-4" /> : <Sparkles className="h-4 w-4" />}
+            {aiLoading ? 'AI分析中...' : aiSource === 'ai' ? '重新分析' : aiSource === 'local' ? '重试AI分析' : 'AI智能分析'}
           </button>
           {aiError && <span className="text-sm text-destructive">{aiError}</span>}
         </div>
@@ -873,6 +900,7 @@ export default function RepeatDiscounts() {
         ) : (() => {
           const t = calcTotals(rec);
           const sections = aiSections || genAiAnalysis();
+          const currentSource = aiSource || (aiSections ? 'ai' : 'local');
           return (
             <div id="preview-report" className="glass-card rounded-2xl shadow-sm overflow-hidden animate-fade-up" style={{ animationDelay: '100ms' }}>
               {/* Header */}
@@ -1010,17 +1038,45 @@ export default function RepeatDiscounts() {
                 </div>
               </div>
 
-              {/* AI 模型分析 */}
+              {/* AI 模型分析 / 本地规则引擎分析 */}
               {sections && sections.length > 0 && (
                 <div className="px-8 py-6">
-                  <div className="flex items-center gap-2.5 mb-4">
-                    <div className="icon-badge bg-purple-500/15 text-purple-600 dark:text-purple-400"><Sparkles className="h-4 w-4" /></div>
-                    <h2 className="text-base font-bold text-purple-600 dark:text-purple-400">AI 模型分析</h2>
+                  <div className="flex items-center gap-2.5 mb-4 flex-wrap">
+                    {currentSource === 'ai' ? (
+                      <>
+                        <div className="icon-badge bg-purple-500/15 text-purple-600 dark:text-purple-400"><Sparkles className="h-4 w-4" /></div>
+                        <h2 className="text-base font-bold text-purple-600 dark:text-purple-400">AI 模型分析</h2>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 dark:bg-purple-500/20 px-2.5 py-0.5 text-xs font-semibold text-purple-600 dark:text-purple-400 border border-purple-500/20">
+                          <Sparkles className="h-3 w-3" /> AI 生成{aiModel ? ` · ${aiModel}` : ''}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <div className="icon-badge bg-slate-500/15 text-slate-600 dark:text-slate-400"><Cpu className="h-4 w-4" /></div>
+                        <h2 className="text-base font-bold text-slate-600 dark:text-slate-400">本地规则引擎分析</h2>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-500/10 dark:bg-slate-500/20 px-2.5 py-0.5 text-xs font-semibold text-slate-600 dark:text-slate-400 border border-slate-500/20">
+                          <Cpu className="h-3 w-3" /> 规则引擎
+                        </span>
+                      </>
+                    )}
                   </div>
-                  <div className="space-y-4">
+                  <div className={`space-y-4 ${aiError && currentSource === 'local' ? 'mt-2' : ''}`}>
+                    {aiError && currentSource === 'local' && (
+                      <div className="rounded-xl bg-yellow-500/10 dark:bg-yellow-500/15 border border-yellow-500/30 px-4 py-2.5 text-xs text-yellow-700 dark:text-yellow-400 mb-2">
+                        ⚠ {aiError}
+                      </div>
+                    )}
                     {sections.map((s, i) => (
-                      <div key={i} className="ai-section bg-purple-500/5 dark:bg-purple-500/10 rounded-xl p-4 border border-purple-500/10">
-                        <h3 className="text-sm font-bold text-purple-700 dark:text-purple-300 mb-1.5">{i + 1}. {s.title}</h3>
+                      <div key={i} className={`ai-section rounded-xl p-4 border ${
+                        currentSource === 'ai'
+                          ? 'bg-purple-500/5 dark:bg-purple-500/10 border-purple-500/10'
+                          : 'bg-slate-500/5 dark:bg-slate-500/10 border-slate-500/10'
+                      }`}>
+                        <h3 className={`text-sm font-bold mb-1.5 ${
+                          currentSource === 'ai'
+                            ? 'text-purple-700 dark:text-purple-300'
+                            : 'text-slate-700 dark:text-slate-300'
+                        }`}>{i + 1}. {s.title}</h3>
                         <p className="text-sm text-foreground/80 leading-relaxed">{s.content}</p>
                       </div>
                     ))}
