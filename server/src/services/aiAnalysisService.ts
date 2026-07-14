@@ -206,26 +206,28 @@ function parseAnalysis(rawText: string) {
 
   const result: { title: string; content: string }[] = [];
 
-  // 方法1: 按数字编号分割（如 "1. **综合评估**：内容..."）
-  const numberedSections = rawText.split(/\n\s*\d+[.、]\s*/).filter(s => s.trim());
+  // 预处理：去掉所有 ** 标记，统一格式
+  const cleaned = rawText.replace(/\*\*/g, '').trim();
+  console.log('[AI-Parse] Cleaned text:', cleaned);
+
+  // 方法1: 按数字编号分割（如 "1. 综合评估：内容..."）
+  const numberedSections = cleaned.split(/\n\s*\d+[.、]\s*/).filter(s => s.trim());
   console.log('[AI-Parse] Numbered sections:', numberedSections.length);
   
   if (numberedSections.length >= 4) {
+    // 有数字编号的格式
     for (const section of sectionTitleMap) {
       let content = '';
       
       for (const part of numberedSections) {
-        const clean = part.replace(/\*\*/g, '').trim();
+        const clean = part.trim();
         if (section.keys.some(key => clean.includes(key))) {
           // 找到标题关键词后的内容
           for (const key of section.keys) {
             const idx = clean.indexOf(key);
             if (idx >= 0) {
-              // 提取标题后的内容（可能有冒号、空格等分隔符）
               let afterTitle = clean.substring(idx + key.length);
-              // 去掉开头的冒号、空格等
               afterTitle = afterTitle.replace(/^[:：\s]+/, '').trim();
-              // 如果内容以"分析数据暂不可用"结尾，说明没解析到
               if (afterTitle && !afterTitle.includes('分析数据暂不可用')) {
                 content = afterTitle;
               }
@@ -239,42 +241,75 @@ function parseAnalysis(rawText: string) {
       result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
     }
   } else {
-    // 方法2: 按行解析（备用）
-    console.log('[AI-Parse] Falling back to line-by-line parsing');
-    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
+    // 方法2: 按空行或标题模式分割（如 "综合评估：内容\n\n人群效率分析：内容"）
+    console.log('[AI-Parse] Using regex split method');
     
-    for (const section of sectionTitleMap) {
-      let content = '';
-      let titleIdx = -1;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const clean = line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
-        if (section.keys.some(key => clean.includes(key))) {
-          titleIdx = i;
-          break;
+    // 使用正则匹配所有标题位置
+    const titlePattern = sectionTitleMap.flatMap(s => s.keys.map(k => k));
+    const titleRegex = new RegExp(`(${titlePattern.join('|')})[：:]`, 'g');
+    
+    // 找到所有标题的位置
+    const matches = [...cleaned.matchAll(titleRegex)];
+    console.log('[AI-Parse] Found title matches:', matches.length);
+    
+    if (matches.length >= 4) {
+      // 按标题位置提取内容
+      for (let i = 0; i < matches.length; i++) {
+        const match = matches[i];
+        const titleKey = match[1];
+        const startPos = match.index! + match[0].length;
+        const endPos = i + 1 < matches.length ? matches[i + 1].index! : cleaned.length;
+        const content = cleaned.substring(startPos, endPos).trim();
+        
+        // 找到对应的显示标题
+        const section = sectionTitleMap.find(s => s.keys.includes(titleKey));
+        if (section) {
+          result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
         }
       }
+    } else {
+      // 方法3: 按行解析（最后备用）
+      console.log('[AI-Parse] Falling back to line-by-line parsing');
+      const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l);
+      
+      for (const section of sectionTitleMap) {
+        let content = '';
+        let titleIdx = -1;
 
-      if (titleIdx >= 0) {
-        const contentLines: string[] = [];
-        for (let j = titleIdx + 1; j < lines.length; j++) {
-          const line = lines[j];
-          const isNextSection = sectionTitleMap.some(s => {
-            const clean = line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
-            return s.keys.some(key => clean.includes(key));
-          });
-          const isNumberedSection = /^\d+[.、]/.test(line);
-          if (isNextSection || isNumberedSection) break;
-          contentLines.push(line);
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (section.keys.some(key => line.includes(key))) {
+            titleIdx = i;
+            break;
+          }
         }
-        content = contentLines.join(' ').replace(/\*\*/g, '').trim();
-      }
 
-      result.push({
-        title: section.display,
-        content: content || `${section.display}分析数据暂不可用`,
-      });
+        if (titleIdx >= 0) {
+          // 提取标题后的内容（可能在同一行或下一行）
+          const titleLine = lines[titleIdx];
+          const key = section.keys.find(k => titleLine.includes(k)) || '';
+          const afterTitle = titleLine.substring(titleLine.indexOf(key) + key.length).replace(/^[:：\s]+/, '').trim();
+          
+          if (afterTitle) {
+            // 内容在同一行
+            content = afterTitle;
+          } else {
+            // 内容在下一行
+            const contentLines: string[] = [];
+            for (let j = titleIdx + 1; j < lines.length; j++) {
+              const line = lines[j];
+              if (sectionTitleMap.some(s => s.keys.some(k => line.includes(k)))) break;
+              contentLines.push(line);
+            }
+            content = contentLines.join(' ').trim();
+          }
+        }
+
+        result.push({
+          title: section.display,
+          content: content || `${section.display}分析数据暂不可用`,
+        });
+      }
     }
   }
 
@@ -386,26 +421,27 @@ function parseOverallAnalysis(rawText: string) {
 
   const result: { title: string; content: string }[] = [];
 
-  // 方法1: 按数字编号分割（如 "1. **整体概况**：内容..."）
-  const numberedSections = rawText.split(/\n\s*\d+[.、]\s*/).filter(s => s.trim());
+  // 预处理：去掉所有 ** 标记，统一格式
+  const cleaned = rawText.replace(/\*\*/g, '').trim();
+  console.log('[AI-Parse] Overall cleaned text:', cleaned);
+
+  // 方法1: 按数字编号分割（如 "1. 整体概况：内容..."）
+  const numberedSections = cleaned.split(/\n\s*\d+[.、]\s*/).filter(s => s.trim());
   console.log('[AI-Parse] Overall numbered sections:', numberedSections.length);
   
   if (numberedSections.length >= 4) {
+    // 有数字编号的格式
     for (const section of sectionTitleMap) {
       let content = '';
       
       for (const part of numberedSections) {
-        const clean = part.replace(/\*\*/g, '').trim();
+        const clean = part.trim();
         if (section.keys.some(key => clean.includes(key))) {
-          // 找到标题关键词后的内容
           for (const key of section.keys) {
             const idx = clean.indexOf(key);
             if (idx >= 0) {
-              // 提取标题后的内容（可能有冒号、空格等分隔符）
               let afterTitle = clean.substring(idx + key.length);
-              // 去掉开头的冒号、空格等
               afterTitle = afterTitle.replace(/^[:：\s]+/, '').trim();
-              // 如果内容以"分析数据暂不可用"结尾，说明没解析到
               if (afterTitle && !afterTitle.includes('分析数据暂不可用')) {
                 content = afterTitle;
               }
@@ -419,39 +455,65 @@ function parseOverallAnalysis(rawText: string) {
       result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
     }
   } else {
-    // 方法2: 按行解析（备用）
-    console.log('[AI-Parse] Overall falling back to line-by-line parsing');
-    const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
+    // 方法2: 按标题模式分割
+    console.log('[AI-Parse] Overall using regex split method');
     
-    for (const section of sectionTitleMap) {
-      let content = '';
-      let titleIdx = -1;
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        const clean = line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
-        if (section.keys.some(key => clean.includes(key))) {
-          titleIdx = i;
-          break;
+    const titlePattern = sectionTitleMap.flatMap(s => s.keys.map(k => k));
+    const titleRegex = new RegExp(`(${titlePattern.join('|')})[：:]`, 'g');
+    
+    const matches = [...cleaned.matchAll(titleRegex)];
+    console.log('[AI-Parse] Overall found title matches:', matches.length);
+    
+    if (matches.length >= 4) {
+      for (let i = 0; i < matches.length; i++) {
+        const match = matches[i];
+        const titleKey = match[1];
+        const startPos = match.index! + match[0].length;
+        const endPos = i + 1 < matches.length ? matches[i + 1].index! : cleaned.length;
+        const content = cleaned.substring(startPos, endPos).trim();
+        
+        const section = sectionTitleMap.find(s => s.keys.includes(titleKey));
+        if (section) {
+          result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
         }
       }
+    } else {
+      // 方法3: 按行解析
+      console.log('[AI-Parse] Overall falling back to line-by-line parsing');
+      const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l);
+      
+      for (const section of sectionTitleMap) {
+        let content = '';
+        let titleIdx = -1;
 
-      if (titleIdx >= 0) {
-        const contentLines: string[] = [];
-        for (let j = titleIdx + 1; j < lines.length; j++) {
-          const line = lines[j];
-          const isNextSection = sectionTitleMap.some(s => {
-            const clean = line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
-            return s.keys.some(key => clean.includes(key));
-          });
-          const isNumberedSection = /^\d+[.、]/.test(line);
-          if (isNextSection || isNumberedSection) break;
-          contentLines.push(line);
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          if (section.keys.some(key => line.includes(key))) {
+            titleIdx = i;
+            break;
+          }
         }
-        content = contentLines.join(' ').replace(/\*\*/g, '').trim();
-      }
 
-      result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
+        if (titleIdx >= 0) {
+          const titleLine = lines[titleIdx];
+          const key = section.keys.find(k => titleLine.includes(k)) || '';
+          const afterTitle = titleLine.substring(titleLine.indexOf(key) + key.length).replace(/^[:：\s]+/, '').trim();
+          
+          if (afterTitle) {
+            content = afterTitle;
+          } else {
+            const contentLines: string[] = [];
+            for (let j = titleIdx + 1; j < lines.length; j++) {
+              const line = lines[j];
+              if (sectionTitleMap.some(s => s.keys.some(k => line.includes(k)))) break;
+              contentLines.push(line);
+            }
+            content = contentLines.join(' ').trim();
+          }
+        }
+
+        result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
+      }
     }
   }
 
