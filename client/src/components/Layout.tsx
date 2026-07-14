@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
+import { canView } from '@/lib/permissions';
 
 interface LayoutProps {
   children: ReactNode;
@@ -30,20 +31,20 @@ interface LayoutProps {
 
 // 激励登记模块导航
 const incentiveNav = [
-  { name: '数据汇总', href: '/dashboard', icon: LayoutDashboard },
-  { name: '接单人', href: '/takers', icon: Users },
-  { name: '任务', href: '/tasks', icon: ClipboardList },
-  { name: '订单明细', href: '/orders', icon: ShoppingCart },
-  { name: '接单间隔', href: '/intervals', icon: Clock },
-  { name: '佣金分析', href: '/commissions', icon: DollarSign },
-  { name: '操作日志', href: '/logs', icon: FileText },
-  { name: '异常预警', href: '/anomalies', icon: AlertTriangle },
-  { name: '数据导出', href: '/export', icon: Download },
+  { name: '数据汇总', href: '/dashboard', icon: LayoutDashboard, module: 'dashboard' },
+  { name: '接单人', href: '/takers', icon: Users, module: 'takers' },
+  { name: '任务', href: '/tasks', icon: ClipboardList, module: 'tasks' },
+  { name: '订单明细', href: '/orders', icon: ShoppingCart, module: 'orders' },
+  { name: '接单间隔', href: '/intervals', icon: Clock, module: 'intervals' },
+  { name: '佣金分析', href: '/commissions', icon: DollarSign, module: 'commissions' },
+  { name: '操作日志', href: '/logs', icon: FileText, module: 'logs' },
+  { name: '异常预警', href: '/anomalies', icon: AlertTriangle, module: 'anomalies' },
+  { name: '数据导出', href: '/export', icon: Download, module: 'export' },
 ];
 
 // 回头客立减模块导航
 const discountNav = [
-  { name: '数据录入', href: '/repeat-discounts', icon: TrendingDown },
+  { name: '数据录入', href: '/repeat-discounts', icon: TrendingDown, module: 'repeatDiscounts' },
 ];
 
 export default function Layout({ children }: LayoutProps) {
@@ -119,7 +120,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="pt-3 pb-1 px-3">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">激励登记</span>
           </div>
-          {incentiveNav.map((item) => {
+          {incentiveNav.filter(item => canView(item.module)).map((item) => {
             const active = isActive(item.href);
             return (
               <Link
@@ -145,7 +146,7 @@ export default function Layout({ children }: LayoutProps) {
           <div className="pt-3 pb-1 px-3">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">回头客立减</span>
           </div>
-          {discountNav.map((item) => {
+          {discountNav.filter(item => canView(item.module)).map((item) => {
             const active = isActive(item.href);
             return (
               <Link

@@ -5,6 +5,7 @@ interface AuthUser {
   id: string;
   username: string;
   role: string;
+  permissions?: Record<string, { view: boolean; edit: boolean }>;
 }
 
 interface AuthContextType {

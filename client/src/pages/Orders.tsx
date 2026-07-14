@@ -11,6 +11,7 @@ import OrderDrawer from '@/components/OrderDrawer';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { orderColumns } from '@/lib/export';
+import { canEdit } from '@/lib/permissions';
 
 interface EditingCell {
   orderId: string;
@@ -115,6 +116,7 @@ export default function Orders() {
   }, [editingCell]);
 
   const handleCellClick = (orderId: string, field: string, currentValue: any) => {
+    if (!canEdit('orders')) return; // 检查编辑权限
     if (editingCell?.orderId === orderId && editingCell?.field === field) return;
     
     setEditingCell({ orderId, field });
@@ -446,26 +448,27 @@ export default function Orders() {
               return res.data?.list || [];
             }}
           />
-          <ImportDialog
-            title="导入订单数据"
-            templateFilename="订单导入模板"
-            columns={[
-              { key: 'orderDate', label: '接单日期' },
-              { key: 'wechatName', label: '微信昵称' },
-              { key: 'wechatId', label: '微信号' },
-              { key: 'productId', label: '商品ID' },
-              { key: 'productCode', label: '产品编号' },
-              { key: 'orderNo', label: '订单编号' },
-              { key: 'orderNo19', label: '19订单号' },
-              { key: 'actualPayment', label: '实付价' },
-              { key: 'baseCommission', label: '基础返佣' },
-              { key: 'reviewCommission', label: '好评返佣' },
-              { key: 'isRefunded', label: '是否已返款' },
-              { key: 'refundDate', label: '返款日期' },
-              { key: 'isGoodReview', label: '是否好评' },
-              { key: 'reviewCommissionDate', label: '好评返佣日期' },
-              { key: 'remark', label: '备注' },
-            ]}
+          {canEdit('orders') && (
+            <ImportDialog
+              title="导入订单数据"
+              templateFilename="订单导入模板"
+              columns={[
+                { key: 'orderDate', label: '接单日期' },
+                { key: 'wechatName', label: '微信昵称' },
+                { key: 'wechatId', label: '微信号' },
+                { key: 'productId', label: '商品ID' },
+                { key: 'productCode', label: '产品编号' },
+                { key: 'orderNo', label: '订单编号' },
+                { key: 'orderNo19', label: '19订单号' },
+                { key: 'actualPayment', label: '实付价' },
+                { key: 'baseCommission', label: '基础返佣' },
+                { key: 'reviewCommission', label: '好评返佣' },
+                { key: 'isRefunded', label: '是否已返款' },
+                { key: 'refundDate', label: '返款日期' },
+                { key: 'isGoodReview', label: '是否好评' },
+                { key: 'reviewCommissionDate', label: '好评返佣日期' },
+                { key: 'remark', label: '备注' },
+              ]}
             onImport={async (data) => {
               try {
                 const result = await ordersApi.batchCreate(data);
@@ -483,22 +486,24 @@ export default function Orders() {
             }}
             buttonLabel="导入"
           />
-          <ImportDialog
-            title="批量修改订单"
-            templateFilename="订单批量修改模板"
-            mode="update"
-            columns={[
-              { key: 'orderNo', label: '订单编号', required: true },
-              { key: 'orderNo19', label: '19订单号' },
-              { key: 'wechatName', label: '微信昵称' },
-              { key: 'actualPayment', label: '实付价' },
-              { key: 'baseCommission', label: '基础返佣' },
-              { key: 'reviewCommission', label: '好评返佣' },
-              { key: 'isRefunded', label: '是否已返款' },
-              { key: 'refundDate', label: '返款日期' },
-              { key: 'isGoodReview', label: '是否好评' },
-              { key: 'reviewCommissionDate', label: '好评返佣日期' },
-              { key: 'remark', label: '备注' },
+          )}
+          {canEdit('orders') && (
+            <ImportDialog
+              title="批量修改订单"
+              templateFilename="订单批量修改模板"
+              mode="update"
+              columns={[
+                { key: 'orderNo', label: '订单编号', required: true },
+                { key: 'orderNo19', label: '19订单号' },
+                { key: 'wechatName', label: '微信昵称' },
+                { key: 'actualPayment', label: '实付价' },
+                { key: 'baseCommission', label: '基础返佣' },
+                { key: 'reviewCommission', label: '好评返佣' },
+                { key: 'isRefunded', label: '是否已返款' },
+                { key: 'refundDate', label: '返款日期' },
+                { key: 'isGoodReview', label: '是否好评' },
+                { key: 'reviewCommissionDate', label: '好评返佣日期' },
+                { key: 'remark', label: '备注' },
             ]}
             onImport={async (data) => {
               try {
@@ -516,6 +521,7 @@ export default function Orders() {
             }}
             buttonLabel="批量修改"
           />
+          )}
         </div>
       </div>
 
