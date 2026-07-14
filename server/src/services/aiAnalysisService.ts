@@ -192,8 +192,14 @@ async function callAIApi(prompt: string): Promise<string> {
 // 解析AI返回的结构化分析
 // ──────────────────────────────────────
 function parseAnalysis(rawText: string) {
-  const sectionTitles = [
-    '综合评估', '人群效率分析', '趋势分析', '成本效率', '策略建议', '风险提示'
+  // 支持多种标题格式
+  const sectionTitleMap = [
+    { keys: ['综合评估', '整体评估'], display: '综合评估' },
+    { keys: ['人群效率分析', '人群效率'], display: '人群效率分析' },
+    { keys: ['趋势分析', '趋势'], display: '趋势分析' },
+    { keys: ['成本效率', '成本分析'], display: '成本效率' },
+    { keys: ['策略建议', '策略优化'], display: '策略建议' },
+    { keys: ['风险提示', '风险预警'], display: '风险提示' },
   ];
 
   const result: { title: string; content: string }[] = [];
@@ -201,16 +207,19 @@ function parseAnalysis(rawText: string) {
   // 按行分割并清理
   const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
 
-  for (let i = 0; i < sectionTitles.length; i++) {
-    const title = sectionTitles[i];
-    const nextTitle = sectionTitles[i + 1];
+  for (const section of sectionTitleMap) {
     let content = '';
+    let titleIdx = -1;
 
     // 找到标题所在行
-    const titleIdx = lines.findIndex(l => {
-      const clean = l.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
-      return clean.includes(title);
-    });
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const clean = line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
+      if (section.keys.some(key => clean.includes(key))) {
+        titleIdx = i;
+        break;
+      }
+    }
 
     if (titleIdx >= 0) {
       // 收集标题后的内容，直到遇到下一个标题或数字编号段落
@@ -218,8 +227,11 @@ function parseAnalysis(rawText: string) {
       for (let j = titleIdx + 1; j < lines.length; j++) {
         const line = lines[j];
         // 检查是否是下一个段落标题
-        const isNextSection = nextTitle && line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '').includes(nextTitle);
-        const isNumberedSection = /^\d+[.、]/.test(line) && sectionTitles.some(t => line.includes(t));
+        const isNextSection = sectionTitleMap.some(s => {
+          const clean = line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
+          return s.keys.some(key => clean.includes(key));
+        });
+        const isNumberedSection = /^\d+[.、]/.test(line);
         if (isNextSection || isNumberedSection) break;
         contentLines.push(line);
       }
@@ -227,8 +239,8 @@ function parseAnalysis(rawText: string) {
     }
 
     result.push({
-      title,
-      content: content || `${title}分析数据暂不可用`,
+      title: section.display,
+      content: content || `${section.display}分析数据暂不可用`,
     });
   }
 
@@ -325,8 +337,14 @@ ${dailyLines}
 // 解析总体分析（与单日相同的section结构）
 // ──────────────────────────────────────
 function parseOverallAnalysis(rawText: string) {
-  const sectionTitles = [
-    '整体概况', '趋势分析', '人群效率对比', '成本效率分析', '策略优化建议', '风险预警'
+  // 支持多种标题格式
+  const sectionTitleMap = [
+    { keys: ['整体概况', '综合评估'], display: '整体概况' },
+    { keys: ['趋势分析', '趋势'], display: '趋势分析' },
+    { keys: ['人群效率对比', '人群效率分析', '人群效率'], display: '人群效率对比' },
+    { keys: ['成本效率分析', '成本效率'], display: '成本效率分析' },
+    { keys: ['策略优化建议', '策略建议', '策略'], display: '策略优化建议' },
+    { keys: ['风险预警', '风险提示', '风险'], display: '风险预警' },
   ];
 
   const result: { title: string; content: string }[] = [];
@@ -334,16 +352,19 @@ function parseOverallAnalysis(rawText: string) {
   // 按行分割并清理
   const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
 
-  for (let i = 0; i < sectionTitles.length; i++) {
-    const title = sectionTitles[i];
-    const nextTitle = sectionTitles[i + 1];
+  for (const section of sectionTitleMap) {
     let content = '';
+    let titleIdx = -1;
 
     // 找到标题所在行
-    const titleIdx = lines.findIndex(l => {
-      const clean = l.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
-      return clean.includes(title);
-    });
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const clean = line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
+      if (section.keys.some(key => clean.includes(key))) {
+        titleIdx = i;
+        break;
+      }
+    }
 
     if (titleIdx >= 0) {
       // 收集标题后的内容，直到遇到下一个标题或数字编号段落
@@ -351,15 +372,18 @@ function parseOverallAnalysis(rawText: string) {
       for (let j = titleIdx + 1; j < lines.length; j++) {
         const line = lines[j];
         // 检查是否是下一个段落标题
-        const isNextSection = nextTitle && line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '').includes(nextTitle);
-        const isNumberedSection = /^\d+[.、]/.test(line) && sectionTitles.some(t => line.includes(t));
+        const isNextSection = sectionTitleMap.some(s => {
+          const clean = line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
+          return s.keys.some(key => clean.includes(key));
+        });
+        const isNumberedSection = /^\d+[.、]/.test(line);
         if (isNextSection || isNumberedSection) break;
         contentLines.push(line);
       }
       content = contentLines.join(' ').replace(/\*\*/g, '').trim();
     }
 
-    result.push({ title, content: content || `${title}分析数据暂不可用` });
+    result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
   }
 
   return result;
