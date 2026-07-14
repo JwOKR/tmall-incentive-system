@@ -13,11 +13,12 @@ import {
   getSavedDailyAnalysis,
   getSavedOverallAnalysis,
 } from '../services/aiAnalysisService';
+import { requireEditPermission, requireViewPermission } from '../middleware/auth';
 
 const router = Router();
 
 // 读取已保存的总体AI分析（必须在 /:id 之前）
-router.get('/ai-analysis-overall', async (req, res) => {
+router.get('/ai-analysis-overall', requireViewPermission('repeatDiscounts'), async (req, res) => {
   try {
     const { startDate, endDate } = req.query as any;
     const result = await getSavedOverallAnalysis(startDate, endDate);
@@ -33,7 +34,7 @@ router.get('/ai-analysis-overall', async (req, res) => {
 });
 
 // 读取已保存的单日AI分析（必须在 /:id 之前）
-router.get('/ai-analysis/:recordId', async (req, res) => {
+router.get('/ai-analysis/:recordId', requireViewPermission('repeatDiscounts'), async (req, res) => {
   try {
     const { recordId } = req.params;
     const result = await getSavedDailyAnalysis(recordId);
@@ -49,7 +50,7 @@ router.get('/ai-analysis/:recordId', async (req, res) => {
 });
 
 // 总体AI分析（必须在 /:id 之前）
-router.post('/ai-analysis-overall', async (req, res) => {
+router.post('/ai-analysis-overall', requireEditPermission('repeatDiscounts'), async (req, res) => {
   try {
     const { startDate, endDate } = req.body || {};
     const result = await generateOverallAIAnalysis(startDate, endDate);
@@ -61,7 +62,7 @@ router.post('/ai-analysis-overall', async (req, res) => {
 });
 
 // 单日AI分析（必须在 /:id 之前）
-router.post('/ai-analysis', async (req, res) => {
+router.post('/ai-analysis', requireEditPermission('repeatDiscounts'), async (req, res) => {
   try {
     const { recordId } = req.body;
     if (!recordId) return res.status(400).json({ success: false, message: '请提供 recordId' });
@@ -75,13 +76,13 @@ router.post('/ai-analysis', async (req, res) => {
 });
 
 // 汇总统计（必须在 /:id 之前）
-router.get('/summary', getSummary);
+router.get('/summary', requireViewPermission('repeatDiscounts'), getSummary);
 
 // 单条操作路由
-router.get('/', getAll);
-router.get('/:id', getById);
-router.post('/', create);
-router.put('/:id', update);
-router.delete('/:id', remove);
+router.get('/', requireViewPermission('repeatDiscounts'), getAll);
+router.get('/:id', requireViewPermission('repeatDiscounts'), getById);
+router.post('/', requireEditPermission('repeatDiscounts'), create);
+router.put('/:id', requireEditPermission('repeatDiscounts'), update);
+router.delete('/:id', requireEditPermission('repeatDiscounts'), remove);
 
 export default router;

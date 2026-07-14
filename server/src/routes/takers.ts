@@ -8,15 +8,16 @@ import {
   deleteTaker,
 } from '../controllers/takerController';
 import { getTakerDetail } from '../controllers/takerDetailController';
+import { requireEditPermission, requireViewPermission } from '../middleware/auth';
 
 const router = Router();
 
-router.get('/', getAllTakers);
-router.get('/:id/detail', getTakerDetail);
-router.get('/:id', getTakerById);
-router.post('/', createTaker);
-router.post('/batch', batchCreateTakers);
-router.put('/:id', updateTaker);
-router.delete('/:id', deleteTaker);
+router.get('/', requireViewPermission('takers'), getAllTakers);
+router.get('/:id/detail', requireViewPermission('takers'), getTakerDetail);
+router.get('/:id', requireViewPermission('takers'), getTakerById);
+router.post('/', requireEditPermission('takers'), createTaker);
+router.post('/batch', requireEditPermission('takers'), batchCreateTakers);
+router.put('/:id', requireEditPermission('takers'), updateTaker);
+router.delete('/:id', requireEditPermission('takers'), deleteTaker);
 
 export default router;
