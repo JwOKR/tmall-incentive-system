@@ -618,11 +618,19 @@ export default function RepeatDiscounts() {
             onChange={e => onPasteText(e.target.value)}
             onBlur={onPaste}
             onPaste={e => {
-              // 粘贴后立即解析，无需等待失焦
-              setTimeout(() => {
-                const text = e.clipboardData?.getData('text') || '';
-                if (text) onPaste();
-              }, 0);
+              // 粘贴后立即解析，直接使用剪贴板数据
+              const text = e.clipboardData?.getData('text') || '';
+              if (text) {
+                onPasteText(text);
+                const parsed = parsePastedText(text);
+                if (Object.keys(parsed).length > 0) {
+                  // 直接更新表单，不等 state
+                  setForm(f => ({
+                    ...f,
+                    [target]: { ...f[target], ...parsed },
+                  }));
+                }
+              }
             }}
             placeholder="粘贴数据后自动解析..."
             className="w-full h-20 rounded-xl border border-dashed border-input bg-muted/20 px-3 py-2.5 text-xs resize-none premium-input placeholder:text-muted-foreground/60"
