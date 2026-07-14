@@ -588,12 +588,12 @@ export default function RepeatDiscounts() {
   // ─── Group Input Card (reusable) ─────────────────────────────────────────
 
   const GroupInputCard = ({
-    label, sublabel, data, onChange, pasteText, onPasteText, onPaste, accent,
+    label, sublabel, data, onChange, pasteText, onPasteText, onPaste, accent, target,
   }: {
     label: string; sublabel: string; data: GroupData;
     onChange: (field: keyof GroupData, val: string) => void;
     pasteText: string; onPasteText: (t: string) => void; onPaste: () => void;
-    accent: 'blue' | 'orange';
+    accent: 'blue' | 'orange'; target: 'g1' | 'g2';
   }) => {
     const roi = calcRoi(parseFloat(data.grantAmount) || 0, parseFloat(data.paymentAmount) || 0);
     const accentRing = accent === 'blue' ? 'from-blue-500/20 to-blue-500/5' : 'from-orange-500/20 to-orange-500/5';
@@ -686,6 +686,7 @@ export default function RepeatDiscounts() {
           sublabel="近2年内有过购买行为的用户人群"
           data={form.g1}
           accent="blue"
+          target="g1"
           onChange={(field, val) => setForm(f => ({ ...f, g1: { ...f.g1, [field]: val } }))}
           pasteText={pasteText1}
           onPasteText={setPasteText1}
@@ -696,6 +697,7 @@ export default function RepeatDiscounts() {
           sublabel="365天内有购买且60天无购买的用户人群"
           data={form.g2}
           accent="orange"
+          target="g2"
           onChange={(field, val) => setForm(f => ({ ...f, g2: { ...f.g2, [field]: val } }))}
           pasteText={pasteText2}
           onPasteText={setPasteText2}
