@@ -179,6 +179,29 @@ export async function getRepeatDiscountSummary(startDate?: string, endDate?: str
   const totalBuyers = (s.g1PaymentBuyers ?? 0) + (s.g2PaymentBuyers ?? 0);
   const totalItems = (s.g1PaymentItems ?? 0) + (s.g2PaymentItems ?? 0);
 
+  // 计算平均 ROI（每日 ROI 的平均值）
+  const records = await prisma.repeatDiscount.findMany({
+    where,
+    orderBy: { recordDate: 'asc' },
+  });
+  
+  let avgRoi = 0;
+  if (records.length > 0) {
+    const totalRoi = records.reduce((sum, r) => {
+      const grant = (r.g1GrantAmount || 0) + (r.g2GrantAmount || 0);
+      const pay = (r.g1PaymentAmount || 0) + (r.g2PaymentAmount || 0);
+      return sum + calcROI(pay, grant);
+    }, 0);
+    avgRoi = totalRoi / records.length;
+  }
+
+  // 计算最大单日支付
+  let maxDailyPayment = 0;
+  for (const r of records) {
+    const dailyPayment = (r.g1PaymentAmount || 0) + (r.g2PaymentAmount || 0);
+    if (dailyPayment > maxDailyPayment) maxDailyPayment = dailyPayment;
+  }
+
   return {
     totalDays: result._count,
     // 合计
@@ -187,6 +210,8 @@ export async function getRepeatDiscountSummary(startDate?: string, endDate?: str
     totalPaymentBuyers: totalBuyers,
     totalPaymentItems: totalItems,
     totalROI: calcROI(totalPayment, totalGrant),
+    avgRoi: avgRoi,
+    maxDailyPayment: maxDailyPayment,
     // G1
     g1GrantAmount: s.g1GrantAmount ?? 0,
     g1PaymentAmount: s.g1PaymentAmount ?? 0,
