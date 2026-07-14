@@ -16,6 +16,7 @@ import {
   Hourglass,
   CheckCircle,
 } from 'lucide-react';
+import { canView, NoPermission } from '@/lib/permissions';
 
 interface IntervalEntry {
   fromDate: string;
@@ -186,6 +187,8 @@ export default function IntervalStats() {
       iconColor: 'text-emerald-600 dark:text-emerald-400',
     },
   ];
+
+  if (!canView('intervals')) return <NoPermission module="intervals" />;
 
   return (
     <div className="space-y-6">

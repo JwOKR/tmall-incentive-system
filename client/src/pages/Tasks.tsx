@@ -10,6 +10,7 @@ import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { taskColumns } from '@/lib/export';
+import { canView, canEdit, NoPermission } from '@/lib/permissions';
 
 interface EditingCell {
   taskId: string;
@@ -450,6 +451,8 @@ export default function Tasks() {
       return next;
     });
   };
+
+  if (!canView('tasks')) return <NoPermission module="tasks" />;
 
   return (
     <div className="space-y-6">

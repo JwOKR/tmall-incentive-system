@@ -10,6 +10,7 @@ import {
   Calendar,
   BarChart3,
 } from 'lucide-react';
+import { canView, NoPermission } from '@/lib/permissions';
 
 type TabKey = 'taker' | 'product' | 'month';
 
@@ -52,6 +53,8 @@ export default function CommissionStats() {
     { key: 'product' as const, label: '按商品', icon: Package },
     { key: 'month' as const, label: '按月份', icon: Calendar },
   ];
+
+  if (!canView('commissions')) return <NoPermission module="commissions" />;
 
   return (
     <div className="space-y-6">

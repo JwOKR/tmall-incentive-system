@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
+import { canView, canEdit, NoPermission } from '@/lib/permissions';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement,
   PointElement, Tooltip as ChartTooltip, Legend, Filler,
@@ -1372,6 +1373,8 @@ export default function RepeatDiscounts() {
   };
 
   // ─── Render ──────────────────────────────────────────────────────────────
+
+  if (!canView('repeatDiscounts')) return <NoPermission module="repeatDiscounts" />;
 
   return (
     <div className="space-y-6">

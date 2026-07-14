@@ -11,6 +11,7 @@ import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { takerColumns } from '@/lib/export';
+import { canView, canEdit, NoPermission } from '@/lib/permissions';
 
 export default function Takers() {
   const queryClient = useQueryClient();
@@ -117,6 +118,8 @@ export default function Takers() {
       return next;
     });
   };
+
+  if (!canView('takers')) return <NoPermission module="takers" />;
 
   return (
     <div className="space-y-6">
