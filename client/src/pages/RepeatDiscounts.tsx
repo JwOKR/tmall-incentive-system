@@ -617,6 +617,13 @@ export default function RepeatDiscounts() {
             value={pasteText}
             onChange={e => onPasteText(e.target.value)}
             onBlur={onPaste}
+            onPaste={e => {
+              // 粘贴后立即解析，无需等待失焦
+              setTimeout(() => {
+                const text = e.clipboardData?.getData('text') || '';
+                if (text) onPaste();
+              }, 0);
+            }}
             placeholder="粘贴数据后自动解析..."
             className="w-full h-20 rounded-xl border border-dashed border-input bg-muted/20 px-3 py-2.5 text-xs resize-none premium-input placeholder:text-muted-foreground/60"
           />
