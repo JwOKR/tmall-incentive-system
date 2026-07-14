@@ -192,8 +192,7 @@ async function callAIApi(prompt: string): Promise<string> {
 // 解析AI返回的结构化分析
 // ──────────────────────────────────────
 function parseAnalysis(rawText: string) {
-  console.log('[AI-Parse] Daily raw text length:', rawText.length);
-  console.log('[AI-Parse] Daily first 500 chars:', rawText.substring(0, 500));
+  console.log('[AI-Parse] Daily raw text:', rawText);
   
   // 支持多种标题格式
   const sectionTitleMap = [
@@ -207,9 +206,9 @@ function parseAnalysis(rawText: string) {
 
   const result: { title: string; content: string }[] = [];
 
-  // 方法1: 按数字编号分割
+  // 方法1: 按数字编号分割（如 "1. **综合评估**：内容..."）
   const numberedSections = rawText.split(/\n\s*\d+[.、]\s*/).filter(s => s.trim());
-  console.log('[AI-Parse] Daily numbered sections count:', numberedSections.length);
+  console.log('[AI-Parse] Numbered sections:', numberedSections.length);
   
   if (numberedSections.length >= 4) {
     for (const section of sectionTitleMap) {
@@ -218,11 +217,20 @@ function parseAnalysis(rawText: string) {
       for (const part of numberedSections) {
         const clean = part.replace(/\*\*/g, '').trim();
         if (section.keys.some(key => clean.includes(key))) {
-          const titleIdx = clean.split('\n').findIndex(l => section.keys.some(k => l.includes(k)));
-          if (titleIdx >= 0) {
-            content = clean.split('\n').slice(titleIdx + 1).join(' ').trim();
-          } else {
-            content = clean.split(section.keys.find(k => clean.includes(k)) || '')[1]?.trim() || '';
+          // 找到标题关键词后的内容
+          for (const key of section.keys) {
+            const idx = clean.indexOf(key);
+            if (idx >= 0) {
+              // 提取标题后的内容（可能有冒号、空格等分隔符）
+              let afterTitle = clean.substring(idx + key.length);
+              // 去掉开头的冒号、空格等
+              afterTitle = afterTitle.replace(/^[:：\s]+/, '').trim();
+              // 如果内容以"分析数据暂不可用"结尾，说明没解析到
+              if (afterTitle && !afterTitle.includes('分析数据暂不可用')) {
+                content = afterTitle;
+              }
+              break;
+            }
           }
           break;
         }
@@ -232,6 +240,7 @@ function parseAnalysis(rawText: string) {
     }
   } else {
     // 方法2: 按行解析（备用）
+    console.log('[AI-Parse] Falling back to line-by-line parsing');
     const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
     
     for (const section of sectionTitleMap) {
@@ -269,7 +278,7 @@ function parseAnalysis(rawText: string) {
     }
   }
 
-  console.log('[AI-Parse] Daily parsed sections:', result.map(r => `${r.title}: ${r.content.substring(0, 30)}...`));
+  console.log('[AI-Parse] Daily parsed result:', result.map(r => `${r.title}: ${r.content.substring(0, 40)}...`));
   return result;
 }
 
@@ -363,8 +372,7 @@ ${dailyLines}
 // 解析总体分析（与单日相同的section结构）
 // ──────────────────────────────────────
 function parseOverallAnalysis(rawText: string) {
-  console.log('[AI-Parse] Raw text length:', rawText.length);
-  console.log('[AI-Parse] First 500 chars:', rawText.substring(0, 500));
+  console.log('[AI-Parse] Overall raw text:', rawText);
   
   // 支持多种标题格式
   const sectionTitleMap = [
@@ -378,11 +386,10 @@ function parseOverallAnalysis(rawText: string) {
 
   const result: { title: string; content: string }[] = [];
 
-  // 方法1: 按数字编号分割（如 "1. **整体概况**"）
+  // 方法1: 按数字编号分割（如 "1. **整体概况**：内容..."）
   const numberedSections = rawText.split(/\n\s*\d+[.、]\s*/).filter(s => s.trim());
-  console.log('[AI-Parse] Numbered sections count:', numberedSections.length);
+  console.log('[AI-Parse] Overall numbered sections:', numberedSections.length);
   
-  // 如果按数字分割得到6段以上，使用这种方法
   if (numberedSections.length >= 4) {
     for (const section of sectionTitleMap) {
       let content = '';
@@ -390,13 +397,20 @@ function parseOverallAnalysis(rawText: string) {
       for (const part of numberedSections) {
         const clean = part.replace(/\*\*/g, '').trim();
         if (section.keys.some(key => clean.includes(key))) {
-          // 提取标题后的内容
-          const titleIdx = clean.split('\n').findIndex(l => section.keys.some(k => l.includes(k)));
-          if (titleIdx >= 0) {
-            content = clean.split('\n').slice(titleIdx + 1).join(' ').trim();
-          } else {
-            // 标题和内容在同一行
-            content = clean.split(section.keys.find(k => clean.includes(k)) || '')[1]?.trim() || '';
+          // 找到标题关键词后的内容
+          for (const key of section.keys) {
+            const idx = clean.indexOf(key);
+            if (idx >= 0) {
+              // 提取标题后的内容（可能有冒号、空格等分隔符）
+              let afterTitle = clean.substring(idx + key.length);
+              // 去掉开头的冒号、空格等
+              afterTitle = afterTitle.replace(/^[:：\s]+/, '').trim();
+              // 如果内容以"分析数据暂不可用"结尾，说明没解析到
+              if (afterTitle && !afterTitle.includes('分析数据暂不可用')) {
+                content = afterTitle;
+              }
+              break;
+            }
           }
           break;
         }
@@ -406,14 +420,13 @@ function parseOverallAnalysis(rawText: string) {
     }
   } else {
     // 方法2: 按行解析（备用）
-    console.log('[AI-Parse] Falling back to line-by-line parsing');
+    console.log('[AI-Parse] Overall falling back to line-by-line parsing');
     const lines = rawText.split('\n').map(l => l.trim()).filter(l => l);
     
     for (const section of sectionTitleMap) {
       let content = '';
       let titleIdx = -1;
 
-      // 找到标题所在行
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const clean = line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
@@ -424,11 +437,9 @@ function parseOverallAnalysis(rawText: string) {
       }
 
       if (titleIdx >= 0) {
-        // 收集标题后的内容，直到遇到下一个标题或数字编号段落
         const contentLines: string[] = [];
         for (let j = titleIdx + 1; j < lines.length; j++) {
           const line = lines[j];
-          // 检查是否是下一个段落标题
           const isNextSection = sectionTitleMap.some(s => {
             const clean = line.replace(/\d+[.、]\s*/, '').replace(/\*\*/g, '');
             return s.keys.some(key => clean.includes(key));
@@ -444,7 +455,7 @@ function parseOverallAnalysis(rawText: string) {
     }
   }
 
-  console.log('[AI-Parse] Parsed sections:', result.map(r => `${r.title}: ${r.content.substring(0, 30)}...`));
+  console.log('[AI-Parse] Overall parsed result:', result.map(r => `${r.title}: ${r.content.substring(0, 40)}...`));
   return result;
 }
 
