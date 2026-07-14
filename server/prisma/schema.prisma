@@ -86,7 +86,7 @@ model Order {
   refundDate          DateTime? // 返款日期
   
   // 好评信息
-  isGoodReview        Boolean   @default(false) // 是否好评
+  isGoodReview        String    @default("pending") // 好评状态: pending未好评, reviewed已好评, creating作图中, returned已返图
   baseCommission      Float     @default(5) // 基础返佣，默认5元
   reviewCommission    Float     @default(0) // 好评返佣
   reviewCommissionDate DateTime? // 好评返佣日期

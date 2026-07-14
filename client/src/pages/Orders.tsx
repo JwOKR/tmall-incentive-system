@@ -94,7 +94,7 @@ export default function Orders() {
   });
 
   const batchStatusMutation = useMutation({
-    mutationFn: ({ ids, field, value }: { ids: string[]; field: string; value: boolean }) =>
+    mutationFn: ({ ids, field, value }: { ids: string[]; field: string; value: boolean | string }) =>
       ordersApi.batchUpdateStatus(ids, field, value),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
@@ -135,7 +135,7 @@ export default function Orders() {
     let value = editValue;
     
     // 处理布尔字段
-    if (['isRefunded', 'isGoodReview'].includes(field)) {
+    if (['isRefunded'].includes(field)) {
       value = value === 'true';
     }
     // 处理数字字段
@@ -155,7 +155,7 @@ export default function Orders() {
       updateData.refundDate = new Date().toISOString().split('T')[0];
     }
     // 如果标记为已好评，自动设置好评返佣日期
-    if (field === 'isGoodReview' && value) {
+    if (field === 'isGoodReview' && value === 'reviewed') {
       updateData.reviewCommissionDate = new Date().toISOString().split('T')[0];
     }
     
@@ -165,13 +165,12 @@ export default function Orders() {
   };
 
   const handleSelectChange = (orderId: string, field: string, value: string) => {
-    const boolValue = value === 'true';
-    const updateData: any = { [field]: boolValue };
+    const updateData: any = { [field]: value };
     
-    if (field === 'isRefunded' && boolValue) {
+    if (field === 'isRefunded' && value === 'true') {
       updateData.refundDate = new Date().toISOString().split('T')[0];
     }
-    if (field === 'isGoodReview' && boolValue) {
+    if (field === 'isGoodReview' && value === 'reviewed') {
       updateData.reviewCommissionDate = new Date().toISOString().split('T')[0];
     }
     
@@ -218,13 +217,16 @@ export default function Orders() {
     }
   };
 
-  const handleBatchStatus = async (field: 'isRefunded' | 'isGoodReview', value: boolean) => {
+  const handleBatchStatus = async (field: 'isRefunded' | 'isGoodReview', value: boolean | string) => {
     if (selectedIds.size === 0) {
       toastError('请先选择订单');
       return;
     }
     const label = field === 'isRefunded' ? '返款' : '好评';
-    if (await confirm({ message: `确定要将选中的 ${selectedIds.size} 个订单标记为${value ? '已' : '未'}${label}吗？`, variant: 'warning' })) {
+    const statusLabel = typeof value === 'string' ? 
+      (value === 'reviewed' ? '已好评' : value === 'creating' ? '作图中' : value === 'returned' ? '已返图' : '未好评') : 
+      (value ? '已' : '未');
+    if (await confirm({ message: `确定要将选中的 ${selectedIds.size} 个订单标记为${statusLabel}${label}吗？`, variant: 'warning' })) {
       batchStatusMutation.mutate({ ids: Array.from(selectedIds), field, value });
     }
   };
@@ -370,8 +372,10 @@ export default function Orders() {
   ];
 
   const reviewOptions = [
-    { value: 'true', label: '已好评', color: 'badge-success' },
-    { value: 'false', label: '未好评', color: 'badge-neutral' },
+    { value: 'pending', label: '未好评', color: 'badge-neutral' },
+    { value: 'reviewed', label: '已好评', color: 'badge-success' },
+    { value: 'creating', label: '作图中', color: 'badge-warning' },
+    { value: 'returned', label: '已返图', color: 'badge-info' },
   ];
 
   // 快捷日期筛选
@@ -405,7 +409,7 @@ export default function Orders() {
   // 当前筛选结果的快速统计
   const stats = useMemo(() => {
     const refundPending = filteredOrders.filter((o: any) => !o.isRefunded).length;
-    const reviewPending = filteredOrders.filter((o: any) => !o.isGoodReview).length;
+    const reviewPending = filteredOrders.filter((o: any) => o.isGoodReview === 'pending').length;
     const totalAmount = filteredOrders.reduce((sum: number, o: any) => sum + (o.actualPayment || 0), 0);
     const totalRefund = filteredOrders.reduce((sum: number, o: any) =>
       sum + (o.actualPayment || 0) + (o.baseCommission || 0) + (o.reviewCommission || 0), 0);
@@ -543,8 +547,10 @@ export default function Orders() {
             className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             <option value="">好评状态</option>
-            <option value="true">已好评</option>
-            <option value="false">未好评</option>
+            <option value="pending">未好评</option>
+            <option value="reviewed">已好评</option>
+            <option value="creating">作图中</option>
+            <option value="returned">已返图</option>
           </select>
           <div className="flex items-center gap-2">
             <input
@@ -625,7 +631,7 @@ export default function Orders() {
             批量已返款
           </button>
           <button
-            onClick={() => handleBatchStatus('isGoodReview', true)}
+            onClick={() => handleBatchStatus('isGoodReview', 'reviewed')}
             disabled={batchStatusMutation.isPending}
             className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
@@ -711,7 +717,7 @@ export default function Orders() {
               </th>
               <th className="px-3 py-2 text-left font-medium">
                 <div className="whitespace-nowrap">好评状态</div>
-                <ColumnFilter type="select" value={columnFilters['isGoodReview'] || ''} onChange={(v) => setColFilter('isGoodReview', v)} options={[{ value: 'true', label: '已好评' }, { value: 'false', label: '未好评' }]} />
+                <ColumnFilter type="select" value={columnFilters['isGoodReview'] || ''} onChange={(v) => setColFilter('isGoodReview', v)} options={[{ value: 'pending', label: '未好评' }, { value: 'reviewed', label: '已好评' }, { value: 'creating', label: '作图中' }, { value: 'returned', label: '已返图' }]} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
                 <div className="whitespace-nowrap">基础返佣</div>

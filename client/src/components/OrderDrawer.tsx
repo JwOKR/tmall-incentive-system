@@ -79,9 +79,16 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
                   {order.isRefunded ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
                   {order.isRefunded ? '已返款' : '待返款'}
                 </div>
-                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${order.isGoodReview ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-muted text-muted-foreground'}`}>
-                  {order.isGoodReview ? <Star className="h-4 w-4" /> : <Star className="h-4 w-4" />}
-                  {order.isGoodReview ? '已好评' : '未好评'}
+                <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${
+                  order.isGoodReview === 'reviewed' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                  order.isGoodReview === 'creating' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                  order.isGoodReview === 'returned' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                  'bg-muted text-muted-foreground'
+                }`}>
+                  <Star className="h-4 w-4" />
+                  {order.isGoodReview === 'reviewed' ? '已好评' :
+                   order.isGoodReview === 'creating' ? '作图中' :
+                   order.isGoodReview === 'returned' ? '已返图' : '未好评'}
                 </div>
               </div>
 

@@ -193,9 +193,15 @@ export default function TakerDetail() {
                       : <AlertCircle className="h-4 w-4 text-yellow-500 mx-auto" />}
                   </td>
                   <td className="px-4 py-3 text-center">
-                    {order.isGoodReview
-                      ? <Star className="h-4 w-4 text-blue-500 mx-auto" />
-                      : <span className="text-muted-foreground">-</span>}
+                    {order.isGoodReview === 'reviewed' ? (
+                      <Star className="h-4 w-4 text-blue-500 mx-auto" />
+                    ) : order.isGoodReview === 'creating' ? (
+                      <span className="text-yellow-500 text-xs">作图中</span>
+                    ) : order.isGoodReview === 'returned' ? (
+                      <span className="text-green-500 text-xs">已返图</span>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
+                    )}
                   </td>
                 </tr>
               ))}
