@@ -12,12 +12,13 @@ datasource db {
 
 // 系统用户（登录）
 model User {
-  id        String   @id @default(cuid())
-  username  String   @unique // 用户名
-  password  String   // bcrypt加密密码
-  role      String   @default("admin") // admin, user
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  username    String   @unique // 用户名
+  password    String   // bcrypt加密密码
+  role        String   @default("admin") // admin, user
+  permissions String?  @db.Text // JSON格式权限: {orders:{view:true,edit:true}, takers:{view:true,edit:false}, ...}
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@map("users")
 }

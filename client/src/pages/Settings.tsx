@@ -46,7 +46,7 @@ export default function Settings() {
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
-  const [userForm, setUserForm] = useState({ username: '', password: '', role: 'user' });
+  const [userForm, setUserForm] = useState({ username: '', password: '', role: 'user', permissions: {} as Record<string, { view: boolean; edit: boolean }> });
 
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword) {
@@ -127,13 +127,13 @@ export default function Settings() {
 
     try {
       if (editingUser) {
-        const updateData: any = { username: userForm.username, role: userForm.role };
+        const updateData: any = { username: userForm.username, role: userForm.role, permissions: userForm.permissions };
         if (userForm.password) updateData.password = userForm.password;
         const res: any = await adminApi.updateUser(editingUser.id, updateData);
         if (res.success) { toastSuccess('用户已更新'); setShowUserForm(false); setEditingUser(null); loadUsers(); }
         else toastError(res.message || '更新失败');
       } else {
-        const res: any = await adminApi.createUser({ username: userForm.username, password: userForm.password, role: userForm.role });
+        const res: any = await adminApi.createUser({ username: userForm.username, password: userForm.password, role: userForm.role, permissions: userForm.permissions });
         if (res.success) { toastSuccess('用户已创建'); setShowUserForm(false); loadUsers(); }
         else toastError(res.message || '创建失败');
       }
@@ -451,7 +451,16 @@ export default function Settings() {
                         <td className="px-4 py-3 text-right">
                           <div className="flex items-center justify-end gap-1">
                             <button
-                              onClick={() => { setEditingUser(u); setUserForm({ username: u.username, password: '', role: u.role }); setShowUserForm(true); }}
+                              onClick={() => { 
+                                setEditingUser(u); 
+                                setUserForm({ 
+                                  username: u.username, 
+                                  password: '', 
+                                  role: u.role, 
+                                  permissions: u.permissions ? JSON.parse(u.permissions) : {} 
+                                }); 
+                                setShowUserForm(true); 
+                              }}
                               className="p-1.5 hover:bg-accent rounded-md"
                               title="编辑"
                             >
@@ -524,6 +533,63 @@ export default function Settings() {
                       </select>
                       <p className="text-xs text-muted-foreground mt-1">管理员可管理用户和所有数据，普通用户仅可操作数据</p>
                     </div>
+                    {/* 权限设置 */}
+                    {userForm.role === 'user' && (
+                      <div>
+                        <label className="text-sm font-medium">权限设置</label>
+                        <p className="text-xs text-muted-foreground mb-2">为普通用户设置模块访问和编辑权限</p>
+                        <div className="space-y-2 rounded-md border p-3 bg-muted/30">
+                          {[
+                            { key: 'orders', label: '订单明细' },
+                            { key: 'takers', label: '接单人' },
+                            { key: 'tasks', label: '任务' },
+                            { key: 'intervals', label: '接单间隔' },
+                            { key: 'commissions', label: '佣金分析' },
+                            { key: 'logs', label: '操作日志' },
+                            { key: 'repeatDiscounts', label: '回头客立减' },
+                          ].map(({ key, label }) => {
+                            const perm = userForm.permissions[key] || { view: false, edit: false };
+                            return (
+                              <div key={key} className="flex items-center justify-between">
+                                <span className="text-sm">{label}</span>
+                                <div className="flex items-center gap-3">
+                                  <label className="flex items-center gap-1.5 text-xs">
+                                    <input
+                                      type="checkbox"
+                                      checked={perm.view}
+                                      onChange={(e) => setUserForm({
+                                        ...userForm,
+                                        permissions: {
+                                          ...userForm.permissions,
+                                          [key]: { ...perm, view: e.target.checked }
+                                        }
+                                      })}
+                                      className="rounded"
+                                    />
+                                    查看
+                                  </label>
+                                  <label className="flex items-center gap-1.5 text-xs">
+                                    <input
+                                      type="checkbox"
+                                      checked={perm.edit}
+                                      onChange={(e) => setUserForm({
+                                        ...userForm,
+                                        permissions: {
+                                          ...userForm.permissions,
+                                          [key]: { ...perm, edit: e.target.checked }
+                                        }
+                                      })}
+                                      className="rounded"
+                                    />
+                                    编辑
+                                  </label>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
                     <div className="flex justify-end gap-2 pt-2">
                       <button
                         onClick={() => { setShowUserForm(false); setEditingUser(null); }}

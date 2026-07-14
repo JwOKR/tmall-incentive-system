@@ -12,6 +12,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
         id: true,
         username: true,
         role: true,
+        permissions: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -28,7 +29,7 @@ export const getAllUsers = async (req: Request, res: Response) => {
 // 创建新用户（仅管理员）
 export const createUser = async (req: Request, res: Response) => {
   try {
-    const { username, password, role = 'user' } = req.body;
+    const { username, password, role = 'user', permissions } = req.body;
 
     if (!username || !password) {
       return res.status(400).json({ success: false, message: '请输入用户名和密码' });
@@ -45,8 +46,13 @@ export const createUser = async (req: Request, res: Response) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
-      data: { username, password: hashedPassword, role },
-      select: { id: true, username: true, role: true, createdAt: true },
+      data: { 
+        username, 
+        password: hashedPassword, 
+        role,
+        permissions: permissions ? JSON.stringify(permissions) : null,
+      },
+      select: { id: true, username: true, role: true, permissions: true, createdAt: true },
     });
 
     await createAuditLog({
@@ -66,7 +72,7 @@ export const createUser = async (req: Request, res: Response) => {
 export const updateUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    const { username, password, role } = req.body;
+    const { username, password, role, permissions } = req.body;
 
     const existing = await prisma.user.findUnique({ where: { id } });
     if (!existing) {
@@ -89,6 +95,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     const updateData: any = {};
     if (username) updateData.username = username;
     if (role) updateData.role = role;
+    if (permissions !== undefined) updateData.permissions = permissions ? JSON.stringify(permissions) : null;
     if (password) {
       if (password.length < 6) {
         return res.status(400).json({ success: false, message: '密码至少6位' });
@@ -99,7 +106,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     const user = await prisma.user.update({
       where: { id },
       data: updateData,
-      select: { id: true, username: true, role: true, createdAt: true, updatedAt: true },
+      select: { id: true, username: true, role: true, permissions: true, createdAt: true, updatedAt: true },
     });
 
     await createAuditLog({
