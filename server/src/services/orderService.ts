@@ -15,6 +15,22 @@ export function parseBoolValue(value: unknown): boolean {
 }
 
 // ──────────────────────────────────────
+// 好评状态解析（支持多种输入格式）
+// ──────────────────────────────────────
+export function parseReviewStatus(value: unknown): string {
+  if (typeof value === 'string') {
+    const v = value.trim().toLowerCase();
+    if (v === 'reviewed' || v === '已好评' || v === 'true' || v === '1' || v === '是') return 'reviewed';
+    if (v === 'creating' || v === '作图中') return 'creating';
+    if (v === 'returned' || v === '已返图') return 'returned';
+    return 'pending';
+  }
+  if (typeof value === 'boolean') return value ? 'reviewed' : 'pending';
+  if (typeof value === 'number') return value !== 0 ? 'reviewed' : 'pending';
+  return 'pending';
+}
+
+// ──────────────────────────────────────
 // 类型定义
 // ──────────────────────────────────────
 export interface OrderListParams {
@@ -146,7 +162,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
       totalRefund: newActual + newBase + newReview,
       isRefunded: input.isRefunded !== undefined ? Boolean(input.isRefunded) : undefined,
       refundDate: input.refundDate !== undefined ? parseExcelDate(input.refundDate) : undefined,
-      isGoodReview: input.isGoodReview !== undefined ? Boolean(input.isGoodReview) : undefined,
+      isGoodReview: input.isGoodReview !== undefined ? String(input.isGoodReview) : undefined,
       baseCommission: input.baseCommission !== undefined ? Number(input.baseCommission) : undefined,
       reviewCommission: input.reviewCommission !== undefined ? Number(input.reviewCommission) : undefined,
       reviewCommissionDate: input.reviewCommissionDate !== undefined ? parseExcelDate(input.reviewCommissionDate) : undefined,
@@ -243,7 +259,7 @@ export async function batchCreateOrders(rawOrders: any[]): Promise<BatchImportRe
             totalRefund: actualPayment + baseCommission + reviewCommission,
             isRefunded: parseBoolValue(item.isRefunded),
             refundDate: parseExcelDate(item.refundDate),
-            isGoodReview: parseBoolValue(item.isGoodReview),
+            isGoodReview: parseReviewStatus(item.isGoodReview),
             reviewCommissionDate: parseExcelDate(item.reviewCommissionDate),
             remark: remarkStr,
           },
@@ -330,7 +346,7 @@ export async function batchUpdateOrders(rawOrders: any[]) {
         if (item.remark !== '' && item.remark !== undefined) updateData.remark = String(item.remark).trim() || null;
         if (item.isRefunded !== '' && item.isRefunded != null) updateData.isRefunded = parseBoolValue(item.isRefunded);
         if (item.refundDate !== '' && item.refundDate != null) updateData.refundDate = parseExcelDate(item.refundDate);
-        if (item.isGoodReview !== '' && item.isGoodReview != null) updateData.isGoodReview = parseBoolValue(item.isGoodReview);
+        if (item.isGoodReview !== '' && item.isGoodReview != null) updateData.isGoodReview = parseReviewStatus(item.isGoodReview);
         if (item.reviewCommissionDate !== '' && item.reviewCommissionDate != null) updateData.reviewCommissionDate = parseExcelDate(item.reviewCommissionDate);
         if (item.orderNo19 && !existingOrder.orderNo19) updateData.orderNo19 = orderNo19Str;
 

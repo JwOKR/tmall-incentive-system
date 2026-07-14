@@ -131,7 +131,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         _sum: { actualPayment: true, totalRefund: true },
       }),
       prisma.order.count({ where: { isRefunded: false } }),
-      prisma.order.count({ where: { isGoodReview: false } }),
+      prisma.order.count({ where: { isGoodReview: 'pending' } }),
       prisma.orderTaker.findMany({
         take: 5,
         orderBy: { totalOrders: 'desc' },
