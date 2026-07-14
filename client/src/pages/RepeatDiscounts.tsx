@@ -165,19 +165,26 @@ export default function RepeatDiscounts() {
   useEffect(() => {
     let cancelled = false;
     setOverallAiError('');
+    console.log('[OverallAI] Loading saved analysis for:', { startDate, endDate });
     repeatDiscountApi.getSavedOverallAnalysis(startDate || undefined, endDate || undefined).then((res: any) => {
       if (cancelled) return;
-      const data = res?.data?.data;
-      if (data) {
+      console.log('[OverallAI] Raw response:', res);
+      // axios 拦截器已解包一层
+      const data = res?.data ?? res;
+      console.log('[OverallAI] Parsed data:', data);
+      if (data && data.sections) {
+        console.log('[OverallAI] Found saved analysis, sections count:', data.sections.length);
         setOverallAiSections(data.sections);
         setOverallAiSource(data.source);
         setOverallAiModel(data.model || '');
       } else {
+        console.log('[OverallAI] No saved analysis found');
         setOverallAiSections(null);
         setOverallAiSource(null);
         setOverallAiModel('');
       }
-    }).catch(() => {
+    }).catch((err) => {
+      console.error('[OverallAI] Error loading:', err);
       if (!cancelled) {
         setOverallAiSections(null);
         setOverallAiSource(null);
