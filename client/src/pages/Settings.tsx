@@ -414,7 +414,7 @@ export default function Settings() {
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">用户管理</h3>
               <button
-                onClick={() => { setEditingUser(null); setUserForm({ username: '', password: '', role: 'user' }); setShowUserForm(true); }}
+                onClick={() => { setEditingUser(null); setUserForm({ username: '', password: '', role: 'user', permissions: {} }); setShowUserForm(true); }}
                 className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 <Plus className="h-4 w-4" />
@@ -548,7 +548,7 @@ export default function Settings() {
                             { key: 'logs', label: '操作日志' },
                             { key: 'repeatDiscounts', label: '回头客立减' },
                           ].map(({ key, label }) => {
-                            const perm = userForm.permissions[key] || { view: false, edit: false };
+                            const perm = userForm.permissions?.[key] || { view: false, edit: false };
                             return (
                               <div key={key} className="flex items-center justify-between">
                                 <span className="text-sm">{label}</span>
