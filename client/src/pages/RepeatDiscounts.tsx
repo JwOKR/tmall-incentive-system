@@ -304,10 +304,12 @@ export default function RepeatDiscounts() {
     console.log('[AI] Loading saved analysis for recordId:', previewRecord.id);
     repeatDiscountApi.getSavedAnalysis(previewRecord.id).then((res: any) => {
       if (cancelled) return;
-      console.log('[AI] API response:', res?.data);
-      const data = res?.data?.data;
-      if (data) {
-        console.log('[AI] Found saved analysis, sections count:', data.sections?.length);
+      console.log('[AI] Raw response:', res);
+      // axios 拦截器已解包一层，res 就是 { success, data }
+      const data = res?.data ?? res;
+      console.log('[AI] Parsed data:', data);
+      if (data && data.sections) {
+        console.log('[AI] Found saved analysis, sections count:', data.sections.length);
         setAiSections(data.sections);
         setAiSource(data.source);
         setAiModel(data.model || '');
