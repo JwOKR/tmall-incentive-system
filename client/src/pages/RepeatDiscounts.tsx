@@ -1175,14 +1175,36 @@ export default function RepeatDiscounts() {
       if (!rec) return ['暂无数据，无法生成洞察'];
       const insights: string[] = [];
       const t = calcTotals(rec);
-      if (t.roi >= 5) insights.push(`合计ROI达到 ${fmtR(t.roi)}，表现优秀，投入产出比高`);
-      else if (t.roi >= 2) insights.push(`合计ROI为 ${fmtR(t.roi)}，处于良好水平`);
-      else if (t.roi > 0) insights.push(`合计ROI仅 ${fmtR(t.roi)}，需关注投放效率`);
-      const g1Eff = rec.g1.grantAmount > 0 ? rec.g1.paymentAmount / rec.g1.grantAmount : 0;
-      const g2Eff = rec.g2.grantAmount > 0 ? rec.g2.paymentAmount / rec.g2.grantAmount : 0;
-      if (g1Eff > g2Eff) insights.push(`近2年已购用户人群ROI（${fmtR(g1Eff)}）优于365天内有购买且60天无购买人群（${fmtR(g2Eff)}），老客转化更高效`);
-      else if (g2Eff > g1Eff) insights.push(`365天内有购买且60天无购买人群ROI（${fmtR(g2Eff)}）优于近2年已购用户人群（${fmtR(g1Eff)}），沉睡用户唤醒效果好`);
-      if (rec.g1.paymentBuyers + rec.g2.paymentBuyers > 50) insights.push('日均支付买家数表现良好，人群覆盖面广');
+      const g1R = rec.g1.grantAmount > 0 ? rec.g1.paymentAmount / rec.g1.grantAmount : 0;
+      const g2R = rec.g2.grantAmount > 0 ? rec.g2.paymentAmount / rec.g2.grantAmount : 0;
+      const totalBuyers = rec.g1.paymentBuyers + rec.g2.paymentBuyers;
+      const perBuyerCost = totalBuyers > 0 ? t.grant / totalBuyers : 0;
+
+      // ROI 洞察
+      if (t.roi >= 5) insights.push(`综合ROI ${fmtR(t.roi)} 表现优秀，每投入1元可带来${fmtR(t.roi)}元回报`);
+      else if (t.roi >= 2) insights.push(`综合ROI ${fmtR(t.roi)} 处于良好水平，投放效率健康`);
+      else if (t.roi >= 1) insights.push(`综合ROI ${fmtR(t.roi)} 接近盈亏线，利润空间有限需关注`);
+      else if (t.roi > 0) insights.push(`⚠️ 综合ROI ${fmtR(t.roi)} 已低于盈亏平衡点，当日投放亏损`);
+
+      // 人群对比洞察
+      const roiDiff = Math.abs(g1R - g2R);
+      if (roiDiff > 1) {
+        const winner = g1R > g2R ? '已购人群' : '沉睡人群';
+        const loser = g1R > g2R ? '沉睡人群' : '已购人群';
+        insights.push(`${winner}ROI（${fmtR(Math.max(g1R, g2R))}）远超${loser}（${fmtR(Math.min(g1R, g2R))}），差距达${roiDiff.toFixed(2)}，建议调整预算分配`);
+      } else if (roiDiff > 0.3) {
+        const winner = g1R > g2R ? '已购人群' : '沉睡人群';
+        insights.push(`${winner}效率略优（${fmtR(Math.max(g1R, g2R))} vs ${fmtR(Math.min(g1R, g2R))}），但差距不大，可继续观察`);
+      }
+
+      // 成本洞察
+      if (perBuyerCost > 0 && perBuyerCost < 5) insights.push(`单客获取成本仅${fmt(perBuyerCost)}元，获客效率极高`);
+      else if (perBuyerCost > 20) insights.push(`单客获取成本${fmt(perBuyerCost)}元偏高，建议优化优惠策略控制成本`);
+
+      // 规模洞察
+      if (totalBuyers >= 50) insights.push(`${totalBuyers}位买家参与，人群覆盖面广，数据可信度高`);
+      else if (totalBuyers < 10) insights.push(`仅${totalBuyers}位买家，样本量较小，建议连续观察多日再做决策`);
+
       return insights.length > 0 ? insights : ['数据表现平稳，建议持续观察趋势变化'];
     };
 
@@ -1191,20 +1213,116 @@ export default function RepeatDiscounts() {
       const t = calcTotals(rec);
       const g1R = rec.g1.grantAmount > 0 ? rec.g1.paymentAmount / rec.g1.grantAmount : 0;
       const g2R = rec.g2.grantAmount > 0 ? rec.g2.paymentAmount / rec.g2.grantAmount : 0;
-      const sections = [
-        { title: '综合评估', content: `当日回头客立减活动共投入 ${fmt(t.grant)}，带来 ${fmt(t.pay)} 支付，综合ROI ${fmtR(t.roi)}。${t.roi >= 3 ? '整体投放效率良好，建议维持当前策略。' : t.roi >= 1 ? '投放效率尚可，建议优化人群定向以提升ROI。' : 'ROI偏低，建议调整优惠力度或筛选更精准的人群。'}` },
-        { title: '人群效率分析', content: `近2年已购用户人群：发放 ${fmt(rec.g1.grantAmount)}，支付 ${fmt(rec.g1.paymentAmount)}，ROI ${fmtR(g1R)}，覆盖 ${fmtInt(rec.g1.paymentBuyers)} 位买家。365天内有购买且60天无购买人群：发放 ${fmt(rec.g2.grantAmount)}，支付 ${fmt(rec.g2.paymentAmount)}，ROI ${fmtR(g2R)}，覆盖 ${fmtInt(rec.g2.paymentBuyers)} 位买家。${g1R > g2R ? '老客人群转化效率更高，建议加大该人群投放。' : g2R > g1R ? '沉睡用户唤醒效果更佳，值得深入挖掘该人群潜力。' : '两个人群效率接近，建议A/B测试寻找更优策略。'}` },
-        { title: '趋势分析', content: prev ? (() => {
-          const pt = calcTotals(prev);
-          const roiChange = pt.roi > 0 ? ((t.roi - pt.roi) / pt.roi * 100).toFixed(1) : 'N/A';
-          const payChange = pt.pay > 0 ? ((t.pay - pt.pay) / pt.pay * 100).toFixed(1) : 'N/A';
-          return `与前日相比，ROI ${roiChange === 'N/A' ? '无法比较' : (parseFloat(roiChange) >= 0 ? `提升 ${roiChange}%` : `下降 ${Math.abs(parseFloat(roiChange))}%`)}，支付金额${payChange === 'N/A' ? '无法比较' : (parseFloat(payChange) >= 0 ? `增长 ${payChange}%` : `下降 ${Math.abs(parseFloat(payChange))}%`)}`;
-        })() : '首次记录，暂无趋势数据可比。' },
-        { title: '成本效率', content: `人均发放金额：${(t.grant / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1)).toFixed(2)}；人均支付金额：${(t.pay / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1)).toFixed(2)}；件均支付金额：${(t.pay / (rec.g1.paymentItems + rec.g2.paymentItems || 1)).toFixed(2)}。${t.grant / (rec.g1.paymentBuyers + rec.g2.paymentBuyers || 1) < 10 ? '单客获取成本较低，效率可观。' : '单客成本偏高，建议优化优惠策略。'}` },
-        { title: '策略建议', content: t.roi < 2 ? '建议：1) 缩小发放范围至高价值用户；2) 降低优惠力度或设置满减门槛；3) 优化人群标签精准度。' : '建议：1) 维持当前投放策略；2) 可适当扩展人群覆盖；3) 关注复购率变化，持续优化。' },
-        { title: '风险提示', content: `${t.roi < 1 ? '当前ROI低于1，存在亏损风险，需立即调整策略。' : ''}${g2R < 1 ? '365天内有购买且60天无购买人群ROI偏低，该人群可能已流失，建议降低投放。' : ''}关注竞品动态及平台规则变化对活动效果的影响。` },
+      const totalBuyers = rec.g1.paymentBuyers + rec.g2.paymentBuyers;
+      const totalItems = rec.g1.paymentItems + rec.g2.paymentItems;
+      const perBuyerCost = totalBuyers > 0 ? t.grant / totalBuyers : 0;
+      const perItemPay = totalItems > 0 ? t.pay / totalItems : 0;
+      const grantPayRatio = t.grant > 0 ? t.pay / t.grant : 0;
+
+      // 综合评估 - 多维度判断
+      let overall = '';
+      if (t.roi >= 5 && totalBuyers >= 20) {
+        overall = `当日投放效果出色：综合ROI ${fmtR(t.roi)}，投入${fmt(t.grant)}撬动${fmt(t.pay)}支付，且${totalBuyers}位买家的转化规模也相当可观。建议维持当前策略并考虑小幅扩量。`;
+      } else if (t.roi >= 3 && totalBuyers < 10) {
+        overall = `ROI ${fmtR(t.roi)}看似不错，但仅有${totalBuyers}位买家，样本量过小可能导致ROI虚高。建议观察2-3天确认数据稳定性后再做决策。`;
+      } else if (t.roi >= 2) {
+        overall = `综合ROI ${fmtR(t.roi)}处于良好区间，投入产出比健康。发放${fmt(t.grant)}带来${fmt(t.pay)}支付，${totalBuyers}位买家参与，整体运转正常。`;
+      } else if (t.roi >= 1) {
+        overall = `综合ROI ${fmtR(t.roi)}刚刚跨过盈亏线，虽未亏损但利润空间极薄。当前发放力度${fmt(t.grant)}对应的回报效率需要警惕。`;
+      } else if (t.roi > 0) {
+        overall = `⚠️ 综合ROI仅${fmtR(t.roi)}，已低于盈亏平衡点，当日投放处于亏损状态。需要立即审视优惠券策略。`;
+      } else {
+        overall = `当日无有效投放数据。`;
+      }
+
+      // 人群效率 - 深度对比
+      let crowd = '';
+      const roiDiff = Math.abs(g1R - g2R);
+      const buyerDiff = rec.g1.paymentBuyers - rec.g2.paymentBuyers;
+      if (g1R > g2R && roiDiff > 0.5) {
+        crowd = `已购人群ROI（${fmtR(g1R)}）显著高于沉睡人群（${fmtR(g2R)}），差距${roiDiff.toFixed(2)}。已购人群带来${rec.g1.paymentBuyers}位买家，沉睡人群${rec.g2.paymentBuyers}位。老客复购意愿更强，建议将预算向已购人群倾斜。`;
+      } else if (g2R > g1R && roiDiff > 0.5) {
+        crowd = `沉睡人群ROI（${fmtR(g2R)}）反超已购人群（${fmtR(g1R)}），差距${roiDiff.toFixed(2)}。沉睡人群带来${rec.g2.paymentBuyers}位买家，说明召回策略有效。建议适当增加沉睡人群的优惠券发放量。`;
+      } else if (roiDiff <= 0.5 && roiDiff > 0) {
+        crowd = `两个人群ROI接近（${fmtR(g1R)} vs ${fmtR(g2R)}），效率差异不大。已购人群${rec.g1.paymentBuyers}位买家，沉睡人群${rec.g2.paymentBuyers}位，可考虑A/B测试不同面额优惠券寻找更优解。`;
+      } else {
+        crowd = `两个人群ROI均为${fmtR(g1R)}，表现一致。已购人群${rec.g1.paymentBuyers}位买家，沉睡人群${rec.g2.paymentBuyers}位。`;
+      }
+
+      // 趋势分析 - 有逻辑判断
+      let trend = '';
+      if (prev) {
+        const pt = calcTotals(prev);
+        const roiDelta = t.roi - pt.roi;
+        const payDelta = t.pay - pt.pay;
+        const buyerDelta = totalBuyers - (prev.g1.paymentBuyers + prev.g2.paymentBuyers);
+        const roiPct = pt.roi > 0 ? (roiDelta / pt.roi * 100) : 0;
+        const payPct = pt.pay > 0 ? (payDelta / pt.pay * 100) : 0;
+
+        if (Math.abs(roiPct) < 5 && Math.abs(payPct) < 10) {
+          trend = `与前日相比变化不大（ROI ${roiPct >= 0 ? '+' : ''}${roiPct.toFixed(1)}%，支付 ${payPct >= 0 ? '+' : ''}${payPct.toFixed(1)}%），数据平稳，属于正常波动范围。`;
+        } else if (roiDelta > 0 && payDelta > 0) {
+          trend = `多项指标同步向好：ROI ${roiPct >= 0 ? '+' : ''}${roiPct.toFixed(1)}%，支付金额 ${payPct >= 0 ? '+' : ''}${payPct.toFixed(1)}%，买家数${buyerDelta >= 0 ? '+' : ''}${buyerDelta}人。投放效率在提升，建议保持当前节奏。`;
+        } else if (roiDelta < 0 && payDelta > 0) {
+          trend = `支付金额增长${payPct.toFixed(1)}%但ROI下降${Math.abs(roiPct).toFixed(1)}%，说明发放增速快于支付增速。需关注是否优惠券发放过于激进。`;
+        } else if (roiDelta > 0 && payDelta < 0) {
+          trend = `支付金额下降${Math.abs(payPct).toFixed(1)}%但ROI反而提升${roiPct.toFixed(1)}%，说明发放收缩幅度更大。效率改善但规模在缩小，需权衡。`;
+        } else {
+          trend = `⚠️ 多项指标同步下滑：ROI ${roiPct.toFixed(1)}%，支付 ${payPct.toFixed(1)}%，买家数${buyerDelta}人。活动效果明显衰减，需要关注。`;
+        }
+      } else {
+        trend = '首次记录，暂无历史数据可比。建议连续记录3天以上再做趋势判断。';
+      }
+
+      // 成本效率 - 有行业基准
+      let cost = '';
+      if (perBuyerCost > 0) {
+        if (perBuyerCost < 5) {
+          cost = `单客获取成本仅${fmt(perBuyerCost)}元，远低于行业常见水平（5-15元），获客效率极高。件均支付${fmt(perItemPay)}元，性价比突出。`;
+        } else if (perBuyerCost < 15) {
+          cost = `单客获取成本${fmt(perBuyerCost)}元，处于行业正常区间（5-15元）。件均支付${fmt(perItemPay)}元，整体成本可控。`;
+        } else if (perBuyerCost < 30) {
+          cost = `单客获取成本${fmt(perBuyerCost)}元，偏高于行业水平。件均支付${fmt(perItemPay)}元，需要评估是否值得为这些用户付出更高成本。`;
+        } else {
+          cost = `⚠️ 单客获取成本高达${fmt(perBuyerCost)}元，远超行业基准。件均支付${fmt(perItemPay)}元，获客成本压力较大，建议收紧优惠力度。`;
+        }
+      } else {
+        cost = '无有效买家数据，无法计算成本指标。';
+      }
+
+      // 策略建议 - 具体可执行
+      let strategy = '';
+      if (t.roi < 1) {
+        strategy = `当前处于亏损，建议：① 立即将优惠券面额降低20-30%；② 收窄人群范围，仅投放近90天内有购买的高活跃用户；③ 设置满减门槛（如满50减5）提升客单价。`;
+      } else if (t.roi < 2) {
+        strategy = `ROI偏低，建议：① 将沉睡人群的预算占比从当前的${t.grant > 0 ? ((rec.g2.grantAmount / t.grant) * 100).toFixed(0) : 50}%降低到30%以下；② 重点维护ROI更高的已购人群；③ 观察3天趋势后再决定是否调整优惠力度。`;
+      } else if (t.roi < 5) {
+        strategy = `投放效率良好，建议：① 维持当前策略不变；② 可尝试小幅扩展人群覆盖（+10-15%）；③ 测试不同优惠券面额找到效率与规模的最优平衡点。`;
+      } else {
+        strategy = `效率优秀，建议：① 适当放量，将日发放预算提升20-30%；② 同步监控ROI变化，确保放量后效率不会大幅下滑；③ 总结当前成功经验，形成标准投放SOP。`;
+      }
+
+      // 风险提示 - 有预警级别
+      let risk = '';
+      const risks: string[] = [];
+      if (t.roi < 1) risks.push(`🔴 ROI ${fmtR(t.roi)} 低于盈亏线，当日亏损`);
+      if (g2R < 0.5) risks.push(`🟡 沉睡人群ROI仅${fmtR(g2R)}，该人群可能已深度流失`);
+      if (totalBuyers < 5) risks.push(`🟡 买家数仅${totalBuyers}人，样本过小，数据可信度低`);
+      if (prev) {
+        const pt = calcTotals(prev);
+        const roiDrop = pt.roi > 0 ? ((t.roi - pt.roi) / pt.roi * 100) : 0;
+        if (roiDrop < -30) risks.push(`🔴 ROI单日暴跌${Math.abs(roiDrop).toFixed(0)}%，需紧急排查原因`);
+      }
+      risk = risks.length > 0 ? risks.join('；') + '。' : '当前数据未发现明显风险信号，各项指标运转正常。';
+
+      return [
+        { title: '综合评估', content: overall },
+        { title: '人群效率分析', content: crowd },
+        { title: '趋势分析', content: trend },
+        { title: '成本效率', content: cost },
+        { title: '策略建议', content: strategy },
+        { title: '风险提示', content: risk },
       ];
-      return sections;
     };
 
     const handleAiAnalysis = async () => {
