@@ -577,9 +577,9 @@ export default function RepeatDiscounts() {
   const lineChartData = useMemo(() => ({
     labels: chartLabels,
     datasets: [
-      { label: 'g1 ROI', data: allRecords.map(r => r.g1.grantAmount > 0 ? r.g1.paymentAmount / r.g1.grantAmount : 0), borderColor: 'rgba(59,130,246,1)', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: 'rgba(59,130,246,1)', pointBorderColor: '#fff', pointBorderWidth: 1.5, tension: 0.35 },
-      { label: 'g2 ROI', data: allRecords.map(r => r.g2.grantAmount > 0 ? r.g2.paymentAmount / r.g2.grantAmount : 0), borderColor: 'rgba(249,115,22,1)', backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: 'rgba(249,115,22,1)', pointBorderColor: '#fff', pointBorderWidth: 1.5, tension: 0.35 },
-      { label: '合计 ROI', data: allRecords.map(r => calcTotals(r).roi), borderColor: 'rgba(239,68,68,1)', backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 2.5, borderDash: [6, 3], pointRadius: 4, pointBackgroundColor: 'rgba(239,68,68,1)', pointBorderColor: '#fff', pointBorderWidth: 1.5, tension: 0.35 },
+      { label: '已购用户ROI', data: allRecords.map(r => r.g1.grantAmount > 0 ? r.g1.paymentAmount / r.g1.grantAmount : 0), borderColor: 'rgba(59,130,246,1)', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: 'rgba(59,130,246,1)', pointBorderColor: '#fff', pointBorderWidth: 1.5, tension: 0.35 },
+      { label: '沉睡用户ROI', data: allRecords.map(r => r.g2.grantAmount > 0 ? r.g2.paymentAmount / r.g2.grantAmount : 0), borderColor: 'rgba(249,115,22,1)', backgroundColor: 'rgba(249,115,22,0.1)', borderWidth: 2.5, pointRadius: 4, pointBackgroundColor: 'rgba(249,115,22,1)', pointBorderColor: '#fff', pointBorderWidth: 1.5, tension: 0.35 },
+      { label: '合计ROI', data: allRecords.map(r => calcTotals(r).roi), borderColor: 'rgba(239,68,68,1)', backgroundColor: 'rgba(239,68,68,0.1)', borderWidth: 2.5, borderDash: [6, 3], pointRadius: 4, pointBackgroundColor: 'rgba(239,68,68,1)', pointBorderColor: '#fff', pointBorderWidth: 1.5, tension: 0.35 },
     ],
   }), [chartLabels, allRecords]);
 
