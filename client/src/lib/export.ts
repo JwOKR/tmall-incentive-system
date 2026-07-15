@@ -106,11 +106,11 @@ function formatCellValue(value: any, key: string): any {
     return '';
   }
   
-  // 金额 - 不带符号，小数为0时显示整数
+  // 金额 - 返回数字类型，Excel可直接识别
   if (key.includes('price') || key.includes('Amount') || key.includes('Commission') || 
       key.includes('Reward') || key.includes('Refund') || key.includes('Payment')) {
     const num = Number(value);
-    return num % 1 === 0 ? String(Math.round(num)) : num.toFixed(2);
+    return num % 1 === 0 ? Math.round(num) : parseFloat(num.toFixed(2));
   }
   
   return String(value);
