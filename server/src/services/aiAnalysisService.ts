@@ -268,13 +268,14 @@ function parseAnalysis(rawText: string) {
         // 副标题在同一行（到换行符为止），正文在下一行
         const newlineIdx = rawContent.indexOf('\n');
         if (newlineIdx > 0) {
+          // 有换行 → 第一行是副标题，后面是正文
           const afterNewline = rawContent.substring(newlineIdx + 1).trim();
-          // 如果换行后有实际正文（长度 > 20），则使用换行后的内容
-          // 否则保留全部（可能是多行短内容拼接）
-          if (afterNewline.length > 20) {
+          if (afterNewline) {
             rawContent = afterNewline;
           }
         }
+        // newlineIdx === 0 → 无副标题，内容直接在下一行（已在上面 trim 处理）
+        // newlineIdx === -1 → 无换行，整段就是副标题/内容
         
         const section = sectionTitleMap.find(s => s.keys.includes(titleKey));
         if (section) {
@@ -313,11 +314,11 @@ function parseAnalysis(rawText: string) {
           }
           const nextContent = nextLines.join(' ').trim();
           
-          if (afterTitle && nextContent.length > 20) {
-            // 标题行有副标题，但下一行有更长的正文 → 用正文
+          // 优先使用后续行的正文（副标题只是标题的一部分）
+          if (nextContent) {
             content = nextContent;
           } else if (afterTitle) {
-            // 标题行有副标题，且没有更长的正文 → 用副标题
+            // 没有后续行，副标题就是全部内容
             content = afterTitle;
           } else {
             // 标题行无内容 → 用下一行
@@ -497,7 +498,7 @@ function parseOverallAnalysis(rawText: string) {
         const newlineIdx = rawContent.indexOf('\n');
         if (newlineIdx > 0) {
           const afterNewline = rawContent.substring(newlineIdx + 1).trim();
-          if (afterNewline.length > 20) {
+          if (afterNewline) {
             rawContent = afterNewline;
           }
         }
@@ -537,7 +538,7 @@ function parseOverallAnalysis(rawText: string) {
           }
           const nextContent = nextLines.join(' ').trim();
           
-          if (afterTitle && nextContent.length > 20) {
+          if (nextContent) {
             content = nextContent;
           } else if (afterTitle) {
             content = afterTitle;

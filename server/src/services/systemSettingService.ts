@@ -7,7 +7,7 @@ const AI_DEFAULTS: Record<string, { value: string; label: string }> = {
   ai_api_url: { value: 'https://api.deepseek.com/chat/completions', label: 'API 地址' },
   ai_api_key: { value: '', label: 'API Key' },
   ai_model: { value: 'deepseek-chat', label: '模型名称' },
-  ai_max_tokens: { value: '1000', label: '最大Token数' },
+  ai_max_tokens: { value: '1500', label: '最大Token数' },
   ai_temperature: { value: '0.7', label: '温度 (0-1)' },
 };
 
