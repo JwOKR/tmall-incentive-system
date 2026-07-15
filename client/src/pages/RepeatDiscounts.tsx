@@ -1287,6 +1287,7 @@ export default function RepeatDiscounts() {
           <div className="text-center py-24 text-muted-foreground glass-card rounded-2xl">暂无数据</div>
         ) : (() => {
           const t = calcTotals(rec);
+          const pt = prev ? calcTotals(prev) : { grant: 0, pay: 0, roi: 0 };
           const sections = aiSections || genAiAnalysis();
           const currentSource = aiSource || (aiSections ? 'ai' : 'local');
           return (
@@ -1336,10 +1337,34 @@ export default function RepeatDiscounts() {
                           <h3 className="text-sm font-bold">{label}</h3>
                         </div>
                         <div className="grid grid-cols-2 gap-3 text-sm">
-                          <div className="kpi bg-red-500/5 dark:bg-red-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">发放金额</div><div className="value text-lg font-bold text-red-600 dark:text-red-400">{fmt(g.grantAmount)}元</div></div>
-                          <div className="kpi bg-green-500/5 dark:bg-green-500/10 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付金额</div><div className="value text-lg font-bold text-green-600 dark:text-green-400">{fmt(g.paymentAmount)}元</div></div>
-                          <div className="kpi bg-muted/30 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付买家数</div><div className="value text-lg font-bold">{fmtInt(g.paymentBuyers)}人</div></div>
-                          <div className="kpi bg-muted/30 rounded-xl p-3"><div className="label text-xs text-muted-foreground">支付件数</div><div className="value text-lg font-bold">{fmtInt(g.paymentItems)}件</div></div>
+                          <div className="kpi bg-red-500/5 dark:bg-red-500/10 rounded-xl p-3">
+                            <div className="label text-xs text-muted-foreground">发放金额</div>
+                            <div className="flex items-center justify-between mt-1">
+                              <div className="value text-lg font-bold text-red-600 dark:text-red-400">{fmt(g.grantAmount)}元</div>
+                              {pg && <TrendArrow current={g.grantAmount} previous={pg.grantAmount} />}
+                            </div>
+                          </div>
+                          <div className="kpi bg-green-500/5 dark:bg-green-500/10 rounded-xl p-3">
+                            <div className="label text-xs text-muted-foreground">支付金额</div>
+                            <div className="flex items-center justify-between mt-1">
+                              <div className="value text-lg font-bold text-green-600 dark:text-green-400">{fmt(g.paymentAmount)}元</div>
+                              {pg && <TrendArrow current={g.paymentAmount} previous={pg.paymentAmount} />}
+                            </div>
+                          </div>
+                          <div className="kpi bg-muted/30 rounded-xl p-3">
+                            <div className="label text-xs text-muted-foreground">支付买家数</div>
+                            <div className="flex items-center justify-between mt-1">
+                              <div className="value text-lg font-bold">{fmtInt(g.paymentBuyers)}人</div>
+                              {pg && <TrendArrow current={g.paymentBuyers} previous={pg.paymentBuyers} />}
+                            </div>
+                          </div>
+                          <div className="kpi bg-muted/30 rounded-xl p-3">
+                            <div className="label text-xs text-muted-foreground">支付件数</div>
+                            <div className="flex items-center justify-between mt-1">
+                              <div className="value text-lg font-bold">{fmtInt(g.paymentItems)}件</div>
+                              {pg && <TrendArrow current={g.paymentItems} previous={pg.paymentItems} />}
+                            </div>
+                          </div>
                         </div>
                         <div className="mt-3 text-center">
                           <div className="text-xs text-muted-foreground">ROI</div>
@@ -1368,17 +1393,27 @@ export default function RepeatDiscounts() {
                   </thead>
                   <tbody>
                     {[
-                      { label: '近2年已购用户人群', grant: fmt(rec.g1.grantAmount), pay: fmt(rec.g1.paymentAmount), buyers: fmtInt(rec.g1.paymentBuyers), items: fmtInt(rec.g1.paymentItems), roi: rec.g1.grantAmount > 0 ? fmtR(rec.g1.paymentAmount / rec.g1.grantAmount) : '-' },
-                      { label: '365天内有购买且60天无购买人群', grant: fmt(rec.g2.grantAmount), pay: fmt(rec.g2.paymentAmount), buyers: fmtInt(rec.g2.paymentBuyers), items: fmtInt(rec.g2.paymentItems), roi: rec.g2.grantAmount > 0 ? fmtR(rec.g2.paymentAmount / rec.g2.grantAmount) : '-' },
-                      { label: '合计', grant: fmt(t.grant), pay: fmt(t.pay), buyers: fmtInt(rec.g1.paymentBuyers + rec.g2.paymentBuyers), items: fmtInt(rec.g1.paymentItems + rec.g2.paymentItems), roi: fmtR(t.roi), bold: true },
+                      { label: '近2年已购用户人群', cur: rec.g1, prev: prev?.g1, roi: rec.g1.grantAmount > 0 ? rec.g1.paymentAmount / rec.g1.grantAmount : 0, pRoi: prev?.g1 && prev.g1.grantAmount > 0 ? prev.g1.paymentAmount / prev.g1.grantAmount : undefined },
+                      { label: '365天内有购买且60天无购买人群', cur: rec.g2, prev: prev?.g2, roi: rec.g2.grantAmount > 0 ? rec.g2.paymentAmount / rec.g2.grantAmount : 0, pRoi: prev?.g2 && prev.g2.grantAmount > 0 ? prev.g2.paymentAmount / prev.g2.grantAmount : undefined },
+                      { label: '合计', cur: { grantAmount: t.grant, paymentAmount: t.pay, paymentBuyers: rec.g1.paymentBuyers + rec.g2.paymentBuyers, paymentItems: rec.g1.paymentItems + rec.g2.paymentItems }, prev: prev ? { grantAmount: pt.grant, paymentAmount: pt.pay, paymentBuyers: prev.g1.paymentBuyers + prev.g2.paymentBuyers, paymentItems: prev.g1.paymentItems + prev.g2.paymentItems } : undefined, roi: t.roi, pRoi: prev ? pt.roi : undefined, bold: true },
                     ].map((row, i) => (
                       <tr key={i} className="border-b last:border-0 hover:bg-red-500/5 transition-colors">
                         <td className={`px-4 py-3 text-left ${row.bold ? 'font-bold' : 'font-medium'}`}>{row.label}</td>
-                        <td className={`px-4 py-3 text-center tabular-nums text-red-600 dark:text-red-400 ${row.bold ? 'font-bold text-red-700 dark:text-red-300' : ''}`}>{row.grant}</td>
-                        <td className={`px-4 py-3 text-center tabular-nums text-green-600 dark:text-green-400 ${row.bold ? 'font-bold text-green-700 dark:text-green-300' : ''}`}>{row.pay}</td>
-                        <td className={`px-4 py-3 text-center tabular-nums ${row.bold ? 'font-bold' : ''}`}>{row.buyers}</td>
-                        <td className={`px-4 py-3 text-center tabular-nums ${row.bold ? 'font-bold' : ''}`}>{row.items}</td>
-                        <td className={`px-4 py-3 text-center tabular-nums font-bold text-red-600 dark:text-red-400`}>{row.roi}</td>
+                        <td className={`px-4 py-3 text-center ${row.bold ? 'font-bold' : ''}`}>
+                          <div className="flex items-center justify-center gap-1.5"><span className="tabular-nums text-red-600 dark:text-red-400">{fmt(row.cur.grantAmount)}</span>{row.prev && <TrendArrow current={row.cur.grantAmount} previous={row.prev.grantAmount} />}</div>
+                        </td>
+                        <td className={`px-4 py-3 text-center ${row.bold ? 'font-bold' : ''}`}>
+                          <div className="flex items-center justify-center gap-1.5"><span className="tabular-nums text-green-600 dark:text-green-400">{fmt(row.cur.paymentAmount)}</span>{row.prev && <TrendArrow current={row.cur.paymentAmount} previous={row.prev.paymentAmount} />}</div>
+                        </td>
+                        <td className={`px-4 py-3 text-center ${row.bold ? 'font-bold' : ''}`}>
+                          <div className="flex items-center justify-center gap-1.5"><span className="tabular-nums">{fmtInt(row.cur.paymentBuyers)}</span>{row.prev && <TrendArrow current={row.cur.paymentBuyers} previous={row.prev.paymentBuyers} />}</div>
+                        </td>
+                        <td className={`px-4 py-3 text-center ${row.bold ? 'font-bold' : ''}`}>
+                          <div className="flex items-center justify-center gap-1.5"><span className="tabular-nums">{fmtInt(row.cur.paymentItems)}</span>{row.prev && <TrendArrow current={row.cur.paymentItems} previous={row.prev.paymentItems} />}</div>
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5"><span className="tabular-nums font-bold text-red-600 dark:text-red-400">{fmtR(row.roi)}</span>{row.pRoi !== undefined && <TrendArrow current={row.roi} previous={row.pRoi} />}</div>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
