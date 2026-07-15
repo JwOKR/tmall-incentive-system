@@ -77,7 +77,7 @@ function getNestedValue(obj: any, path: string): any {
 }
 
 // 格式化单元格值
-function formatCellValue(value: any, key: string): string {
+function formatCellValue(value: any, key: string): any {
   if (value === null || value === undefined) return '';
   
   // 布尔值
@@ -96,18 +96,20 @@ function formatCellValue(value: any, key: string): string {
     return statusMap[String(value)] || String(value);
   }
   
-  // 日期
+  // 日期 - 返回 Date 对象让 Excel 识别为日期类型
   if (key.includes('Date') || key.includes('date') || key === 'createdAt' || key === 'updatedAt') {
     if (value) {
-      return new Date(value).toLocaleDateString('zh-CN');
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return String(value);
+      return d;
     }
     return '';
   }
   
-  // 金额
+  // 金额 - 不带符号
   if (key.includes('price') || key.includes('Amount') || key.includes('Commission') || 
       key.includes('Reward') || key.includes('Refund') || key.includes('Payment')) {
-    return `¥${Number(value).toFixed(2)}`;
+    return Number(value).toFixed(2);
   }
   
   return String(value);
