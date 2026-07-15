@@ -106,10 +106,11 @@ function formatCellValue(value: any, key: string): any {
     return '';
   }
   
-  // 金额 - 不带符号
+  // 金额 - 不带符号，小数为0时显示整数
   if (key.includes('price') || key.includes('Amount') || key.includes('Commission') || 
       key.includes('Reward') || key.includes('Refund') || key.includes('Payment')) {
-    return Number(value).toFixed(2);
+    const num = Number(value);
+    return num % 1 === 0 ? String(Math.round(num)) : num.toFixed(2);
   }
   
   return String(value);
