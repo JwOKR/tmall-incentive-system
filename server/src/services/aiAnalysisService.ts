@@ -111,14 +111,14 @@ function buildPrompt(data: any, prevData: any) {
 ## 当前日期数据
 日期：${data.recordDate}
 
-### 人群1：近2年已购用户人群
+### 近2年已购用户人群
 - 发放金额：¥${fmt(data.g1GrantAmount)}
 - 支付金额：¥${fmt(data.g1PaymentAmount)}
 - 支付买家数：${data.g1PaymentBuyers} 人
 - 支付件数：${data.g1PaymentItems} 件
 - ROI：${g1R}
 
-### 人群2：365天内有购买且60天无购买人群
+### 365天内有购买且60天无购买人群
 - 发放金额：¥${fmt(data.g2GrantAmount)}
 - 支付金额：¥${fmt(data.g2PaymentAmount)}
 - 支付买家数：${data.g2PaymentBuyers} 人
@@ -335,7 +335,7 @@ function buildOverallPrompt(records: any[], summary: any) {
     const g1r = r.g1GrantAmount > 0 ? (r.g1PaymentAmount / r.g1GrantAmount).toFixed(2) : 'N/A';
     const g2r = r.g2GrantAmount > 0 ? (r.g2PaymentAmount / r.g2GrantAmount).toFixed(2) : 'N/A';
     const buyers = r.g1PaymentBuyers + r.g2PaymentBuyers;
-    return `第${i + 1}天 (${r.recordDate.toISOString().slice(0, 10)}): 发放¥${fmt(tg)}, 支付¥${fmt(tp)}, ROI=${roi}, G1-ROI=${g1r}, G2-ROI=${g2r}, 买家数=${buyers}`;
+    return `第${i + 1}天 (${r.recordDate.toISOString().slice(0, 10)}): 发放¥${fmt(tg)}, 支付¥${fmt(tp)}, ROI=${roi}, 已购ROI=${g1r}, 沉睡ROI=${g2r}, 买家数=${buyers}`;
   }).join('\n');
 
   // 计算趋势
@@ -370,13 +370,13 @@ function buildOverallPrompt(records: any[], summary: any) {
 - 平均日支付：¥${fmt(summary.totalPaymentAmount / days)}
 - 平均日ROI：${summary.totalROI.toFixed(2)}
 
-## 人群1（近2年已购用户人群）汇总
+## 近2年已购用户人群 汇总
 - 累计发放：¥${fmt(summary.g1GrantAmount)}
 - 累计支付：¥${fmt(summary.g1PaymentAmount)}
 - 累计ROI：${summary.g1ROI.toFixed(2)}
 - 累计买家数：${summary.g1PaymentBuyers} 人
 
-## 人群2（365天内有购买且60天无购买人群）汇总
+## 365天内有购买且60天无购买人群 汇总
 - 累计发放：¥${fmt(summary.g2GrantAmount)}
 - 累计支付：¥${fmt(summary.g2PaymentAmount)}
 - 累计ROI：${summary.g2ROI.toFixed(2)}
@@ -397,7 +397,7 @@ ${dailyLines}
 2. **趋势分析**：要识别数据中的模式——是否有周期性波动（如周末效应）？ROI是持续下滑还是企稳回升？最高/最低日的可能原因是什么？
 3. **人群效率对比**：不要只比较ROI。要分析两个人群的投入产出比、人群规模、转化效率的差异，以及是否值得调整预算分配。
 4. **成本效率分析**：计算单客获取成本，与行业基准对比。分析成本趋势是改善还是恶化。
-5. **策略优化建议**：给出具体可执行的建议——比如"将人群2的预算占比从当前的X%提升到Y%"，而不是"建议优化"这种空话。
+5. **策略优化建议**：给出具体可执行的建议——比如"将沉睡人群的预算占比从当前的X%提升到Y%"，而不是"建议优化"这种空话。
 6. **风险预警**：关注数据中的异常信号——ROI是否跌破盈亏线？买家数是否持续萎缩？人群效率是否分化加剧？
 
 语气要像一位资深分析师在给管理层做汇报，有洞察力、有判断、有建议，而不是机械地复述数据。每段2-3句话，总计350-500字。`;

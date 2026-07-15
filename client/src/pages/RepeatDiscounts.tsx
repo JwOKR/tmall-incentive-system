@@ -691,7 +691,7 @@ export default function RepeatDiscounts() {
       {/* Two group cards */}
       <div className="flex flex-col lg:flex-row gap-5">
         <GroupInputCard
-          label="人群1：近2年已购用户人群"
+          label="近2年已购用户人群"
           sublabel="近2年内有过购买行为的用户人群"
           data={form.g1}
           accent="blue"
@@ -702,7 +702,7 @@ export default function RepeatDiscounts() {
           onPaste={() => handlePaste('g1', pasteText1)}
         />
         <GroupInputCard
-          label="人群2：365天内有购买且60天无购买人群"
+          label="365天内有购买且60天无购买人群"
           sublabel="365天内有购买且60天无购买的用户人群"
           data={form.g2}
           accent="orange"
@@ -1033,7 +1033,7 @@ export default function RepeatDiscounts() {
               </div>
               <div className="flex flex-col lg:flex-row gap-5">
                 <div className="flex-1">
-                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500" />人群1：近2年已购用户人群</h4>
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500" />近2年已购用户人群</h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g1.grantAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
                     <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g1.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
@@ -1042,7 +1042,7 @@ export default function RepeatDiscounts() {
                   </div>
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-500" />人群2：365天内有购买且60天无购买人群</h4>
+                  <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-500" />365天内有购买且60天无购买人群</h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g2.grantAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
                     <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g2.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
