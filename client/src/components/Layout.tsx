@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
-import { canView } from '@/lib/permissions';
+import { usePermissions } from '@/lib/permissions';
 
 interface LayoutProps {
   children: ReactNode;
@@ -52,6 +52,7 @@ export default function Layout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
+  const { canView } = usePermissions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = () => {

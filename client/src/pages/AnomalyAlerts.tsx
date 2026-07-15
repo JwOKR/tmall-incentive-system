@@ -10,10 +10,11 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
-import { canView, NoPermission } from '@/lib/permissions';
+import { usePermissions, NoPermission } from '@/lib/permissions';
 
 export default function AnomalyAlerts() {
   const { success: toastSuccess } = useToast();
+  const { canView } = usePermissions();
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['anomalies'],

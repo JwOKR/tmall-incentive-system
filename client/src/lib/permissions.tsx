@@ -15,31 +15,35 @@ export const moduleMap: Record<string, string> = {
   dashboard: '数据汇总',
 };
 
-// 检查用户是否有某个模块的查看权限
-export function canView(module: string): boolean {
+// ─── Hooks（必须在组件顶层调用） ─────────────────────────
+
+// 返回用户的权限检查函数
+export function usePermissions() {
   const { user } = useAuth();
-  if (!user) return false;
-  if (user.role === 'admin') return true;
-  if (!user.permissions) return false;
-  return user.permissions[module]?.view === true;
+
+  const canView = (module: string): boolean => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    if (!user.permissions) return false;
+    return user.permissions[module]?.view === true;
+  };
+
+  const canEdit = (module: string): boolean => {
+    if (!user) return false;
+    if (user.role === 'admin') return true;
+    if (!user.permissions) return false;
+    return user.permissions[module]?.edit === true;
+  };
+
+  const isAdmin = (): boolean => {
+    return user?.role === 'admin';
+  };
+
+  return { canView, canEdit, isAdmin, user };
 }
 
-// 检查用户是否有某个模块的编辑权限
-export function canEdit(module: string): boolean {
-  const { user } = useAuth();
-  if (!user) return false;
-  if (user.role === 'admin') return true;
-  if (!user.permissions) return false;
-  return user.permissions[module]?.edit === true;
-}
+// ─── 权限不足提示组件 ────────────────────────────────────
 
-// 检查用户是否是管理员
-export function isAdmin(): boolean {
-  const { user } = useAuth();
-  return user?.role === 'admin';
-}
-
-// 权限不足提示组件
 export function NoPermission({ module }: { module: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">

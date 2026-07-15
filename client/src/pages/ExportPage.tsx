@@ -4,10 +4,11 @@ import { Download, FileSpreadsheet } from 'lucide-react';
 import { takersApi, tasksApi, ordersApi, logsApi, repeatDiscountApi } from '@/lib/api';
 import { useToast } from '@/components/Toast';
 import { takerColumns, taskColumns, orderColumns, logColumns, repeatDiscountColumns, exportCombined } from '@/lib/export';
-import { canView, NoPermission } from '@/lib/permissions';
+import { usePermissions, NoPermission } from '@/lib/permissions';
 
 export default function ExportPage() {
   const { error: toastError } = useToast();
+  const { canView } = usePermissions();
   const [selectedSheets, setSelectedSheets] = useState({
     takers: true,
     tasks: true,

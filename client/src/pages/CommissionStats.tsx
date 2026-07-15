@@ -10,11 +10,12 @@ import {
   Calendar,
   BarChart3,
 } from 'lucide-react';
-import { canView, NoPermission } from '@/lib/permissions';
+import { usePermissions, NoPermission } from '@/lib/permissions';
 
 type TabKey = 'taker' | 'product' | 'month';
 
 export default function CommissionStats() {
+  const { canView } = usePermissions();
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [activeTab, setActiveTab] = useState<TabKey>('taker');

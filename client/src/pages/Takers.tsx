@@ -11,12 +11,13 @@ import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { takerColumns } from '@/lib/export';
-import { canView, canEdit, NoPermission } from '@/lib/permissions';
+import { usePermissions, NoPermission } from '@/lib/permissions';
 
 export default function Takers() {
   const queryClient = useQueryClient();
   const { success: toastSuccess, error: toastError } = useToast();
   const { confirm } = useConfirm();
+  const { canView, canEdit } = usePermissions();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 300);

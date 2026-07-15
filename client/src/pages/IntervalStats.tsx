@@ -16,7 +16,7 @@ import {
   Hourglass,
   CheckCircle,
 } from 'lucide-react';
-import { canView, NoPermission } from '@/lib/permissions';
+import { usePermissions, NoPermission } from '@/lib/permissions';
 
 interface IntervalEntry {
   fromDate: string;
@@ -95,6 +95,7 @@ function getProgressPercent(daysSinceLast: number | null, avgInterval: number | 
 }
 
 export default function IntervalStats() {
+  const { canView } = usePermissions();
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
