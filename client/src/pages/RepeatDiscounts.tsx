@@ -1406,8 +1406,17 @@ export default function RepeatDiscounts() {
         ) : (() => {
           const t = calcTotals(rec);
           const pt = prev ? calcTotals(prev) : { grant: 0, pay: 0, roi: 0 };
-          const sections = aiSections || genAiAnalysis();
+          const allSections = aiSections || genAiAnalysis();
           const currentSource = aiSource || (aiSections ? 'ai' : 'local');
+          // 从 sections 中提取关键洞察，剩余部分作为分析报告
+          const insightSection = allSections?.find(s => s.title === '关键洞察');
+          const analysisSections = allSections?.filter(s => s.title !== '关键洞察') || [];
+          // AI 洞察：按换行或分号拆分为数组
+          const aiInsights = insightSection?.content
+            ?.split(/[\n；;]/)
+            .map(s => s.replace(/^\d+[.、)\s]+/, '').trim())
+            .filter(s => s.length > 4) || [];
+          const insights = aiInsights.length > 0 ? aiInsights : genInsights();
           return (
             <div id="preview-report" className="glass-card rounded-2xl shadow-sm overflow-hidden animate-fade-up" style={{ animationDelay: '100ms' }}>
               {/* Header */}
@@ -1574,7 +1583,7 @@ export default function RepeatDiscounts() {
               <div className="px-8 py-6 border-b border-border/50">
                 <h2 className="text-base font-bold text-red-600 dark:text-red-400 mb-4">关键洞察</h2>
                 <div className="space-y-2">
-                  {genInsights().map((insight, i) => (
+                  {insights.map((insight, i) => (
                     <div key={i} className="insight bg-yellow-500/10 dark:bg-yellow-500/15 border-l-4 border-yellow-500 rounded-r-xl px-4 py-3 text-sm">
                       {insight}
                     </div>
@@ -1583,7 +1592,7 @@ export default function RepeatDiscounts() {
               </div>
 
               {/* AI 模型分析 / 本地规则引擎分析 */}
-              {sections && sections.length > 0 && (
+              {analysisSections.length > 0 && (
                 <div className="px-8 py-6">
                   <div className="flex items-center gap-2.5 mb-4 flex-wrap">
                     {currentSource === 'ai' ? (
@@ -1610,7 +1619,7 @@ export default function RepeatDiscounts() {
                         ⚠ {aiError}
                       </div>
                     )}
-                    {sections.map((s, i) => (
+                    {analysisSections.map((s, i) => (
                       <div key={i} className={`ai-section rounded-xl p-4 border ${
                         currentSource === 'ai'
                           ? 'bg-purple-500/5 dark:bg-purple-500/10 border-purple-500/10'
