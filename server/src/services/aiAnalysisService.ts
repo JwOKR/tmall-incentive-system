@@ -257,14 +257,26 @@ function parseAnalysis(rawText: string) {
       for (let i = 0; i < matches.length; i++) {
         const match = matches[i];
         const titleKey = match[1];
-        const startPos = match.index! + match[0].length;
+        const matchEnd = match.index! + match[0].length;
         const endPos = i + 1 < matches.length ? matches[i + 1].index! : cleaned.length;
-        const content = cleaned.substring(startPos, endPos).trim();
+        let rawContent = cleaned.substring(matchEnd, endPos).trim();
         
-        // 找到对应的显示标题
+        // 处理标题行带副标题的情况：
+        // "综合评估：精准高效但规模瓶颈凸显\n当前活动合计ROI..."
+        // 副标题在同一行（到换行符为止），正文在下一行
+        const newlineIdx = rawContent.indexOf('\n');
+        if (newlineIdx > 0) {
+          const afterNewline = rawContent.substring(newlineIdx + 1).trim();
+          // 如果换行后有实际正文（长度 > 20），则使用换行后的内容
+          // 否则保留全部（可能是多行短内容拼接）
+          if (afterNewline.length > 20) {
+            rawContent = afterNewline;
+          }
+        }
+        
         const section = sectionTitleMap.find(s => s.keys.includes(titleKey));
         if (section) {
-          result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
+          result.push({ title: section.display, content: rawContent || `${section.display}分析数据暂不可用` });
         }
       }
     } else {
@@ -290,18 +302,24 @@ function parseAnalysis(rawText: string) {
           const key = section.keys.find(k => titleLine.includes(k)) || '';
           const afterTitle = titleLine.substring(titleLine.indexOf(key) + key.length).replace(/^[:：\s]+/, '').trim();
           
-          if (afterTitle) {
-            // 内容在同一行
+          // 收集后续行的内容
+          const nextLines: string[] = [];
+          for (let j = titleIdx + 1; j < lines.length; j++) {
+            const line = lines[j];
+            if (sectionTitleMap.some(s => s.keys.some(k => line.includes(k)))) break;
+            nextLines.push(line);
+          }
+          const nextContent = nextLines.join(' ').trim();
+          
+          if (afterTitle && nextContent.length > 20) {
+            // 标题行有副标题，但下一行有更长的正文 → 用正文
+            content = nextContent;
+          } else if (afterTitle) {
+            // 标题行有副标题，且没有更长的正文 → 用副标题
             content = afterTitle;
           } else {
-            // 内容在下一行
-            const contentLines: string[] = [];
-            for (let j = titleIdx + 1; j < lines.length; j++) {
-              const line = lines[j];
-              if (sectionTitleMap.some(s => s.keys.some(k => line.includes(k)))) break;
-              contentLines.push(line);
-            }
-            content = contentLines.join(' ').trim();
+            // 标题行无内容 → 用下一行
+            content = nextContent;
           }
         }
 
@@ -468,13 +486,22 @@ function parseOverallAnalysis(rawText: string) {
       for (let i = 0; i < matches.length; i++) {
         const match = matches[i];
         const titleKey = match[1];
-        const startPos = match.index! + match[0].length;
+        const matchEnd = match.index! + match[0].length;
         const endPos = i + 1 < matches.length ? matches[i + 1].index! : cleaned.length;
-        const content = cleaned.substring(startPos, endPos).trim();
+        let rawContent = cleaned.substring(matchEnd, endPos).trim();
+        
+        // 处理标题行带副标题的情况
+        const newlineIdx = rawContent.indexOf('\n');
+        if (newlineIdx > 0) {
+          const afterNewline = rawContent.substring(newlineIdx + 1).trim();
+          if (afterNewline.length > 20) {
+            rawContent = afterNewline;
+          }
+        }
         
         const section = sectionTitleMap.find(s => s.keys.includes(titleKey));
         if (section) {
-          result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
+          result.push({ title: section.display, content: rawContent || `${section.display}分析数据暂不可用` });
         }
       }
     } else {
@@ -499,16 +526,20 @@ function parseOverallAnalysis(rawText: string) {
           const key = section.keys.find(k => titleLine.includes(k)) || '';
           const afterTitle = titleLine.substring(titleLine.indexOf(key) + key.length).replace(/^[:：\s]+/, '').trim();
           
-          if (afterTitle) {
+          const nextLines: string[] = [];
+          for (let j = titleIdx + 1; j < lines.length; j++) {
+            const line = lines[j];
+            if (sectionTitleMap.some(s => s.keys.some(k => line.includes(k)))) break;
+            nextLines.push(line);
+          }
+          const nextContent = nextLines.join(' ').trim();
+          
+          if (afterTitle && nextContent.length > 20) {
+            content = nextContent;
+          } else if (afterTitle) {
             content = afterTitle;
           } else {
-            const contentLines: string[] = [];
-            for (let j = titleIdx + 1; j < lines.length; j++) {
-              const line = lines[j];
-              if (sectionTitleMap.some(s => s.keys.some(k => line.includes(k)))) break;
-              contentLines.push(line);
-            }
-            content = contentLines.join(' ').trim();
+            content = nextContent;
           }
         }
 
