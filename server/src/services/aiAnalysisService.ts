@@ -195,7 +195,6 @@ async function callAIApi(prompt: string): Promise<string> {
 function parseAnalysis(rawText: string) {
   console.log('[AI-Parse] Daily raw text:', rawText);
   
-  // 支持多种标题格式
   const sectionTitleMap = [
     { keys: ['综合评估', '整体评估'], display: '综合评估' },
     { keys: ['人群效率分析', '人群效率'], display: '人群效率分析' },
@@ -206,132 +205,59 @@ function parseAnalysis(rawText: string) {
     { keys: ['关键洞察', '核心洞察', '核心发现'], display: '关键洞察' },
   ];
 
-  const result: { title: string; content: string }[] = [];
-
-  // 预处理：去掉所有 ** 标记，统一格式
+  // 预处理：去掉粗体标记
   const cleaned = rawText.replace(/\*\*/g, '').trim();
-  console.log('[AI-Parse] Cleaned text:', cleaned);
-
-  // 方法1: 按数字编号分割（如 "1. 综合评估：内容..."）
-  const numberedSections = cleaned.split(/\n\s*\d+[.、]\s*/).filter(s => s.trim());
-  console.log('[AI-Parse] Numbered sections:', numberedSections.length);
   
-  if (numberedSections.length >= 4) {
-    // 有数字编号的格式
-    for (const section of sectionTitleMap) {
-      let content = '';
-      
-      for (const part of numberedSections) {
-        const clean = part.trim();
-        if (section.keys.some(key => clean.includes(key))) {
-          // 找到标题关键词后的内容
-          for (const key of section.keys) {
-            const idx = clean.indexOf(key);
-            if (idx >= 0) {
-              let afterTitle = clean.substring(idx + key.length);
-              afterTitle = afterTitle.replace(/^[:：\s]+/, '').trim();
-              if (afterTitle && !afterTitle.includes('分析数据暂不可用')) {
-                content = afterTitle;
-              }
-              break;
-            }
-          }
-          break;
-        }
-      }
-      
-      result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
-    }
-  } else {
-    // 方法2: 按空行或标题模式分割（如 "综合评估：内容\n\n人群效率分析：内容"）
-    console.log('[AI-Parse] Using regex split method');
-    
-    // 使用正则匹配所有标题位置
-    const titlePattern = sectionTitleMap.flatMap(s => s.keys.map(k => k));
-    const titleRegex = new RegExp(`(${titlePattern.join('|')})[：:]`, 'g');
-    
-    // 找到所有标题的位置
-    const matches = [...cleaned.matchAll(titleRegex)];
-    console.log('[AI-Parse] Found title matches:', matches.length);
-    
-    if (matches.length >= 4) {
-      // 按标题位置提取内容
-      for (let i = 0; i < matches.length; i++) {
-        const match = matches[i];
-        const titleKey = match[1];
-        const matchEnd = match.index! + match[0].length;
-        const endPos = i + 1 < matches.length ? matches[i + 1].index! : cleaned.length;
-        let rawContent = cleaned.substring(matchEnd, endPos).trim();
-        
-        // 处理标题行带副标题的情况：
-        // "综合评估：精准高效但规模瓶颈凸显\n当前活动合计ROI..."
-        // 副标题在同一行（到换行符为止），正文在下一行
-        const newlineIdx = rawContent.indexOf('\n');
-        if (newlineIdx > 0) {
-          // 有换行 → 第一行是副标题，后面是正文
-          const afterNewline = rawContent.substring(newlineIdx + 1).trim();
-          if (afterNewline) {
-            rawContent = afterNewline;
-          }
-        }
-        // newlineIdx === 0 → 无副标题，内容直接在下一行（已在上面 trim 处理）
-        // newlineIdx === -1 → 无换行，整段就是副标题/内容
-        
-        const section = sectionTitleMap.find(s => s.keys.includes(titleKey));
-        if (section) {
-          result.push({ title: section.display, content: rawContent || `${section.display}分析数据暂不可用` });
-        }
-      }
-    } else {
-      // 方法3: 按行解析（最后备用）
-      console.log('[AI-Parse] Falling back to line-by-line parsing');
-      const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l);
-      
-      for (const section of sectionTitleMap) {
-        let content = '';
-        let titleIdx = -1;
-
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          if (section.keys.some(key => line.includes(key))) {
-            titleIdx = i;
-            break;
-          }
-        }
-
-        if (titleIdx >= 0) {
-          // 提取标题后的内容（可能在同一行或下一行）
-          const titleLine = lines[titleIdx];
-          const key = section.keys.find(k => titleLine.includes(k)) || '';
-          const afterTitle = titleLine.substring(titleLine.indexOf(key) + key.length).replace(/^[:：\s]+/, '').trim();
-          
-          // 收集后续行的内容
-          const nextLines: string[] = [];
-          for (let j = titleIdx + 1; j < lines.length; j++) {
-            const line = lines[j];
-            if (sectionTitleMap.some(s => s.keys.some(k => line.includes(k)))) break;
-            nextLines.push(line);
-          }
-          const nextContent = nextLines.join(' ').trim();
-          
-          // 优先使用后续行的正文（副标题只是标题的一部分）
-          if (nextContent) {
-            content = nextContent;
-          } else if (afterTitle) {
-            // 没有后续行，副标题就是全部内容
-            content = afterTitle;
-          } else {
-            // 标题行无内容 → 用下一行
-            content = nextContent;
-          }
-        }
-
-        result.push({
-          title: section.display,
-          content: content || `${section.display}分析数据暂不可用`,
-        });
+  // 按行分割
+  const lines = cleaned.split('\n').map(l => l.trim());
+  
+  // 识别每行是否是标题行，返回匹配的 section index
+  const findSectionForLine = (line: string): number => {
+    // 去掉行首的数字编号、星号、空格
+    const stripped = line.replace(/^\d+[.、)\s]+/, '').replace(/^\*+\s*/, '').trim();
+    for (let i = 0; i < sectionTitleMap.length; i++) {
+      if (sectionTitleMap[i].keys.some(key => stripped.startsWith(key))) {
+        return i;
       }
     }
+    return -1;
+  };
+  
+  // 按标题行切分 sections
+  const sections: { sectionIdx: number; contentLines: string[] }[] = [];
+  let currentSection: { sectionIdx: number; contentLines: string[] } | null = null;
+  
+  for (const line of lines) {
+    if (!line) continue; // 跳过空行
+    const sectionIdx = findSectionForLine(line);
+    if (sectionIdx >= 0) {
+      // 找到新标题，保存当前 section
+      if (currentSection) sections.push(currentSection);
+      // 提取标题行中冒号后面的内容（副标题）
+      const section = sectionTitleMap[sectionIdx];
+      const key = section.keys.find(k => {
+        const stripped = line.replace(/^\d+[.、)\s]+/, '').replace(/^\*+\s*/, '').trim();
+        return stripped.startsWith(k);
+      }) || '';
+      const keyIdx = line.indexOf(key);
+      let subtitle = '';
+      if (keyIdx >= 0) {
+        subtitle = line.substring(keyIdx + key.length).replace(/^[:：\s]+/, '').trim();
+      }
+      currentSection = { sectionIdx, contentLines: subtitle ? [subtitle] : [] };
+    } else if (currentSection) {
+      // 非标题行，追加到当前 section
+      currentSection.contentLines.push(line);
+    }
+  }
+  if (currentSection) sections.push(currentSection);
+  
+  // 按 sectionTitleMap 顺序组装结果
+  const result: { title: string; content: string }[] = [];
+  for (let i = 0; i < sectionTitleMap.length; i++) {
+    const found = sections.find(s => s.sectionIdx === i);
+    const content = found ? found.contentLines.join('\n').trim() : '';
+    result.push({ title: sectionTitleMap[i].display, content: content || `${sectionTitleMap[i].display}分析数据暂不可用` });
   }
 
   console.log('[AI-Parse] Daily parsed result:', result.map(r => `${r.title}: ${r.content.substring(0, 40)}...`));
@@ -430,7 +356,6 @@ ${dailyLines}
 function parseOverallAnalysis(rawText: string) {
   console.log('[AI-Parse] Overall raw text:', rawText);
   
-  // 支持多种标题格式
   const sectionTitleMap = [
     { keys: ['整体概况', '综合评估'], display: '整体概况' },
     { keys: ['趋势分析', '趋势'], display: '趋势分析' },
@@ -441,115 +366,49 @@ function parseOverallAnalysis(rawText: string) {
     { keys: ['关键洞察', '核心洞察', '核心发现'], display: '关键洞察' },
   ];
 
-  const result: { title: string; content: string }[] = [];
-
-  // 预处理：去掉所有 ** 标记，统一格式
   const cleaned = rawText.replace(/\*\*/g, '').trim();
-  console.log('[AI-Parse] Overall cleaned text:', cleaned);
-
-  // 方法1: 按数字编号分割（如 "1. 整体概况：内容..."）
-  const numberedSections = cleaned.split(/\n\s*\d+[.、]\s*/).filter(s => s.trim());
-  console.log('[AI-Parse] Overall numbered sections:', numberedSections.length);
+  const lines = cleaned.split('\n').map(l => l.trim());
   
-  if (numberedSections.length >= 4) {
-    // 有数字编号的格式
-    for (const section of sectionTitleMap) {
-      let content = '';
-      
-      for (const part of numberedSections) {
-        const clean = part.trim();
-        if (section.keys.some(key => clean.includes(key))) {
-          for (const key of section.keys) {
-            const idx = clean.indexOf(key);
-            if (idx >= 0) {
-              let afterTitle = clean.substring(idx + key.length);
-              afterTitle = afterTitle.replace(/^[:：\s]+/, '').trim();
-              if (afterTitle && !afterTitle.includes('分析数据暂不可用')) {
-                content = afterTitle;
-              }
-              break;
-            }
-          }
-          break;
-        }
-      }
-      
-      result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
-    }
-  } else {
-    // 方法2: 按标题模式分割
-    console.log('[AI-Parse] Overall using regex split method');
-    
-    const titlePattern = sectionTitleMap.flatMap(s => s.keys.map(k => k));
-    const titleRegex = new RegExp(`(${titlePattern.join('|')})[：:]`, 'g');
-    
-    const matches = [...cleaned.matchAll(titleRegex)];
-    console.log('[AI-Parse] Overall found title matches:', matches.length);
-    
-    if (matches.length >= 4) {
-      for (let i = 0; i < matches.length; i++) {
-        const match = matches[i];
-        const titleKey = match[1];
-        const matchEnd = match.index! + match[0].length;
-        const endPos = i + 1 < matches.length ? matches[i + 1].index! : cleaned.length;
-        let rawContent = cleaned.substring(matchEnd, endPos).trim();
-        
-        // 处理标题行带副标题的情况
-        const newlineIdx = rawContent.indexOf('\n');
-        if (newlineIdx > 0) {
-          const afterNewline = rawContent.substring(newlineIdx + 1).trim();
-          if (afterNewline) {
-            rawContent = afterNewline;
-          }
-        }
-        
-        const section = sectionTitleMap.find(s => s.keys.includes(titleKey));
-        if (section) {
-          result.push({ title: section.display, content: rawContent || `${section.display}分析数据暂不可用` });
-        }
-      }
-    } else {
-      // 方法3: 按行解析
-      console.log('[AI-Parse] Overall falling back to line-by-line parsing');
-      const lines = cleaned.split('\n').map(l => l.trim()).filter(l => l);
-      
-      for (const section of sectionTitleMap) {
-        let content = '';
-        let titleIdx = -1;
-
-        for (let i = 0; i < lines.length; i++) {
-          const line = lines[i];
-          if (section.keys.some(key => line.includes(key))) {
-            titleIdx = i;
-            break;
-          }
-        }
-
-        if (titleIdx >= 0) {
-          const titleLine = lines[titleIdx];
-          const key = section.keys.find(k => titleLine.includes(k)) || '';
-          const afterTitle = titleLine.substring(titleLine.indexOf(key) + key.length).replace(/^[:：\s]+/, '').trim();
-          
-          const nextLines: string[] = [];
-          for (let j = titleIdx + 1; j < lines.length; j++) {
-            const line = lines[j];
-            if (sectionTitleMap.some(s => s.keys.some(k => line.includes(k)))) break;
-            nextLines.push(line);
-          }
-          const nextContent = nextLines.join(' ').trim();
-          
-          if (nextContent) {
-            content = nextContent;
-          } else if (afterTitle) {
-            content = afterTitle;
-          } else {
-            content = nextContent;
-          }
-        }
-
-        result.push({ title: section.display, content: content || `${section.display}分析数据暂不可用` });
+  const findSectionForLine = (line: string): number => {
+    const stripped = line.replace(/^\d+[.、)\s]+/, '').replace(/^\*+\s*/, '').trim();
+    for (let i = 0; i < sectionTitleMap.length; i++) {
+      if (sectionTitleMap[i].keys.some(key => stripped.startsWith(key))) {
+        return i;
       }
     }
+    return -1;
+  };
+  
+  const sections: { sectionIdx: number; contentLines: string[] }[] = [];
+  let currentSection: { sectionIdx: number; contentLines: string[] } | null = null;
+  
+  for (const line of lines) {
+    if (!line) continue;
+    const sectionIdx = findSectionForLine(line);
+    if (sectionIdx >= 0) {
+      if (currentSection) sections.push(currentSection);
+      const section = sectionTitleMap[sectionIdx];
+      const key = section.keys.find(k => {
+        const stripped = line.replace(/^\d+[.、)\s]+/, '').replace(/^\*+\s*/, '').trim();
+        return stripped.startsWith(k);
+      }) || '';
+      const keyIdx = line.indexOf(key);
+      let subtitle = '';
+      if (keyIdx >= 0) {
+        subtitle = line.substring(keyIdx + key.length).replace(/^[:：\s]+/, '').trim();
+      }
+      currentSection = { sectionIdx, contentLines: subtitle ? [subtitle] : [] };
+    } else if (currentSection) {
+      currentSection.contentLines.push(line);
+    }
+  }
+  if (currentSection) sections.push(currentSection);
+  
+  const result: { title: string; content: string }[] = [];
+  for (let i = 0; i < sectionTitleMap.length; i++) {
+    const found = sections.find(s => s.sectionIdx === i);
+    const content = found ? found.contentLines.join('\n').trim() : '';
+    result.push({ title: sectionTitleMap[i].display, content: content || `${sectionTitleMap[i].display}分析数据暂不可用` });
   }
 
   console.log('[AI-Parse] Overall parsed result:', result.map(r => `${r.title}: ${r.content.substring(0, 40)}...`));
