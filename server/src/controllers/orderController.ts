@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { createAuditLog } from '../utils/auditLog';
+import { createAuditLog, getClientIp } from '../utils/auditLog';
 import * as orderService from '../services/orderService';
 
 // ──────────────────────────────────────
@@ -64,7 +64,7 @@ export const updateOrder = async (req: Request, res: Response) => {
       detail: changes.length > 0
         ? `更新订单 ${existingOrder.orderNo || req.params.id}: ${changes.join(', ')}`
         : `更新订单: ${existingOrder.orderNo || req.params.id}`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({ success: true, data: order });
@@ -87,7 +87,7 @@ export const batchCreateOrders = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'batch_create',
       detail: `批量导入订单: 成功${result.success}条，跳过${result.skipped}条，失败${result.failed}条`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({
@@ -117,7 +117,7 @@ export const batchUpdateOrders = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'batch_update',
       detail: `批量修改订单: 成功${result.success}条，未找到${result.notFound}条，失败${result.failed}条`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({
@@ -151,7 +151,7 @@ export const batchUpdateStatus = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'batch_update',
       detail: `批量标记${updated}个订单为${value ? '已' : '未'}${fieldLabel}`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({ success: true, data: { updated, total: ids.length }, message: `成功更新${updated}条订单` });
@@ -172,7 +172,7 @@ export const deleteOrder = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'delete',
       detail: `删除订单: ${order.orderNo || req.params.id}`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     await orderService.deleteOrder(req.params.id);

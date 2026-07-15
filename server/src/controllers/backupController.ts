@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
-import { createAuditLog } from '../utils/auditLog';
+import { createAuditLog, getClientIp } from '../utils/auditLog';
 
 // 导出全部数据（JSON）
 export const exportBackup = async (req: Request, res: Response) => {
@@ -45,7 +45,7 @@ export const exportBackup = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'backup_export',
       detail: `导出数据备份: ${takers.length}接单人, ${tasks.length}任务, ${orders.length}订单, ${logs.length}日志, ${repeatDiscounts.length}回头客立减`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json(backup);
@@ -198,7 +198,7 @@ export const importBackup = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'backup_import',
       detail: `导入备份(${mode}): 接单人${result.takers.created}个, 任务${result.tasks.created}个, 订单${result.orders.created}个, 回头客立减${result.repeatDiscounts.created}个`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({

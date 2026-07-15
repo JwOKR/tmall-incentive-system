@@ -30,6 +30,9 @@ import { ensureAdminUser, autoCheckAnomalies } from './utils/bootstrap';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+// Trust proxy (nginx/Docker reverse proxy)
+app.set('trust proxy', true);
+
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: false, contentSecurityPolicy: false }));
 app.use(cors({

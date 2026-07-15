@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
-import { createAuditLog } from '../utils/auditLog';
+import { createAuditLog, getClientIp } from '../utils/auditLog';
 import { parseExcelDate } from '../utils/parseExcelDate';
 
 // 获取所有任务
@@ -132,7 +132,7 @@ export const createTask = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'create',
       detail: `创建任务: ${productId || '未填写'} (${productCode || '未填写'})`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.status(201).json({
@@ -176,7 +176,7 @@ export const batchCreateTasks = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'create',
       detail: `批量创建任务: ${createdTasks.count}个`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.status(201).json({
@@ -277,7 +277,7 @@ export const updateTask = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'update',
       detail,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({
@@ -326,7 +326,7 @@ export const deleteTask = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'delete',
       detail: `删除任务: ${existingTask.productId} (${existingTask.productCode})`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({
@@ -470,7 +470,7 @@ export const quickOrder = async (req: Request, res: Response) => {
       orderId: order.id,
       action: 'create',
       detail: `接单成功: ${orderNo} by ${taker.wechatName}`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.status(201).json({

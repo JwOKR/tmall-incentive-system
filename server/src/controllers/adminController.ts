@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import prisma from '../utils/db';
-import { createAuditLog } from '../utils/auditLog';
+import { createAuditLog, getClientIp } from '../utils/auditLog';
 import { AuthRequest } from '../middleware/auth';
 
 // 获取所有用户列表（仅管理员）
@@ -58,7 +58,7 @@ export const createUser = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'create',
       detail: `创建用户: ${username} (${role})`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.status(201).json({ success: true, data: user });
@@ -112,7 +112,7 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
     await createAuditLog({
       action: 'update',
       detail: `更新用户: ${existing.username} → ${username || existing.username} ${role ? `(${role})` : ''}`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({ success: true, data: user });
@@ -150,7 +150,7 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
     await createAuditLog({
       action: 'delete',
       detail: `删除用户: ${existing.username} (${existing.role})`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({ success: true, message: '用户已删除' });

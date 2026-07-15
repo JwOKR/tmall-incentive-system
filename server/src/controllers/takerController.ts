@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
-import { createAuditLog } from '../utils/auditLog';
+import { createAuditLog, getClientIp } from '../utils/auditLog';
 
 // 获取所有接单人
 export const getAllTakers = async (req: Request, res: Response) => {
@@ -107,7 +107,7 @@ export const createTaker = async (req: Request, res: Response) => {
       userId: taker.id,
       action: 'create',
       detail: `创建接单人: ${wechatName} (${wechatId})`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.status(201).json({
@@ -166,7 +166,7 @@ export const updateTaker = async (req: Request, res: Response) => {
       userId: id,
       action: 'update',
       detail: `更新接单人: ${wechatName}`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({
@@ -227,7 +227,7 @@ export const batchCreateTakers = async (req: Request, res: Response) => {
     await createAuditLog({
       action: 'batch_create',
       detail: `批量导入接单人: 成功${success}条，重复${duplicates}条，失败${failed}条`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({
@@ -283,7 +283,7 @@ export const deleteTaker = async (req: Request, res: Response) => {
       userId: id,
       action: 'delete',
       detail: `删除接单人: ${existingTaker.wechatName} (${existingTaker.wechatId})`,
-      ipAddress: req.ip,
+      ipAddress: getClientIp(req),
     });
 
     res.json({
