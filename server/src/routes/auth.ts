@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../utils/db';
 import { authMiddleware, AuthRequest, JWT_SECRET } from '../middleware/auth';
+import { createAuditLog, getClientIp } from '../utils/auditLog';
 
 const router = Router();
 
@@ -23,6 +24,12 @@ router.post('/login', async (req, res) => {
     });
 
     if (!user) {
+      // 记录登录失败日志
+      await createAuditLog({
+        action: 'login_failed',
+        detail: `登录失败: ${username} (用户不存在)`,
+        ipAddress: getClientIp(req),
+      });
       return res.status(401).json({
         success: false,
         message: '用户名或密码错误',
@@ -31,6 +38,13 @@ router.post('/login', async (req, res) => {
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
+      // 记录登录失败日志
+      await createAuditLog({
+        action: 'login_failed',
+        detail: `登录失败: ${username} (密码错误)`,
+        ipAddress: getClientIp(req),
+        userId: user.id,
+      });
       return res.status(401).json({
         success: false,
         message: '用户名或密码错误',
@@ -42,6 +56,14 @@ router.post('/login', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    // 记录登录成功日志
+    await createAuditLog({
+      action: 'login',
+      detail: `用户登录: ${username}`,
+      ipAddress: getClientIp(req),
+      userId: user.id,
+    });
 
     res.json({
       success: true,
@@ -111,6 +133,14 @@ router.put('/password', authMiddleware, async (req: AuthRequest, res) => {
     await prisma.user.update({
       where: { id: req.userId },
       data: { password: hashedNewPassword },
+    });
+
+    // 记录修改密码日志
+    await createAuditLog({
+      action: 'change_password',
+      detail: `修改密码: ${user.username}`,
+      ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     res.json({

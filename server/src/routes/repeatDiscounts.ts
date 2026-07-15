@@ -13,7 +13,8 @@ import {
   getSavedDailyAnalysis,
   getSavedOverallAnalysis,
 } from '../services/aiAnalysisService';
-import { requireEditPermission, requireViewPermission } from '../middleware/auth';
+import { requireEditPermission, requireViewPermission, AuthRequest } from '../middleware/auth';
+import { createAuditLog, getClientIp } from '../utils/auditLog';
 
 const router = Router();
 
@@ -50,10 +51,19 @@ router.get('/ai-analysis/:recordId', requireViewPermission('repeatDiscounts'), a
 });
 
 // 总体AI分析（必须在 /:id 之前）
-router.post('/ai-analysis-overall', requireEditPermission('repeatDiscounts'), async (req, res) => {
+router.post('/ai-analysis-overall', requireEditPermission('repeatDiscounts'), async (req: AuthRequest, res) => {
   try {
     const { startDate, endDate } = req.body || {};
     const result = await generateOverallAIAnalysis(startDate, endDate);
+    
+    // 记录日志
+    await createAuditLog({
+      action: 'ai_analysis',
+      detail: `生成总体AI分析: ${startDate || '全部'} ~ ${endDate || '全部'}`,
+      ipAddress: getClientIp(req),
+      userId: req.userId,
+    });
+    
     res.json({ success: true, data: result });
   } catch (error: any) {
     console.error('Overall AI analysis error:', error);
@@ -62,12 +72,21 @@ router.post('/ai-analysis-overall', requireEditPermission('repeatDiscounts'), as
 });
 
 // 单日AI分析（必须在 /:id 之前）
-router.post('/ai-analysis', requireEditPermission('repeatDiscounts'), async (req, res) => {
+router.post('/ai-analysis', requireEditPermission('repeatDiscounts'), async (req: AuthRequest, res) => {
   try {
     const { recordId } = req.body;
     if (!recordId) return res.status(400).json({ success: false, message: '请提供 recordId' });
 
     const result = await generateAIAnalysis(recordId);
+    
+    // 记录日志
+    await createAuditLog({
+      action: 'ai_analysis',
+      detail: `生成单日AI分析: ${result.recordDate ? new Date(result.recordDate).toISOString().slice(0, 10) : recordId}`,
+      ipAddress: getClientIp(req),
+      userId: req.userId,
+    });
+    
     res.json({ success: true, data: result });
   } catch (error: any) {
     console.error('AI analysis error:', error);

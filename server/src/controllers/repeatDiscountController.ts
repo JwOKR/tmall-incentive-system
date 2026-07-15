@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import * as repeatDiscountService from '../services/repeatDiscountService';
+import { createAuditLog, getClientIp } from '../utils/auditLog';
+import { AuthRequest } from '../middleware/auth';
 
 // ──────────────────────────────────────
 // GET /repeat-discounts
@@ -45,9 +47,19 @@ export const getById = async (req: Request, res: Response) => {
 // ──────────────────────────────────────
 // POST /repeat-discounts
 // ──────────────────────────────────────
-export const create = async (req: Request, res: Response) => {
+export const create = async (req: AuthRequest, res: Response) => {
   try {
     const item = await repeatDiscountService.createRepeatDiscount(req.body);
+    
+    // 记录日志
+    const date = item.recordDate ? new Date(item.recordDate).toISOString().slice(0, 10) : '';
+    await createAuditLog({
+      action: 'repeat_discount_create',
+      detail: `创建回头客立减: ${date}`,
+      ipAddress: getClientIp(req),
+      userId: req.userId,
+    });
+    
     res.json({ success: true, data: item, message: '创建成功' });
   } catch (error: any) {
     console.error('Error creating repeat discount:', error);
@@ -58,12 +70,22 @@ export const create = async (req: Request, res: Response) => {
 // ──────────────────────────────────────
 // PUT /repeat-discounts/:id
 // ──────────────────────────────────────
-export const update = async (req: Request, res: Response) => {
+export const update = async (req: AuthRequest, res: Response) => {
   try {
     const existing = await repeatDiscountService.getRepeatDiscountById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: '记录不存在' });
 
     const item = await repeatDiscountService.updateRepeatDiscount(req.params.id, req.body);
+    
+    // 记录日志
+    const date = item.recordDate ? new Date(item.recordDate).toISOString().slice(0, 10) : '';
+    await createAuditLog({
+      action: 'repeat_discount_update',
+      detail: `更新回头客立减: ${date}`,
+      ipAddress: getClientIp(req),
+      userId: req.userId,
+    });
+    
     res.json({ success: true, data: item, message: '更新成功' });
   } catch (error: any) {
     console.error('Error updating repeat discount:', error);
@@ -74,12 +96,22 @@ export const update = async (req: Request, res: Response) => {
 // ──────────────────────────────────────
 // DELETE /repeat-discounts/:id
 // ──────────────────────────────────────
-export const remove = async (req: Request, res: Response) => {
+export const remove = async (req: AuthRequest, res: Response) => {
   try {
     const existing = await repeatDiscountService.getRepeatDiscountById(req.params.id);
     if (!existing) return res.status(404).json({ success: false, message: '记录不存在' });
 
     await repeatDiscountService.deleteRepeatDiscount(req.params.id);
+    
+    // 记录日志
+    const date = existing.recordDate ? new Date(existing.recordDate).toISOString().slice(0, 10) : '';
+    await createAuditLog({
+      action: 'repeat_discount_delete',
+      detail: `删除回头客立减: ${date}`,
+      ipAddress: getClientIp(req),
+      userId: req.userId,
+    });
+    
     res.json({ success: true, message: '删除成功' });
   } catch (error) {
     console.error('Error deleting repeat discount:', error);
