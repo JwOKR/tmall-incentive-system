@@ -758,6 +758,16 @@ export default function RepeatDiscounts() {
     const latestDay = list.length > 0 ? list[list.length - 1] : null;
     const prevDay = list.length > 1 ? list[list.length - 2] : null;
 
+    // 快捷日期筛选
+    const setQuickRange = (days: number) => {
+      const end = new Date();
+      const start = new Date();
+      start.setDate(end.getDate() - days + 1);
+      setStartDate(start.toISOString().slice(0, 10));
+      setEndDate(end.toISOString().slice(0, 10));
+      setPage(1);
+    };
+
     return (
       <div className="space-y-6">
         {/* Filters */}
@@ -772,6 +782,19 @@ export default function RepeatDiscounts() {
             <input type="date" value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }}
               className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" />
           </div>
+          {/* 快捷筛选按钮 */}
+          <div className="flex gap-1.5 ml-1">
+            {[
+              { label: '近7天', days: 7 },
+              { label: '近14天', days: 14 },
+              { label: '近30天', days: 30 },
+            ].map(q => (
+              <button key={q.days} onClick={() => setQuickRange(q.days)}
+                className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/60 bg-background/40 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30 transition-all magnetic-btn">
+                {q.label}
+              </button>
+            ))}
+          </div>
           {(startDate || endDate) && (
             <button onClick={() => { setStartDate(''); setEndDate(''); setPage(1); }}
               className="text-sm text-muted-foreground hover:text-foreground magnetic-btn rounded-lg px-2 py-1">清除筛选</button>
@@ -781,7 +804,7 @@ export default function RepeatDiscounts() {
 
         {/* Summary Stats */}
         {summary && (
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
             <StatCard icon={Calendar} label="记录天数" value={summary.totalDays} accent="blue" delay={0} />
             <StatCard icon={DollarSign} label="最新合计ROI" value={latestDay ? calcTotals(latestDay).roi.toFixed(2) : '-'} accent="red" delay={60}
               sub={latestDay && prevDay ? <TrendArrow current={calcTotals(latestDay).roi} previous={calcTotals(prevDay).roi} /> : undefined}
@@ -789,6 +812,12 @@ export default function RepeatDiscounts() {
             <StatCard icon={TrendingUp} label="平均ROI" value={summary.avgRoi?.toFixed(2) || '-'} accent="orange" delay={120} />
             <StatCard icon={Package} label="累计支付" value={<span className="text-green-600 dark:text-green-400">{fmt(summary.totalPaymentAmount || 0)}</span>} accent="green" delay={180} />
             <StatCard icon={BarChart3} label="单日最高支付" value={<span>{fmt(summary.maxDailyPayment || 0)}</span>} accent="purple" delay={240} />
+            <StatCard icon={TrendingUp} label="净收益率" value={(() => {
+              const grant = summary.totalGrantAmount || 0;
+              const pay = summary.totalPaymentAmount || 0;
+              const netRate = grant > 0 ? ((pay - grant) / grant * 100) : 0;
+              return <span className={netRate >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{netRate >= 0 ? '+' : ''}{netRate.toFixed(1)}%</span>;
+            })()} accent="blue" delay={300} />
           </div>
         )}
 
@@ -896,17 +925,17 @@ export default function RepeatDiscounts() {
 
         {/* Table */}
         <div className="glass-card rounded-2xl shadow-sm overflow-hidden animate-fade-up" style={{ animationDelay: '300ms' }}>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[70vh]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-muted/40">
+                <tr className="border-b bg-muted/50 sticky top-0 z-10 backdrop-blur-sm">
                   <th className="text-left px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">日期</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">已购人群发放</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">已购人群支付</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">已购人群ROI</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">沉睡人群发放</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">沉睡人群支付</th>
-                  <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">沉睡人群ROI</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">已购发放</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">已购支付</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">已购ROI</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-red-600 dark:text-red-400 whitespace-nowrap">沉睡发放</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-green-600 dark:text-green-400 whitespace-nowrap">沉睡支付</th>
+                  <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">沉睡ROI</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-red-700 dark:text-red-300 whitespace-nowrap">合计发放</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-green-700 dark:text-green-300 whitespace-nowrap">合计支付</th>
                   <th className="text-right px-4 py-3.5 font-semibold text-muted-foreground whitespace-nowrap">合计ROI</th>
@@ -921,6 +950,8 @@ export default function RepeatDiscounts() {
                 ) : (
                   list.map((item, idx) => {
                     const totals = calcTotals(item);
+                    const prevItem = idx < list.length - 1 ? list[idx + 1] : null;
+                    const prevTotals = prevItem ? calcTotals(prevItem) : null;
                     return (
                       <tr key={item.id} className={`border-b last:border-b-0 transition-all hover:bg-red-500/5 dark:hover:bg-red-500/10 ${idx % 2 === 1 ? 'bg-muted/20' : ''}`}>
                         <td className="px-4 py-3.5 font-medium whitespace-nowrap">
@@ -928,20 +959,31 @@ export default function RepeatDiscounts() {
                         </td>
                         <td className="px-4 py-3.5 text-right text-red-600 dark:text-red-400 tabular-nums">{fmt(item.g1.grantAmount)}</td>
                         <td className="px-4 py-3.5 text-right text-green-600 dark:text-green-400 tabular-nums">{fmt(item.g1.paymentAmount)}</td>
-                        <td className="px-4 py-3.5 text-right font-medium tabular-nums">{item.g1.grantAmount > 0 ? (item.g1.paymentAmount / item.g1.grantAmount).toFixed(2) : '-'}</td>
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className={`font-medium tabular-nums rounded-lg px-1.5 py-0.5 ${item.g1.grantAmount > 0 ? (item.g1.paymentAmount / item.g1.grantAmount) >= 3 ? 'bg-green-500/15 text-green-600 dark:text-green-400' : (item.g1.paymentAmount / item.g1.grantAmount) >= 1 ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' : 'bg-red-500/15 text-red-600 dark:text-red-400' : ''}`}>{item.g1.grantAmount > 0 ? (item.g1.paymentAmount / item.g1.grantAmount).toFixed(2) : '-'}</span>
+                          </div>
+                        </td>
                         <td className="px-4 py-3.5 text-right text-red-600 dark:text-red-400 tabular-nums">{fmt(item.g2.grantAmount)}</td>
                         <td className="px-4 py-3.5 text-right text-green-600 dark:text-green-400 tabular-nums">{fmt(item.g2.paymentAmount)}</td>
-                        <td className="px-4 py-3.5 text-right font-medium tabular-nums">{item.g2.grantAmount > 0 ? (item.g2.paymentAmount / item.g2.grantAmount).toFixed(2) : '-'}</td>
+                        <td className="px-4 py-3.5 text-right">
+                          <div className="flex items-center justify-end gap-1.5">
+                            <span className={`font-medium tabular-nums rounded-lg px-1.5 py-0.5 ${item.g2.grantAmount > 0 ? (item.g2.paymentAmount / item.g2.grantAmount) >= 3 ? 'bg-green-500/15 text-green-600 dark:text-green-400' : (item.g2.paymentAmount / item.g2.grantAmount) >= 1 ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' : 'bg-red-500/15 text-red-600 dark:text-red-400' : ''}`}>{item.g2.grantAmount > 0 ? (item.g2.paymentAmount / item.g2.grantAmount).toFixed(2) : '-'}</span>
+                          </div>
+                        </td>
                         <td className="px-4 py-3.5 text-right text-red-700 dark:text-red-300 font-semibold tabular-nums">{fmt(totals.grant)}</td>
                         <td className="px-4 py-3.5 text-right text-green-700 dark:text-green-300 font-semibold tabular-nums">{fmt(totals.pay)}</td>
                         <td className="px-4 py-3.5 text-right">
-                          <span className={`inline-flex items-center justify-center rounded-lg px-2 py-0.5 text-xs font-bold tabular-nums ${
-                            totals.roi >= 3 ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
-                            totals.roi >= 1 ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
-                            'bg-red-500/15 text-red-600 dark:text-red-400'
-                          }`}>
-                            {totals.grant > 0 ? totals.roi.toFixed(2) : '-'}
-                          </span>
+                          <div className="flex items-center justify-end gap-1">
+                            <span className={`inline-flex items-center justify-center rounded-lg px-2 py-0.5 text-xs font-bold tabular-nums ${
+                              totals.roi >= 3 ? 'bg-green-500/15 text-green-600 dark:text-green-400' :
+                              totals.roi >= 1 ? 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400' :
+                              'bg-red-500/15 text-red-600 dark:text-red-400'
+                            }`}>
+                              {totals.grant > 0 ? totals.roi.toFixed(2) : '-'}
+                            </span>
+                            {prevTotals && prevTotals.grant > 0 && <TrendArrow current={totals.roi} previous={prevTotals.roi} />}
+                          </div>
                         </td>
                         <td className="px-4 py-3.5 text-center">
                           <div className="flex items-center justify-center gap-1">
@@ -1024,19 +1066,78 @@ export default function RepeatDiscounts() {
 
   // ─── Tab: Chart ──────────────────────────────────────────────────────────
 
+  // 图表日期筛选
+  const [chartStartDate, setChartStartDate] = useState('');
+  const [chartEndDate, setChartEndDate] = useState('');
+
+  const filteredChartRecords = useMemo(() => {
+    return allRecords.filter(r => {
+      const d = r.recordDate.slice(0, 10);
+      if (chartStartDate && d < chartStartDate) return false;
+      if (chartEndDate && d > chartEndDate) return false;
+      return true;
+    });
+  }, [allRecords, chartStartDate, chartEndDate]);
+
   const renderChartTab = () => (
     <div className="space-y-6">
       {allRecords.length === 0 ? (
-        <div className="text-center py-24 text-muted-foreground glass-card rounded-2xl">暂无数据，请先登记数据</div>
+        <div className="text-center py-24 text-muted-foreground glass-card rounded-2xl">
+          <BarChart3 className="h-12 w-12 mx-auto mb-3 opacity-30" />
+          <p className="text-sm">暂无数据，请先在「登记数据」页面录入</p>
+        </div>
       ) : (
         <>
-          <div className="glass-card rounded-2xl p-6 animate-fade-up">
+          {/* 图表日期筛选 */}
+          <div className="flex items-center gap-3 flex-wrap animate-fade-up">
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">起始</label>
+              <input type="date" value={chartStartDate} onChange={e => setChartStartDate(e.target.value)}
+                className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-muted-foreground">结束</label>
+              <input type="date" value={chartEndDate} onChange={e => setChartEndDate(e.target.value)}
+                className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" />
+            </div>
+            <div className="flex gap-1.5 ml-1">
+              {[
+                { label: '近7天', days: 7 },
+                { label: '近14天', days: 14 },
+                { label: '近30天', days: 30 },
+                { label: '全部', days: 0 },
+              ].map(q => (
+                <button key={q.label} onClick={() => {
+                  if (q.days === 0) { setChartStartDate(''); setChartEndDate(''); }
+                  else {
+                    const end = new Date();
+                    const start = new Date();
+                    start.setDate(end.getDate() - q.days + 1);
+                    setChartStartDate(start.toISOString().slice(0, 10));
+                    setChartEndDate(end.toISOString().slice(0, 10));
+                  }
+                }} className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/60 bg-background/40 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30 transition-all magnetic-btn">
+                  {q.label}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-muted-foreground ml-auto">{filteredChartRecords.length} 条数据</span>
+          </div>
+
+          <div className="glass-card rounded-2xl p-6 animate-fade-up" style={{ animationDelay: '50ms' }}>
             <div className="flex items-center gap-2.5 mb-4">
               <div className="icon-badge bg-red-500/15 text-red-600 dark:text-red-400"><BarChart3 className="h-4 w-4" /></div>
               <h3 className="text-base font-bold">发放/支付金额 & 合计ROI趋势</h3>
             </div>
             <div style={{ height: 400 }}>
-              <Bar data={barChartData} options={barChartOptions} />
+              <Bar data={{
+                labels: filteredChartRecords.map(r => r.recordDate.slice(5)),
+                datasets: [
+                  { ...barChartData.datasets[0], data: filteredChartRecords.map(r => calcTotals(r).grant) },
+                  { ...barChartData.datasets[1], data: filteredChartRecords.map(r => calcTotals(r).pay) },
+                  { ...barChartData.datasets[2], data: filteredChartRecords.map(r => calcTotals(r).roi) },
+                ],
+              }} options={barChartOptions} />
             </div>
           </div>
           <div className="glass-card rounded-2xl p-6 animate-fade-up" style={{ animationDelay: '100ms' }}>
@@ -1045,7 +1146,14 @@ export default function RepeatDiscounts() {
               <h3 className="text-base font-bold">分人群ROI趋势对比</h3>
             </div>
             <div style={{ height: 400 }}>
-              <Line data={lineChartData} options={lineChartOptions} />
+              <Line data={{
+                labels: filteredChartRecords.map(r => r.recordDate.slice(5)),
+                datasets: [
+                  { ...lineChartData.datasets[0], data: filteredChartRecords.map(r => r.g1.grantAmount > 0 ? r.g1.paymentAmount / r.g1.grantAmount : 0) },
+                  { ...lineChartData.datasets[1], data: filteredChartRecords.map(r => r.g2.grantAmount > 0 ? r.g2.paymentAmount / r.g2.grantAmount : 0) },
+                  { ...lineChartData.datasets[2], data: filteredChartRecords.map(r => calcTotals(r).roi) },
+                ],
+              }} options={lineChartOptions} />
             </div>
           </div>
         </>
