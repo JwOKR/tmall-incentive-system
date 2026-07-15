@@ -85,6 +85,17 @@ function formatCellValue(value: any, key: string): string {
     return value ? '是' : '否';
   }
   
+  // 好评状态
+  if (key === 'isGoodReview') {
+    const statusMap: Record<string, string> = {
+      'pending': '未好评',
+      'reviewed': '已好评',
+      'creating': '作图中',
+      'returned': '已返图',
+    };
+    return statusMap[String(value)] || String(value);
+  }
+  
   // 日期
   if (key.includes('Date') || key.includes('date') || key === 'createdAt' || key === 'updatedAt') {
     if (value) {
