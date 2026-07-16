@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../utils/db';
 import { createAuditLog, getClientIp } from '../utils/auditLog';
 import { parseExcelDate } from '../utils/parseExcelDate';
+import { AuthRequest } from '../middleware/auth';
 
 // 获取所有任务
 export const getAllTasks = async (req: Request, res: Response) => {
@@ -91,7 +92,7 @@ export const getTaskById = async (req: Request, res: Response) => {
 };
 
 // 创建任务
-export const createTask = async (req: Request, res: Response) => {
+export const createTask = async (req: AuthRequest, res: Response) => {
   try {
     const {
       productId,
@@ -133,6 +134,7 @@ export const createTask = async (req: Request, res: Response) => {
       action: 'create',
       detail: `创建任务: ${productId || '未填写'} (${productCode || '未填写'})`,
       ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     res.status(201).json({
@@ -149,7 +151,7 @@ export const createTask = async (req: Request, res: Response) => {
 };
 
 // 批量创建任务（按商品编号）
-export const batchCreateTasks = async (req: Request, res: Response) => {
+export const batchCreateTasks = async (req: AuthRequest, res: Response) => {
   try {
     const { tasks } = req.body;
     
@@ -177,6 +179,7 @@ export const batchCreateTasks = async (req: Request, res: Response) => {
       action: 'create',
       detail: `批量创建任务: ${createdTasks.count}个`,
       ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     res.status(201).json({
@@ -194,7 +197,7 @@ export const batchCreateTasks = async (req: Request, res: Response) => {
 };
 
 // 更新任务
-export const updateTask = async (req: Request, res: Response) => {
+export const updateTask = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const {
@@ -278,6 +281,7 @@ export const updateTask = async (req: Request, res: Response) => {
       action: 'update',
       detail,
       ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     res.json({
@@ -294,7 +298,7 @@ export const updateTask = async (req: Request, res: Response) => {
 };
 
 // 删除任务
-export const deleteTask = async (req: Request, res: Response) => {
+export const deleteTask = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -327,6 +331,7 @@ export const deleteTask = async (req: Request, res: Response) => {
       action: 'delete',
       detail: `删除任务: ${existingTask.productId} (${existingTask.productCode})`,
       ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     res.json({
@@ -343,7 +348,7 @@ export const deleteTask = async (req: Request, res: Response) => {
 };
 
 // 快速接单
-export const quickOrder = async (req: Request, res: Response) => {
+export const quickOrder = async (req: AuthRequest, res: Response) => {
   try {
     const { taskId, takerId, orderNo, orderNo19, actualPayment, force } = req.body;
 
@@ -471,6 +476,7 @@ export const quickOrder = async (req: Request, res: Response) => {
       action: 'create',
       detail: `接单成功: ${orderNo} by ${taker.wechatName}`,
       ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     res.status(201).json({

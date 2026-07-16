@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { createAuditLog, getClientIp } from '../utils/auditLog';
 import * as orderService from '../services/orderService';
+import { AuthRequest } from '../middleware/auth';
 
 // ──────────────────────────────────────
 // GET /orders
@@ -32,7 +33,7 @@ export const getOrderById = async (req: Request, res: Response) => {
 // ──────────────────────────────────────
 // PUT /orders/:id
 // ──────────────────────────────────────
-export const updateOrder = async (req: Request, res: Response) => {
+export const updateOrder = async (req: AuthRequest, res: Response) => {
   try {
     const existingOrder = await orderService.getOrderById(req.params.id);
     if (!existingOrder) return res.status(404).json({ success: false, message: '订单不存在' });
@@ -65,6 +66,7 @@ export const updateOrder = async (req: Request, res: Response) => {
         ? `更新订单 ${existingOrder.orderNo || req.params.id}: ${changes.join(', ')}`
         : `更新订单: ${existingOrder.orderNo || req.params.id}`,
       ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     res.json({ success: true, data: order });
@@ -80,7 +82,7 @@ export const updateOrder = async (req: Request, res: Response) => {
 // ──────────────────────────────────────
 // POST /orders/batch  （批量导入）
 // ──────────────────────────────────────
-export const batchCreateOrders = async (req: Request, res: Response) => {
+export const batchCreateOrders = async (req: AuthRequest, res: Response) => {
   try {
     const result = await orderService.batchCreateOrders(req.body.orders);
 
@@ -88,6 +90,7 @@ export const batchCreateOrders = async (req: Request, res: Response) => {
       action: 'batch_create',
       detail: `批量导入订单: 成功${result.success}条，跳过${result.skipped}条，失败${result.failed}条`,
       ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     res.json({
@@ -105,7 +108,7 @@ export const batchCreateOrders = async (req: Request, res: Response) => {
 // ──────────────────────────────────────
 // PUT /orders/batch  （批量修改）
 // ──────────────────────────────────────
-export const batchUpdateOrders = async (req: Request, res: Response) => {
+export const batchUpdateOrders = async (req: AuthRequest, res: Response) => {
   try {
     const { orders } = req.body;
     if (!Array.isArray(orders) || orders.length === 0) {
@@ -118,6 +121,7 @@ export const batchUpdateOrders = async (req: Request, res: Response) => {
       action: 'batch_update',
       detail: `批量修改订单: 成功${result.success}条，未找到${result.notFound}条，失败${result.failed}条`,
       ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     res.json({
@@ -134,7 +138,7 @@ export const batchUpdateOrders = async (req: Request, res: Response) => {
 // ──────────────────────────────────────
 // PUT /orders/batch/status
 // ──────────────────────────────────────
-export const batchUpdateStatus = async (req: Request, res: Response) => {
+export const batchUpdateStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { ids, field, value } = req.body;
 
@@ -152,6 +156,7 @@ export const batchUpdateStatus = async (req: Request, res: Response) => {
       action: 'batch_update',
       detail: `批量标记${updated}个订单为${value ? '已' : '未'}${fieldLabel}`,
       ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     res.json({ success: true, data: { updated, total: ids.length }, message: `成功更新${updated}条订单` });
@@ -164,7 +169,7 @@ export const batchUpdateStatus = async (req: Request, res: Response) => {
 // ──────────────────────────────────────
 // DELETE /orders/:id
 // ──────────────────────────────────────
-export const deleteOrder = async (req: Request, res: Response) => {
+export const deleteOrder = async (req: AuthRequest, res: Response) => {
   try {
     const order = await orderService.getOrderById(req.params.id);
     if (!order) return res.status(404).json({ success: false, message: '订单不存在' });
@@ -173,6 +178,7 @@ export const deleteOrder = async (req: Request, res: Response) => {
       action: 'delete',
       detail: `删除订单: ${order.orderNo || req.params.id}`,
       ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     await orderService.deleteOrder(req.params.id);

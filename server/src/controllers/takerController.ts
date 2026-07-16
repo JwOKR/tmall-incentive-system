@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
 import { createAuditLog, getClientIp } from '../utils/auditLog';
+import { AuthRequest } from '../middleware/auth';
 
 // 获取所有接单人
 export const getAllTakers = async (req: Request, res: Response) => {
@@ -80,7 +81,7 @@ export const getTakerById = async (req: Request, res: Response) => {
 };
 
 // 创建接单人
-export const createTaker = async (req: Request, res: Response) => {
+export const createTaker = async (req: AuthRequest, res: Response) => {
   try {
     const { wechatName, wechatId } = req.body;
 
@@ -104,7 +105,7 @@ export const createTaker = async (req: Request, res: Response) => {
     });
 
     await createAuditLog({
-      userId: taker.id,
+      userId: req.userId,
       action: 'create',
       detail: `创建接单人: ${wechatName} (${wechatId})`,
       ipAddress: getClientIp(req),
@@ -124,7 +125,7 @@ export const createTaker = async (req: Request, res: Response) => {
 };
 
 // 更新接单人
-export const updateTaker = async (req: Request, res: Response) => {
+export const updateTaker = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { wechatName, wechatId, status } = req.body;
@@ -163,7 +164,7 @@ export const updateTaker = async (req: Request, res: Response) => {
     });
 
     await createAuditLog({
-      userId: id,
+      userId: req.userId,
       action: 'update',
       detail: `更新接单人: ${wechatName}`,
       ipAddress: getClientIp(req),
@@ -183,7 +184,7 @@ export const updateTaker = async (req: Request, res: Response) => {
 };
 
 // 批量导入接单人
-export const batchCreateTakers = async (req: Request, res: Response) => {
+export const batchCreateTakers = async (req: AuthRequest, res: Response) => {
   try {
     const { takers } = req.body;
     
@@ -228,6 +229,7 @@ export const batchCreateTakers = async (req: Request, res: Response) => {
       action: 'batch_create',
       detail: `批量导入接单人: 成功${success}条，重复${duplicates}条，失败${failed}条`,
       ipAddress: getClientIp(req),
+      userId: req.userId,
     });
 
     res.json({
@@ -250,7 +252,7 @@ export const batchCreateTakers = async (req: Request, res: Response) => {
 };
 
 // 删除接单人
-export const deleteTaker = async (req: Request, res: Response) => {
+export const deleteTaker = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -280,7 +282,7 @@ export const deleteTaker = async (req: Request, res: Response) => {
     });
 
     await createAuditLog({
-      userId: id,
+      userId: req.userId,
       action: 'delete',
       detail: `删除接单人: ${existingTaker.wechatName} (${existingTaker.wechatId})`,
       ipAddress: getClientIp(req),
