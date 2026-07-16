@@ -20,6 +20,8 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  logs        Log[]
+
   @@map("users")
 }
 
@@ -121,6 +123,7 @@ model Log {
   createdAt   DateTime @default(now())
   
   order       Order?   @relation(fields: [orderId], references: [id])
+  user        User?    @relation(fields: [userId], references: [id])
   
   @@index([orderId])
   @@index([action])
