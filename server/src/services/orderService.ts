@@ -63,7 +63,7 @@ export async function getOrderList(params: OrderListParams) {
   const where: any = {};
 
   if (isRefunded !== undefined && isRefunded !== '') where.isRefunded = isRefunded === 'true';
-  if (isGoodReview !== undefined && isGoodReview !== '') where.isGoodReview = isGoodReview === 'true';
+  if (isGoodReview !== undefined && isGoodReview !== '') where.isGoodReview = isGoodReview;
 
   if (search) {
     where.OR = [
