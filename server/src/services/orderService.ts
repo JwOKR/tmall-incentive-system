@@ -388,7 +388,7 @@ export async function batchUpdateOrders(rawOrders: any[]) {
 // ──────────────────────────────────────
 // 批量更新状态（事务内）
 // ──────────────────────────────────────
-export async function batchUpdateOrderStatus(ids: string[], field: 'isRefunded' | 'isGoodReview', value: boolean) {
+export async function batchUpdateOrderStatus(ids: string[], field: 'isRefunded' | 'isGoodReview', value: boolean | string) {
   const orders = await prisma.order.findMany({
     where: { id: { in: ids } },
     select: { id: true, actualPayment: true, baseCommission: true, reviewCommission: true },
@@ -398,7 +398,7 @@ export async function batchUpdateOrderStatus(ids: string[], field: 'isRefunded' 
     for (const order of orders) {
       const updateData: any = { [field]: value };
       if (field === 'isRefunded' && value) updateData.refundDate = new Date();
-      if (field === 'isGoodReview' && value) updateData.reviewCommissionDate = new Date();
+      if (field === 'isGoodReview' && value === 'reviewed') updateData.reviewCommissionDate = new Date();
       updateData.totalRefund = order.actualPayment + order.baseCommission + order.reviewCommission;
 
       await tx.order.update({ where: { id: order.id }, data: updateData });

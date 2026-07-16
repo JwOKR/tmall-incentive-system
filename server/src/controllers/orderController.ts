@@ -44,19 +44,35 @@ export const updateOrder = async (req: AuthRequest, res: Response) => {
     const changes: string[] = [];
     const fields: Record<string, string> = {
       orderNo: '订单编号', orderNo19: '19订单号', actualPayment: '实付款',
-      isRefunded: '返款状态', isGoodReview: '好评状态', baseCommission: '基础返佣',
+      isRefunded: '返款状态', baseCommission: '基础返佣',
       reviewCommission: '好评返佣', remark: '备注',
     };
+    
+    // 好评状态映射
+    const reviewStatusMap: Record<string, string> = {
+      'pending': '未好评',
+      'reviewed': '已好评',
+      'creating': '作图中',
+      'returned': '已返图',
+    };
+    
     for (const [key, label] of Object.entries(fields)) {
       const oldVal = (existingOrder as any)[key];
       const newVal = (req.body as any)[key];
       if (newVal !== undefined && String(newVal) !== String(oldVal)) {
-        if (key === 'isRefunded' || key === 'isGoodReview') {
-          changes.push(`${label}: ${oldVal ? '已' : '未'}${key === 'isRefunded' ? '返款' : '好评'} → ${newVal ? '已' : '未'}${key === 'isRefunded' ? '返款' : '好评'}`);
+        if (key === 'isRefunded') {
+          changes.push(`${label}: ${oldVal ? '已返款' : '未返款'} → ${newVal ? '已返款' : '未返款'}`);
         } else {
           changes.push(`${label}: ${oldVal || '空'} → ${newVal}`);
         }
       }
+    }
+    
+    // 单独处理好评状态变更
+    if (req.body.isGoodReview !== undefined && req.body.isGoodReview !== existingOrder.isGoodReview) {
+      const oldReview = reviewStatusMap[existingOrder.isGoodReview] || existingOrder.isGoodReview || '未好评';
+      const newReview = reviewStatusMap[req.body.isGoodReview] || req.body.isGoodReview;
+      changes.push(`好评状态: ${oldReview} → ${newReview}`);
     }
 
     await createAuditLog({
@@ -149,12 +165,26 @@ export const batchUpdateStatus = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ success: false, message: '不支持的字段' });
     }
 
-    const updated = await orderService.batchUpdateOrderStatus(ids, field, Boolean(value));
+    const updated = await orderService.batchUpdateOrderStatus(ids, field, value);
 
-    const fieldLabel = field === 'isRefunded' ? '返款' : '好评';
+    // 好评状态映射
+    const reviewStatusMap: Record<string, string> = {
+      'pending': '未好评',
+      'reviewed': '已好评',
+      'creating': '作图中',
+      'returned': '已返图',
+    };
+
+    let statusLabel = '';
+    if (field === 'isRefunded') {
+      statusLabel = value ? '已返款' : '未返款';
+    } else {
+      statusLabel = reviewStatusMap[String(value)] || String(value);
+    }
+
     await createAuditLog({
       action: 'batch_update',
-      detail: `批量标记${updated}个订单为${value ? '已' : '未'}${fieldLabel}`,
+      detail: `批量标记${updated}个订单为${statusLabel}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
     });
