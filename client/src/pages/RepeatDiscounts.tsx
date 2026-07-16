@@ -1526,21 +1526,11 @@ export default function RepeatDiscounts() {
                     ].map((row, i) => (
                       <tr key={i} className="border-b last:border-0 hover:bg-red-500/5 transition-colors">
                         <td className={`px-4 py-3 text-left ${row.bold ? 'font-bold' : 'font-medium'}`}>{row.label}</td>
-                        <td className={`px-4 py-3 text-center ${row.bold ? 'font-bold' : ''}`}>
-                          <div className="flex items-center justify-center gap-1.5"><span className="tabular-nums text-red-600 dark:text-red-400">{fmt(row.cur.grantAmount)}</span>{row.prev && <TrendArrow current={row.cur.grantAmount} previous={row.prev.grantAmount} />}</div>
-                        </td>
-                        <td className={`px-4 py-3 text-center ${row.bold ? 'font-bold' : ''}`}>
-                          <div className="flex items-center justify-center gap-1.5"><span className="tabular-nums text-green-600 dark:text-green-400">{fmt(row.cur.paymentAmount)}</span>{row.prev && <TrendArrow current={row.cur.paymentAmount} previous={row.prev.paymentAmount} />}</div>
-                        </td>
-                        <td className={`px-4 py-3 text-center ${row.bold ? 'font-bold' : ''}`}>
-                          <div className="flex items-center justify-center gap-1.5"><span className="tabular-nums">{fmtInt(row.cur.paymentBuyers)}</span>{row.prev && <TrendArrow current={row.cur.paymentBuyers} previous={row.prev.paymentBuyers} />}</div>
-                        </td>
-                        <td className={`px-4 py-3 text-center ${row.bold ? 'font-bold' : ''}`}>
-                          <div className="flex items-center justify-center gap-1.5"><span className="tabular-nums">{fmtInt(row.cur.paymentItems)}</span>{row.prev && <TrendArrow current={row.cur.paymentItems} previous={row.prev.paymentItems} />}</div>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5"><span className="tabular-nums font-bold text-red-600 dark:text-red-400">{fmtR(row.roi)}</span>{row.pRoi !== undefined && <TrendArrow current={row.roi} previous={row.pRoi} />}</div>
-                        </td>
+                        <td className={`px-4 py-3 text-center tabular-nums text-red-600 dark:text-red-400 ${row.bold ? 'font-bold text-red-700 dark:text-red-300' : ''}`}>{fmt(row.cur.grantAmount)}</td>
+                        <td className={`px-4 py-3 text-center tabular-nums text-green-600 dark:text-green-400 ${row.bold ? 'font-bold text-green-700 dark:text-green-300' : ''}`}>{fmt(row.cur.paymentAmount)}</td>
+                        <td className={`px-4 py-3 text-center tabular-nums ${row.bold ? 'font-bold' : ''}`}>{fmtInt(row.cur.paymentBuyers)}</td>
+                        <td className={`px-4 py-3 text-center tabular-nums ${row.bold ? 'font-bold' : ''}`}>{fmtInt(row.cur.paymentItems)}</td>
+                        <td className="px-4 py-3 text-center tabular-nums font-bold text-red-600 dark:text-red-400">{fmtR(row.roi)}</td>
                       </tr>
                     ))}
                   </tbody>
