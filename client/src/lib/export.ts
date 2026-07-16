@@ -65,6 +65,7 @@ export const repeatDiscountColumns: ExportColumn[] = [
 
 export const logColumns: ExportColumn[] = [
   { key: 'createdAt', label: '时间', selected: true },
+  { key: 'user.username', label: '操作用户', selected: true },
   { key: 'action', label: '操作类型', selected: true },
   { key: 'detail', label: '详细信息', selected: true },
   { key: 'order.orderNo', label: '关联订单', selected: true },

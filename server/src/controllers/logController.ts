@@ -30,6 +30,12 @@ export const getAllLogs = async (req: Request, res: Response) => {
               productCode: true,
             },
           },
+          user: {
+            select: {
+              id: true,
+              username: true,
+            },
+          },
         },
       }),
       prisma.log.count({ where }),

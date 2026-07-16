@@ -46,6 +46,7 @@ export default function Logs() {
       if (key === 'createdAt') return item.createdAt ? formatDate(item.createdAt) : '';
       if (key === 'action') return actionLabels[item.action] || item.action || '';
       if (key === 'orderInfo') return item.order ? `${item.order.orderNo || ''} ${item.order.productName || ''}`.trim() : '';
+      if (key === 'username') return item.user?.username || '';
       return String(item[key] ?? '');
     });
   }, [searchedLogs, columnFilters]);
@@ -168,6 +169,10 @@ export default function Logs() {
                 <ColumnFilter value={columnFilters['createdAt'] || ''} onChange={(v) => setColFilter('createdAt', v)} />
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>操作用户</div>
+                <ColumnFilter value={columnFilters['username'] || ''} onChange={(v) => setColFilter('username', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>操作类型</div>
                 <ColumnFilter type="select" value={columnFilters['action'] || ''} onChange={(v) => setColFilter('action', v)} options={[{ value: '创建', label: '创建' }, { value: '更新', label: '更新' }, { value: '删除', label: '删除' }, { value: '状态变更', label: '状态变更' }, { value: '批量创建', label: '批量创建' }, { value: '批量更新', label: '批量更新' }]} />
               </th>
@@ -188,13 +193,13 @@ export default function Logs() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                   加载中...
                 </td>
               </tr>
             ) : filteredLogs.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
                   暂无匹配数据
                 </td>
               </tr>
@@ -214,6 +219,11 @@ export default function Logs() {
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">
                       {formatDate(log.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span className="text-foreground font-medium">
+                        {log.user?.username || '-'}
+                      </span>
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${actionColors[log.action] || 'badge-neutral'}`}>
