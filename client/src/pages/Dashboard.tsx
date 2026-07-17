@@ -216,6 +216,7 @@ export default function AppleDashboard() {
                 <X className="h-5 w-5" />
               </button>
             </div>
+            <pre className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl text-sm whitespace-pre-wrap font-mono max-h-[60vh] overflow-y-auto apple-text-body">
               {summaryText}
             </pre>
             <div className="flex justify-end gap-3 mt-6">
