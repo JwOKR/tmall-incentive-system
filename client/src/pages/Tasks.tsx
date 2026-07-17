@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi, takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { Plus, Search, Zap, Copy, Save, Trash2, CheckSquare, Square } from 'lucide-react';
+import { Plus, Search, Zap, Copy, Save, Trash2, CheckSquare, Square, RefreshCw } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
@@ -165,6 +165,18 @@ export default function Tasks() {
       } else {
         toastError(message);
       }
+    },
+  });
+
+  const refreshStatusMutation = useMutation({
+    mutationFn: tasksApi.refreshStatus,
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      toastSuccess(data?.message || '任务状态已更新');
+    },
+    onError: () => {
+      toastError('更新任务状态失败');
     },
   });
 
@@ -514,6 +526,14 @@ export default function Tasks() {
             className="apple-btn apple-btn inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 transition-colors shadow-md shadow-violet-500/20"
           >
             <Plus className="h-4 w-4" />
+          <button
+            onClick={() => refreshStatusMutation.mutate()}
+            disabled={refreshStatusMutation.isPending}
+            className="apple-btn apple-btn inline-flex items-center gap-2 rounded-xl bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600 transition-colors shadow-md shadow-amber-500/20 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshStatusMutation.isPending ? 'animate-spin' : ''}`} />
+            {refreshStatusMutation.isPending ? '更新中...' : '刷新状态'}
+          </button>
             新增任务
           </button>
         </div>
