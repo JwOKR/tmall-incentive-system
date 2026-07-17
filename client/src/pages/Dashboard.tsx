@@ -210,7 +210,7 @@ export default function AppleDashboard() {
             </div>
               <button
                 onClick={() => setShowSummary(false)}
-              <button onClick={() => setShowRemind(false)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
                 <X className="h-5 w-5" />
               </button>
