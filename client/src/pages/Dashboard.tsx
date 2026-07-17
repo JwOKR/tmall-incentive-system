@@ -243,6 +243,7 @@ export default function AppleDashboard() {
               </div>
             </div>
         </div>
+          </div>
       )}
 
       {/* Apple-style Remind Modal */}
