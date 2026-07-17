@@ -533,6 +533,8 @@ export default function Tasks() {
             className="apple-btn apple-btn inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 transition-colors shadow-md shadow-violet-500/20"
           >
             <Plus className="h-4 w-4" />
+            新增任务
+          </button>
           <button
             onClick={() => refreshStatusMutation.mutate()}
             disabled={refreshStatusMutation.isPending}
@@ -540,8 +542,6 @@ export default function Tasks() {
           >
             <RefreshCw className={`h-4 w-4 ${refreshStatusMutation.isPending ? 'animate-spin' : ''}`} />
             {refreshStatusMutation.isPending ? '更新中...' : '刷新状态'}
-          </button>
-            新增任务
           </button>
         </div>
       </div>
