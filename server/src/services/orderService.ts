@@ -159,7 +159,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
       orderLink: input.orderLink,
       actualPayment: input.actualPayment !== undefined ? Number(input.actualPayment) : undefined,
       totalRefund: newActual + newBase + newReview,
-      isRefunded: input.isRefunded !== undefined ? Boolean(input.isRefunded) : undefined,
+      isRefunded: input.isRefunded !== undefined ? parseBoolValue(input.isRefunded) : undefined,
       refundDate: input.refundDate !== undefined ? parseExcelDate(input.refundDate) : undefined,
       isGoodReview: input.isGoodReview !== undefined ? String(input.isGoodReview) : undefined,
       baseCommission: input.baseCommission !== undefined ? Number(input.baseCommission) : undefined,
