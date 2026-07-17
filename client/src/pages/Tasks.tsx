@@ -421,35 +421,26 @@ export default function Tasks() {
     const button = event.currentTarget as HTMLElement;
     const rect = button.getBoundingClientRect();
 
-    // getBoundingClientRect 返回相对于视口的坐标
-    // 外层容器是 fixed inset-0，absolute 子元素基于视口坐标定位
-    // 因此不需要加 window.scrollY / window.scrollX
-    // 默认位置：按钮左下方
-    let top = rect.bottom + 8;
+    // 弹窗尺寸（w-80 = 320px，内容约500px高）
+    const modalWidth = 320;
+    const modalHeight = 500;
+    const padding = 12;
+
+    // 默认位置：按钮正下方居中对齐（与按钮左对齐）
     let left = rect.left;
+    let top = rect.bottom + 8;
 
-    // 弹窗尺寸
-    const modalWidth = 320; // w-80 = 320px
-    const modalHeight = 500; // 估计高度（含标题、商品信息、接单人选择、3个输入框、按钮）
-    const padding = 16; // 边距
-    const maxLeft = window.innerWidth - modalWidth - padding;
-    const maxTop = window.innerHeight - modalHeight - padding;
+    // 右边界强制钳制：弹窗右边缘绝不超过视口
+    left = Math.min(left, window.innerWidth - modalWidth - padding);
+    // 左边界强制钳制：弹窗左边缘绝不超过视口
+    left = Math.max(padding, left);
 
-    // 右边界检查：如果右侧空间不足，弹窗右边缘与按钮右边缘对齐
-    if (left + modalWidth > window.innerWidth - padding) {
-      left = rect.right - modalWidth;
-    }
-
-    // 确保不超出左右边界
-    left = Math.max(padding, Math.min(maxLeft, left));
-
-    // 下边界检查：如果下方空间不够，弹窗显示在按钮上方
+    // 下边界：空间不够则显示在按钮上方
     if (top + modalHeight > window.innerHeight - padding) {
       top = rect.top - modalHeight - 8;
     }
-
-    // 确保不超出上下边界
-    top = Math.max(padding, Math.min(maxTop, top));
+    // 上下边界强制钳制
+    top = Math.max(padding, Math.min(window.innerHeight - modalHeight - padding, top));
 
     setQuickOrderPosition({ top, left });
     setSelectedTask(task);
