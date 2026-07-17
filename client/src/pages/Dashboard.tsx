@@ -195,23 +195,23 @@ export default function AppleDashboard() {
           ref={summaryModalRef}
         >
           <div
-            className="apple-modal-content max-w-2xl"
+            className="apple-modal-content max-w-2xl shadow-2xl shadow-indigo-500/10 border border-slate-200/50 dark:border-slate-700/50"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 via-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
                   <Copy className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold">激励汇总</h3>
-                  <p className="text-xs text-muted-foreground">点击复制按钮可复制到剪贴板</p>
+                  <h3 className="text-xl font-bold tracking-tight">激励汇总</h3>
+                  <p className="text-sm text-muted-foreground mt-0.5">点击复制按钮可复制到剪贴板</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowSummary(false)}
-                className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -267,7 +267,7 @@ export default function AppleDashboard() {
                   </p>
                 </div>
               </div>
-              <button onClick={() => setShowRemind(false)} className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+              <button onClick={() => setShowRemind(false)} className="p-2.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 hover:scale-105 active:scale-95">
                 <X className="h-5 w-5" />
               </button>
             </div>
