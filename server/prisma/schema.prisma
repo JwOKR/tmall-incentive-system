@@ -54,7 +54,7 @@ model Task {
   reviewReward    Float    @default(0) // 晒单奖励
   maxOrders       Int      @default(1) // 限接人数，默认1人
   currentOrders   Int      @default(0) // 已接人数
-  status          String   @default("active") // active, completed, cancelled
+  status          String   @default("active") // active, refunded, completed, cancelled
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   
