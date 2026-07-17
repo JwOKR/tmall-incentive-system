@@ -520,46 +520,46 @@ export default function AppleDashboard() {
         </div>
         {/* SVG Trend Chart */}
         {stats?.dailySummary && stats.dailySummary.length > 0 && (
-          <div className="mb-8">
+          <div className="mb-6 p-4 bg-slate-50/50 dark:bg-slate-900/30 rounded-xl">
             <TrendChart data={[...stats.dailySummary].reverse()} />
           </div>
         )}
         <div className="overflow-x-auto">
-          <table className="apple-table">
+          <table className="w-full border-collapse">
             <thead>
               <tr>
-                <th className="px-6 py-4 text-left">接单日期</th>
-                <th className="px-6 py-4 text-left">订单数量</th>
-                <th className="px-6 py-4 text-left">返款总额</th>
-                <th className="px-6 py-4 text-left">已返款</th>
-                <th className="px-6 py-4 text-left">待返款</th>
-                <th className="px-6 py-4 text-left">好评数</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-900/40">接单日期</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-900/40">订单数量</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-900/40">返款总额</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-900/40">已返款</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-900/40">待返款</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-50/80 dark:bg-slate-900/40">好评数</th>
               </tr>
             </thead>
             <tbody>
               {stats?.dailySummary?.map((item: any) => (
-                <tr key={item.date} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                  <td className="px-6 py-4 font-medium">{item.date}</td>
-                  <td className="px-6 py-4 tabular-nums">{item.orderCount}单</td>
-                  <td className="px-6 py-4 text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(item.totalRefund)}</td>
-                  <td className="px-6 py-4 text-emerald-600 dark:text-emerald-400 tabular-nums">{item.refundedCount}单</td>
-                  <td className="px-6 py-4 text-amber-600 dark:text-amber-400 tabular-nums">{item.pendingCount}单</td>
-                  <td className="px-6 py-4 text-sky-600 dark:text-sky-400 tabular-nums">{item.goodReviewCount}单</td>
+                <tr key={item.date} className="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                  <td className="px-4 py-3 text-sm font-medium">{item.date}</td>
+                  <td className="px-4 py-3 text-sm tabular-nums">{item.orderCount}单</td>
+                  <td className="px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(item.totalRefund)}</td>
+                  <td className="px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400 tabular-nums">{item.refundedCount}单</td>
+                  <td className="px-4 py-3 text-sm text-amber-600 dark:text-amber-400 tabular-nums">{item.pendingCount}单</td>
+                  <td className="px-4 py-3 text-sm text-sky-600 dark:text-sky-400 tabular-nums">{item.goodReviewCount}单</td>
                 </tr>
               ))}
               {stats?.dailySummary && stats.dailySummary.length > 0 && (
-                <tr className="font-bold bg-slate-50/80 dark:bg-slate-900/40 border-t-2">
-                  <td className="px-6 py-4">合计</td>
-                  <td className="px-6 py-4 tabular-nums">{stats.dailySummary.reduce((sum: number, item: any) => sum + item.orderCount, 0)}单</td>
-                  <td className="px-6 py-4 text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(stats.dailySummary.reduce((sum: number, item: any) => sum + item.totalRefund, 0))}</td>
-                  <td className="px-6 py-4 text-emerald-600 dark:text-emerald-400 tabular-nums">{stats.dailySummary.reduce((sum: number, item: any) => sum + item.refundedCount, 0)}单</td>
-                  <td className="px-6 py-4 text-amber-600 dark:text-amber-400 tabular-nums">{stats.dailySummary.reduce((sum: number, item: any) => sum + item.pendingCount, 0)}单</td>
-                  <td className="px-6 py-4 text-sky-600 dark:text-sky-400 tabular-nums">{stats.dailySummary.reduce((sum: number, item: any) => sum + item.goodReviewCount, 0)}单</td>
+                <tr className="font-semibold bg-slate-100/80 dark:bg-slate-900/60 border-t-2 border-slate-200 dark:border-slate-700">
+                  <td className="px-4 py-3 text-sm">合计</td>
+                  <td className="px-4 py-3 text-sm tabular-nums">{stats.dailySummary.reduce((sum: number, item: any) => sum + item.orderCount, 0)}单</td>
+                  <td className="px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(stats.dailySummary.reduce((sum: number, item: any) => sum + item.totalRefund, 0))}</td>
+                  <td className="px-4 py-3 text-sm text-emerald-600 dark:text-emerald-400 tabular-nums">{stats.dailySummary.reduce((sum: number, item: any) => sum + item.refundedCount, 0)}单</td>
+                  <td className="px-4 py-3 text-sm text-amber-600 dark:text-amber-400 tabular-nums">{stats.dailySummary.reduce((sum: number, item: any) => sum + item.pendingCount, 0)}单</td>
+                  <td className="px-4 py-3 text-sm text-sky-600 dark:text-sky-400 tabular-nums">{stats.dailySummary.reduce((sum: number, item: any) => sum + item.goodReviewCount, 0)}单</td>
                 </tr>
               )}
               {(!stats?.dailySummary || stats.dailySummary.length === 0) && (
                 <tr>
-                  <td colSpan={6} className="px-6 py-12 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                     <BarChart3 className="h-12 w-12 mx-auto mb-4" />
                     <p className="apple-text-headline">暂无数据</p>
                     <p className="apple-text-body">暂无近7天的订单数据</p>
