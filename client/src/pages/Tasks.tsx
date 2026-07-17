@@ -420,10 +420,30 @@ export default function Tasks() {
   const handleQuickOrder = (task: any, event: React.MouseEvent) => {
     const button = event.currentTarget as HTMLElement;
     const rect = button.getBoundingClientRect();
-    setQuickOrderPosition({
-      top: rect.bottom + window.scrollY + 8,
-      left: rect.left + window.scrollX
-    });
+    
+    // 计算弹窗位置，确保不超出视口
+    let top = rect.bottom + window.scrollY + 8;
+    let left = rect.left + window.scrollX;
+    
+    // 弹窗尺寸
+    const modalWidth = 320; // w-80 = 320px
+    const modalHeight = 400; // 估计高度
+    
+    // 检查右边界
+    if (left + modalWidth > window.innerWidth) {
+      left = window.innerWidth - modalWidth - 16;
+    }
+    
+    // 检查下边界
+    if (top + modalHeight > window.innerHeight + window.scrollY) {
+      top = rect.top + window.scrollY - modalHeight - 8;
+    }
+    
+    // 确保不超出左边界和上边界
+    left = Math.max(16, left);
+    top = Math.max(16, top);
+    
+    setQuickOrderPosition({ top, left });
     setSelectedTask(task);
     setTakerSearch('');
     setSelectedTaker('');
