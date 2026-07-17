@@ -536,13 +536,13 @@ export default function Orders() {
               placeholder="搜索订单号、商品ID、微信昵称..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="premium-input w-full rounded-xl border bg-card pl-10 pr-4 py-2 text-sm"
+              className="apple-input w-full rounded-xl border bg-card pl-10 pr-4 py-2 text-sm"
             />
           </div>
           <select
             value={refundFilter}
             onChange={(e) => setRefundFilter(e.target.value)}
-            className="premium-input rounded-xl border bg-card px-3 py-2 text-sm"
+            className="apple-input rounded-xl border bg-card px-3 py-2 text-sm"
           >
             <option value="">返款状态</option>
             <option value="true">已返款</option>
@@ -551,7 +551,7 @@ export default function Orders() {
           <select
             value={reviewFilter}
             onChange={(e) => setReviewFilter(e.target.value)}
-            className="premium-input rounded-xl border bg-card px-3 py-2 text-sm"
+            className="apple-input rounded-xl border bg-card px-3 py-2 text-sm"
           >
             <option value="">好评状态</option>
             <option value="pending">未好评</option>
@@ -564,7 +564,7 @@ export default function Orders() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="premium-input rounded-xl border bg-card px-3 py-2 text-sm"
+              className="apple-input rounded-xl border bg-card px-3 py-2 text-sm"
               placeholder="开始日期"
             />
             <span className="text-muted-foreground text-sm">至</span>
@@ -572,7 +572,7 @@ export default function Orders() {
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="premium-input rounded-xl border bg-card px-3 py-2 text-sm"
+              className="apple-input rounded-xl border bg-card px-3 py-2 text-sm"
               placeholder="结束日期"
             />
           </div>
@@ -590,7 +590,7 @@ export default function Orders() {
             <button
               key={preset.value}
               onClick={() => applyDatePreset(preset.value)}
-              className="btn-press rounded-lg border bg-card px-3 py-1 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="apple-btn rounded-lg border bg-card px-3 py-1 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               {preset.label}
             </button>
@@ -600,23 +600,23 @@ export default function Orders() {
 
       {/* Quick Stats Bar */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center premium-card">
+        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center apple-card">
           <p className="text-xs text-muted-foreground font-medium">当前结果</p>
           <p className="text-xl font-bold mt-0.5 tabular-nums">{stats.count}</p>
         </div>
-        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center premium-card stat-accent-amber">
+        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center apple-card stat-accent-amber">
           <p className="text-xs text-muted-foreground font-medium">待返款</p>
           <p className="text-xl font-bold mt-0.5 text-amber-600 dark:text-amber-400 tabular-nums">{stats.refundPending}</p>
         </div>
-        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center premium-card stat-accent-sky">
+        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center apple-card stat-accent-sky">
           <p className="text-xs text-muted-foreground font-medium">待好评</p>
           <p className="text-xl font-bold mt-0.5 text-sky-600 dark:text-sky-400 tabular-nums">{stats.reviewPending}</p>
         </div>
-        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center premium-card stat-accent-emerald">
+        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center apple-card stat-accent-emerald">
           <p className="text-xs text-muted-foreground font-medium">实付总额</p>
           <p className="text-xl font-bold mt-0.5 tabular-nums">{formatCurrency(stats.totalAmount)}</p>
         </div>
-        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center premium-card stat-accent-emerald">
+        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center apple-card stat-accent-emerald">
           <p className="text-xs text-muted-foreground font-medium">返款总额</p>
           <p className="text-xl font-bold mt-0.5 text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(stats.totalRefund)}</p>
         </div>
@@ -632,7 +632,7 @@ export default function Orders() {
           <button
             onClick={() => handleBatchStatus('isRefunded', true)}
             disabled={batchStatusMutation.isPending}
-            className="btn-press inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors shadow-sm"
+            className="apple-btn inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors shadow-sm"
           >
             <CheckCircle className="h-4 w-4" />
             批量已返款
@@ -640,7 +640,7 @@ export default function Orders() {
           <button
             onClick={() => handleBatchStatus('isGoodReview', 'reviewed')}
             disabled={batchStatusMutation.isPending}
-            className="btn-press inline-flex items-center gap-1.5 rounded-lg bg-sky-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-600 disabled:opacity-50 transition-colors shadow-sm"
+            className="apple-btn inline-flex items-center gap-1.5 rounded-lg bg-sky-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-600 disabled:opacity-50 transition-colors shadow-sm"
           >
             <Star className="h-4 w-4" />
             批量已好评
@@ -648,14 +648,14 @@ export default function Orders() {
           <button
             onClick={handleBatchDelete}
             disabled={batchDeleteMutation.isPending}
-            className="btn-press inline-flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-600 disabled:opacity-50 transition-colors shadow-sm"
+            className="apple-btn inline-flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-600 disabled:opacity-50 transition-colors shadow-sm"
           >
             <Trash2 className="h-4 w-4" />
             {batchDeleteMutation.isPending ? '删除中...' : '批量删除'}
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="btn-press text-sm text-muted-foreground hover:text-foreground ml-auto transition-colors"
+            className="apple-btn text-sm text-muted-foreground hover:text-foreground ml-auto transition-colors"
           >
             取消选择
           </button>
@@ -663,7 +663,7 @@ export default function Orders() {
       )}
 
       {/* Table */}
-      <div className="rounded-2xl border bg-card shadow-sm overflow-x-auto premium-card">
+      <div className="rounded-2xl border bg-card shadow-sm overflow-x-auto apple-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="table-header">
@@ -922,7 +922,7 @@ export default function Orders() {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="btn-press rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="apple-btn rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             上一页
           </button>
@@ -932,7 +932,7 @@ export default function Orders() {
           <button
             onClick={() => setPage(p => p + 1)}
             disabled={page >= Math.ceil(total / 20)}
-            className="btn-press rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="apple-btn rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             下一页
           </button>
