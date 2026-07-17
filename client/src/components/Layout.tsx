@@ -20,6 +20,8 @@ import {
   AlertTriangle,
   TrendingDown,
   Home,
+  Search,
+  Bell,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -47,13 +49,14 @@ const discountNav = [
   { name: '数据录入', href: '/repeat-discounts', icon: TrendingDown, module: 'repeatDiscounts' },
 ];
 
-export default function Layout({ children }: LayoutProps) {
+export default function AppleLayout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
   const { canView } = usePermissions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleLogout = () => {
     logout();
@@ -65,11 +68,7 @@ export default function Layout({ children }: LayoutProps) {
   const isActive = (href: string) => location.pathname === href;
 
   const navLinkClass = (active: boolean) =>
-    `group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-      active
-        ? 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/10 dark:text-indigo-400'
-        : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200'
-    }`;
+    `apple-nav-item ${active ? 'apple-nav-item-active' : ''}`;
 
   return (
     <div className="min-h-screen bg-background">
@@ -81,51 +80,65 @@ export default function Layout({ children }: LayoutProps) {
         />
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r flex flex-col transition-transform duration-300 ease-[var(--ease-drawer)] lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Apple-style Sidebar */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 bg-card border-r flex flex-col transition-transform duration-300 ease-[var(--apple-ease-out)] lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Brand */}
-        <div className="flex h-16 items-center justify-between px-5 border-b">
-          <Link to="/" onClick={closeSidebar} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity duration-200">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md shadow-indigo-500/25">
-              <Sparkles className="h-4.5 w-4.5 text-white" />
+        <div className="flex h-18 items-center justify-between px-6 border-b">
+          <Link to="/" onClick={closeSidebar} className="flex items-center gap-3 hover:opacity-80 transition-opacity duration-200">
+            <div className="flex items-center justify-center w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/25">
+              <Sparkles className="h-5 w-5 text-white" />
             </div>
-            <h1 className="text-base font-bold tracking-tight">天猫激励系统</h1>
+            <div>
+              <h1 className="apple-text-headline font-bold tracking-tight">天猫激励系统</h1>
+              <p className="apple-text-caption-1 text-muted-foreground">订单数据管理</p>
+            </div>
           </Link>
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-1">
             <button
               onClick={toggleTheme}
-              className="btn-press p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="apple-btn apple-btn-ghost p-2 rounded-xl"
               title={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
             >
-              {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </button>
             <button
               onClick={closeSidebar}
-              className="btn-press p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors lg:hidden"
+              className="apple-btn apple-btn-ghost p-2 rounded-xl lg:hidden"
             >
-              <X className="h-4 w-4" />
+              <X className="h-5 w-5" />
             </button>
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="px-4 py-3">
+          <div className="apple-search">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="搜索功能..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="apple-search-input"
+            />
+          </div>
+        </div>
+
         {/* Navigation */}
-        <nav className="p-3 space-y-0.5 flex-1 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto px-4 pb-4 space-y-1">
           {/* 首页 */}
           <Link
             to="/"
             onClick={closeSidebar}
             className={navLinkClass(location.pathname === '/')}
           >
-            {location.pathname === '/' && (
-              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-indigo-500 nav-active-bar" />
-            )}
-            <Home className="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
+            <Home className="h-5 w-5" />
             首页
           </Link>
 
           {/* 激励登记 */}
-          <div className="pt-4 pb-1.5 px-3">
-            <span className="section-label">激励登记</span>
+          <div className="pt-6 pb-2 px-3">
+            <span className="apple-text-caption-1 font-semibold uppercase tracking-wider text-muted-foreground">激励登记</span>
           </div>
           {incentiveNav.filter(item => canView(item.module)).map((item) => {
             const active = isActive(item.href);
@@ -136,18 +149,15 @@ export default function Layout({ children }: LayoutProps) {
                 onClick={closeSidebar}
                 className={navLinkClass(active)}
               >
-                {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-indigo-500 nav-active-bar" />
-                )}
-                <item.icon className={`h-[18px] w-[18px] transition-transform duration-200 ${!active && 'group-hover:scale-110'}`} />
+                <item.icon className="h-5 w-5" />
                 {item.name}
               </Link>
             );
           })}
 
           {/* 回头客立减 */}
-          <div className="pt-4 pb-1.5 px-3">
-            <span className="section-label">回头客立减</span>
+          <div className="pt-6 pb-2 px-3">
+            <span className="apple-text-caption-1 font-semibold uppercase tracking-wider text-muted-foreground">回头客立减</span>
           </div>
           {discountNav.filter(item => canView(item.module)).map((item) => {
             const active = isActive(item.href);
@@ -158,10 +168,7 @@ export default function Layout({ children }: LayoutProps) {
                 onClick={closeSidebar}
                 className={navLinkClass(active)}
               >
-                {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-orange-500 nav-active-bar" />
-                )}
-                <item.icon className={`h-[18px] w-[18px] transition-transform duration-200 ${!active && 'group-hover:scale-110'}`} />
+                <item.icon className="h-5 w-5" />
                 {item.name}
               </Link>
             );
@@ -169,30 +176,30 @@ export default function Layout({ children }: LayoutProps) {
         </nav>
 
         {/* User info & logout */}
-        <div className="border-t p-3 space-y-1">
+        <div className="border-t p-4 space-y-2">
           <Link
             to="/settings"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-50/80 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
+            className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-50/80 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200 apple-card"
           >
-            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 shrink-0 shadow-sm">
-              <User className="h-4 w-4 text-white" />
+            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 shrink-0 shadow-sm">
+              <User className="h-5 w-5 text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{user?.username || '未知'}</p>
-              <p className="text-xs text-muted-foreground">{user?.role === 'admin' ? '管理员' : '普通用户'}</p>
+              <p className="apple-text-headline truncate">{user?.username || '未知'}</p>
+              <p className="apple-text-footnote text-muted-foreground">{user?.role === 'admin' ? '管理员' : '普通用户'}</p>
             </div>
-            <SettingsIcon className="h-4 w-4 text-muted-foreground" />
+            <SettingsIcon className="h-5 w-5 text-muted-foreground" />
           </Link>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all duration-200"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all duration-200 apple-btn apple-btn-ghost"
           >
-            <LogOut className="h-[18px] w-[18px]" />
+            <LogOut className="h-5 w-5" />
             退出登录
           </button>
           {/* Version badge */}
-          <div className="px-3 pt-1 pb-0.5 text-center">
-            <span className="text-[10px] text-muted-foreground/50 font-mono tabular-nums select-none">
+          <div className="px-4 pt-2 pb-1 text-center">
+            <span className="apple-text-caption-2 text-muted-foreground/50 font-mono tabular-nums select-none">
               v{__APP_VERSION__} · {__BUILD_TIME__}
             </span>
           </div>
@@ -200,23 +207,45 @@ export default function Layout({ children }: LayoutProps) {
       </aside>
 
       {/* Main content */}
-      <main className="lg:pl-64">
-        {/* Mobile top bar */}
-        <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card/80 backdrop-blur-md px-4 lg:hidden">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="btn-press p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600">
-              <Sparkles className="h-3.5 w-3.5 text-white" />
+      <main className="lg:pl-72">
+        {/* Apple-style Top Bar */}
+        <div className="sticky top-0 z-30 flex h-16 items-center justify-between gap-4 border-b bg-card/80 backdrop-blur-md px-6 lg:px-8">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setSidebarOpen(true)}
+              className="apple-btn apple-btn-ghost p-2 rounded-xl lg:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="hidden lg:flex items-center gap-3">
+              <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+              <span className="apple-text-headline font-bold">天猫激励系统</span>
             </div>
-            <span className="font-bold text-sm">天猫激励系统</span>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            {/* Notifications */}
+            <button className="apple-btn apple-btn-ghost p-2 rounded-xl relative">
+              <Bell className="h-5 w-5" />
+              <span className="absolute top-1 right-1 w-2 h-2 bg-rose-500 rounded-full"></span>
+            </button>
+            
+            {/* User Avatar */}
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 flex items-center justify-center">
+                <User className="h-4 w-4 text-white" />
+              </div>
+              <div className="hidden sm:block">
+                <p className="apple-text-footnote font-medium">{user?.username || '未知'}</p>
+                <p className="apple-text-caption-2 text-muted-foreground">{user?.role === 'admin' ? '管理员' : '普通用户'}</p>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="p-4 lg:p-8 page-enter">
+        
+        <div className="p-6 lg:p-8 page-enter">
           {children}
         </div>
       </main>
