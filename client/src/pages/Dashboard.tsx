@@ -146,18 +146,18 @@ export default function AppleDashboard() {
       {/* Apple-style Header */}
       <div className="flex items-center justify-between flex-wrap gap-6">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-              <Sparkles className="h-5 w-5 text-white" />
+          <div className="flex items-center gap-4 mb-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 dark:shadow-indigo-500/10">
+              <Sparkles className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="apple-text-title-1">数据汇总</h1>
-              <p className="apple-text-body text-muted-foreground">天猫激励订单数据概览</p>
+              <h1 className="text-2xl font-bold tracking-tight">数据汇总</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">天猫激励订单数据概览</p>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-4 flex-wrap">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <DatePicker
               value={selectedDate}
               onChange={setSelectedDate}
@@ -260,9 +260,9 @@ export default function AppleDashboard() {
               {remindData.list?.map((taker: any) => (
                 <div key={taker.takerId} className="apple-card p-5">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5">
                       <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 flex items-center justify-center">
-                        <Users className="h-5 w-5 text-white" />
+                        <Users className="h-6 w-6 text-white" />
                       </div>
                       <div>
                         <p className="apple-text-headline">{taker.wechatName}</p>
@@ -343,7 +343,7 @@ export default function AppleDashboard() {
           </div>
           <div className="space-y-4">
             <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-sky-100 dark:bg-sky-950/40 flex items-center justify-center">
                   <ShoppingCart className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                 </div>
@@ -352,7 +352,7 @@ export default function AppleDashboard() {
               <span className="apple-text-title-3 tabular-nums">{stats?.todayOrders || 0}</span>
             </div>
             <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
                   <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
@@ -361,7 +361,7 @@ export default function AppleDashboard() {
               <span className="apple-text-title-3 tabular-nums">{formatCurrency(stats?.todayAmount || 0)}</span>
             </div>
             <div className="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
                   <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
@@ -388,7 +388,7 @@ export default function AppleDashboard() {
               to="/orders?refund=false"
               className="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-950/20 rounded-2xl hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors group apple-card"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center">
                   <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                 </div>
@@ -406,7 +406,7 @@ export default function AppleDashboard() {
               to="/orders?review=false"
               className="flex items-center justify-between p-4 bg-sky-50 dark:bg-sky-950/20 rounded-2xl hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors group apple-card"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-sky-100 dark:bg-sky-950/40 flex items-center justify-center">
                   <Star className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                 </div>
@@ -424,7 +424,7 @@ export default function AppleDashboard() {
               to="/tasks"
               className="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors group apple-card"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
                   <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
@@ -444,7 +444,7 @@ export default function AppleDashboard() {
         {/* Top Takers */}
         <div className="apple-card p-6">
           <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <div className="p-3 bg-violet-100 dark:bg-violet-950/40 rounded-2xl">
                 <Star className="h-6 w-6 text-violet-600 dark:text-violet-400" />
               </div>
@@ -467,7 +467,7 @@ export default function AppleDashboard() {
                 key={taker.id}
                 className="flex items-center justify-between p-3 bg-slate-50/60 dark:bg-slate-900/30 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors apple-card"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold ${
                       index === 0
@@ -505,7 +505,7 @@ export default function AppleDashboard() {
       {/* Apple-style Daily Summary */}
       <div className="apple-card p-6">
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <div className="p-3 bg-orange-100 dark:bg-orange-950/40 rounded-2xl">
               <BarChart3 className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
