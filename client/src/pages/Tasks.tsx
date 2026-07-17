@@ -503,14 +503,14 @@ export default function Tasks() {
           />
           <button
             onClick={() => setShowBatchForm(true)}
-            className="btn-press magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 transition-colors shadow-md shadow-indigo-500/20"
+            className="apple-btn apple-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 transition-colors shadow-md shadow-indigo-500/20"
           >
             <Plus className="h-4 w-4" />
             批量新增
           </button>
           <button
             onClick={handleAddNewRow}
-            className="btn-press magnetic-btn inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 transition-colors shadow-md shadow-violet-500/20"
+            className="apple-btn apple-btn inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 transition-colors shadow-md shadow-violet-500/20"
           >
             <Plus className="h-4 w-4" />
             新增任务
@@ -527,13 +527,13 @@ export default function Tasks() {
             placeholder="搜索商品ID、产品编号..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="premium-input w-full rounded-xl border bg-card pl-10 pr-4 py-2 text-sm"
+            className="apple-input w-full rounded-xl border bg-card pl-10 pr-4 py-2 text-sm"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="premium-input rounded-xl border bg-card px-3 py-2 text-sm"
+          className="apple-input rounded-xl border bg-card px-3 py-2 text-sm"
         >
           <option value="">全部状态</option>
           <option value="active">进行中</option>
@@ -552,7 +552,7 @@ export default function Tasks() {
           ref={batchFormModalRef}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 animate-modal-in"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 apple-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4">批量新增任务</h3>
@@ -562,7 +562,7 @@ export default function Tasks() {
                 <textarea
                   value={batchProductCodes}
                   onChange={(e) => setBatchProductCodes(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm premium-input"
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm apple-input"
                   rows={10}
                   placeholder="SKU-001&#10;SKU-002&#10;SKU-003"
                 />
@@ -577,14 +577,14 @@ export default function Tasks() {
                     setShowBatchForm(false);
                     setBatchProductCodes('');
                   }}
-                  className="btn-press rounded-xl border px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  className="apple-btn rounded-xl border px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   取消
                 </button>
                 <button
                   onClick={handleBatchCreate}
                   disabled={batchCreateMutation.isPending}
-                  className="btn-press rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
+                  className="apple-btn rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
                 >
                   {batchCreateMutation.isPending ? '创建中...' : '批量创建'}
                 </button>
@@ -604,7 +604,7 @@ export default function Tasks() {
           ref={quickOrderModalRef}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 animate-modal-in"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 apple-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4">快速接单</h3>
@@ -638,7 +638,7 @@ export default function Tasks() {
                       }}
                       onFocus={() => setShowTakerDropdown(true)}
                       placeholder="点击展开或输入搜索..."
-                      className={`w-full rounded-lg border bg-card px-3 py-2 text-sm pr-8 premium-input ${
+                      className={`w-full rounded-lg border bg-card px-3 py-2 text-sm pr-8 apple-input ${
                         selectedTaker ? 'border-emerald-500' : 'border-input'
                       }`}
                     />
@@ -707,7 +707,7 @@ export default function Tasks() {
                   value={quickOrderForm.orderNo}
                   onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo: e.target.value })}
                   placeholder="选填"
-                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm premium-input"
+                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm apple-input"
                 />
               </div>
               <div>
@@ -717,7 +717,7 @@ export default function Tasks() {
                   value={quickOrderForm.orderNo19}
                   onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo19: e.target.value })}
                   placeholder="选填"
-                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm premium-input"
+                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm apple-input"
                 />
               </div>
               <div>
@@ -729,7 +729,7 @@ export default function Tasks() {
                   value={quickOrderForm.actualPayment}
                   onChange={(e) => setQuickOrderForm({ ...quickOrderForm, actualPayment: e.target.value })}
                   placeholder="选填，默认 0"
-                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm premium-input"
+                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm apple-input"
                 />
               </div>
               <div className="flex justify-end gap-2">
@@ -743,14 +743,14 @@ export default function Tasks() {
                     setShowTakerDropdown(false);
                     setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
                   }}
-                  className="btn-press rounded-xl border px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                  className="apple-btn rounded-xl border px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   取消
                 </button>
                 <button
                   onClick={() => handleConfirmQuickOrder()}
                   disabled={quickOrderMutation.isPending}
-                  className="btn-press rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50"
+                  className="apple-btn rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50"
                 >
                   {quickOrderMutation.isPending ? '接单中...' : '确认接单'}
                 </button>
@@ -769,14 +769,14 @@ export default function Tasks() {
           <button
             onClick={handleBatchDelete}
             disabled={batchDeleteMutation.isPending}
-            className="btn-press inline-flex items-center gap-2 rounded-lg bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 disabled:opacity-50 transition-colors shadow-sm"
+            className="apple-btn inline-flex items-center gap-2 rounded-lg bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 disabled:opacity-50 transition-colors shadow-sm"
           >
             <Trash2 className="h-4 w-4" />
             {batchDeleteMutation.isPending ? '删除中...' : '批量删除'}
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="btn-press text-sm text-muted-foreground hover:text-foreground"
+            className="apple-btn text-sm text-muted-foreground hover:text-foreground"
           >
             取消选择
           </button>
@@ -784,7 +784,7 @@ export default function Tasks() {
       )}
 
       {/* Table */}
-      <div className="rounded-2xl border bg-card shadow-sm overflow-x-auto premium-card">
+      <div className="rounded-2xl border bg-card shadow-sm overflow-x-auto apple-card">
         <table className="w-full">
           <thead>
             <tr className="table-header">
@@ -930,13 +930,13 @@ export default function Tasks() {
                     <button
                       onClick={handleSaveNewRow}
                       disabled={createMutation.isPending}
-                      className="btn-press px-3 py-1 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 disabled:opacity-50"
+                      className="apple-btn px-3 py-1 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 disabled:opacity-50"
                     >
                       {createMutation.isPending ? '保存中...' : '保存'}
                     </button>
                     <button
                       onClick={handleCancelNewRow}
-                      className="btn-press px-3 py-1 border rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
+                      className="apple-btn px-3 py-1 border rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                       取消
                     </button>
@@ -1024,14 +1024,14 @@ export default function Tasks() {
                       <button
                         onClick={() => handleQuickOrder(task)}
                         disabled={task.currentOrders >= task.maxOrders || task.status !== 'active'}
-                        className="btn-press p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        className="apple-btn p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         title="快速接单"
                       >
                         <Zap className="h-4 w-4 text-emerald-500" />
                       </button>
                       <button
                         onClick={() => handleDelete(task.id)}
-                        className="btn-press p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors"
+                        className="apple-btn p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors"
                         title="删除任务"
                       >
                         <Trash2 className="h-4 w-4 text-rose-500" />
@@ -1051,7 +1051,7 @@ export default function Tasks() {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="btn-press rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="apple-btn rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             上一页
           </button>
@@ -1061,7 +1061,7 @@ export default function Tasks() {
           <button
             onClick={() => setPage(p => p + 1)}
             disabled={page >= Math.ceil(total / 20)}
-            className="btn-press rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="apple-btn rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             下一页
           </button>
