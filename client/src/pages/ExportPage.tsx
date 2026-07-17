@@ -133,13 +133,13 @@ export default function ExportPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight gradient-text">数据导出</h2>
+        <h2 className="text-3xl font-bold tracking-tight apple-text-title-1">数据导出</h2>
         <p className="text-muted-foreground mt-1">选择要导出的表格和数据</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Export Settings */}
-        <div className="rounded-2xl premium-card p-6">
+        <div className="rounded-2xl apple-card p-6">
           <h3 className="text-lg font-semibold mb-4">导出设置</h3>
 
           <div className="space-y-4">
@@ -149,7 +149,7 @@ export default function ExportPage() {
                 type="text"
                 value={filename}
                 onChange={(e) => setFilename(e.target.value)}
-                className="premium-input rounded-lg mt-1"
+                className="apple-input rounded-lg mt-1"
                 placeholder="输入导出文件名"
               />
             </div>
@@ -185,7 +185,7 @@ export default function ExportPage() {
         </div>
 
         {/* Preview */}
-        <div className="rounded-2xl premium-card p-6">
+        <div className="rounded-2xl apple-card p-6">
           <h3 className="text-lg font-semibold mb-4">导出预览</h3>
 
           <div className="space-y-4">
@@ -226,7 +226,7 @@ export default function ExportPage() {
             <button
               onClick={handleExport}
               disabled={exporting || !Object.values(selectedSheets).some(v => v)}
-              className="magnetic-btn w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-3 text-sm font-medium text-white hover:shadow-lg hover:shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="apple-btn w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-3 text-sm font-medium text-white hover:shadow-lg hover:shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {exporting ? (
                 <>
