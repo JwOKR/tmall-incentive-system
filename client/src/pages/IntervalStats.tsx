@@ -196,7 +196,7 @@ export default function IntervalStats() {
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight gradient-text">接单间隔分析</h1>
+          <h1 className="text-2xl font-bold tracking-tight apple-text-title-1">接单间隔分析</h1>
           <p className="text-sm text-muted-foreground mt-1">
             分析每个接单人的接单频率、间隔天数及预计下次接单时间
           </p>
@@ -207,14 +207,14 @@ export default function IntervalStats() {
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="premium-input rounded-lg"
+            className="apple-input rounded-lg"
           />
           <span className="text-muted-foreground text-sm">至</span>
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="premium-input rounded-lg"
+            className="apple-input rounded-lg"
           />
           {(startDate || endDate) && (
             <button
@@ -235,7 +235,7 @@ export default function IntervalStats() {
         {statCards.map((card) => (
           <div
             key={card.title}
-            className="card-hover rounded-2xl premium-card p-5 relative overflow-hidden"
+            className="card-hover rounded-2xl apple-card p-5 relative overflow-hidden"
           >
             <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-gradient-to-br from-primary/5 to-transparent" />
             <div className="flex items-start justify-between relative">
@@ -283,7 +283,7 @@ export default function IntervalStats() {
             placeholder="搜索微信昵称或微信号..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="premium-input rounded-lg pl-9"
+            className="apple-input rounded-lg pl-9"
           />
         </div>
         <span className="text-sm text-muted-foreground">
@@ -292,7 +292,7 @@ export default function IntervalStats() {
       </div>
 
       {/* Taker intervals table */}
-      <div className="rounded-2xl premium-card overflow-hidden">
+      <div className="rounded-2xl apple-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
