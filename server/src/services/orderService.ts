@@ -150,6 +150,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
 
   const newActual = input.actualPayment !== undefined ? Number(input.actualPayment) : existing.actualPayment;
   const newBase = input.baseCommission !== undefined ? Number(input.baseCommission) : existing.baseCommission;
+  const newReview = input.reviewCommission !== undefined ? Number(input.reviewCommission) : existing.reviewCommission;
   const order = await prisma.order.update({
     where: { id },
     data: {
