@@ -170,6 +170,14 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
     },
     include: { task: true, taker: true },
   });
+
+  // 自动更新任务状态
+  if (existing.taskId) {
+    await autoUpdateTaskStatus(existing.taskId);
+  }
+
+  return order;
+}
 }
 
 // ──────────────────────────────────────
@@ -429,3 +437,48 @@ export async function deleteOrder(id: string) {
     }
   });
 }
+
+// 自动更新任务状态
+async function autoUpdateTaskStatus(taskId: string) {
+  if (!taskId) return;
+  
+  const task = await prisma.task.findUnique({
+    where: { id: taskId },
+    include: {
+      orders: {
+        select: {
+          isRefunded: true,
+          isGoodReview: true,
+        },
+      },
+    },
+  });
+  
+  if (!task) return;
+  
+  // 统计订单状态
+  const totalOrders = task.orders.length;
+  const refundedOrders = task.orders.filter(o => o.isRefunded).length;
+  const reviewedOrders = task.orders.filter(o => o.isGoodReview === 'reviewed').length;
+  
+  // 更新已接人数
+  await prisma.task.update({
+    where: { id: taskId },
+    data: { currentOrders: totalOrders },
+  });
+  
+  // 自动更新任务状态逻辑：
+  // 1. 如果所有订单都已返款且已好评，任务完成
+  // 2. 如果已接人数达到上限，任务完成
+  // 3. 否则保持活跃状态
+  const allOrdersCompleted = totalOrders > 0 && refundedOrders === totalOrders && reviewedOrders === totalOrders;
+  const reachedMaxOrders = totalOrders >= task.maxOrders;
+  
+  if (allOrdersCompleted || reachedMaxOrders) {
+    await prisma.task.update({
+      where: { id: taskId },
+      data: { status: 'completed' },
+    });
+  }
+}
+
