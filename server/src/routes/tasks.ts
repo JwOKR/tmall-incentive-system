@@ -7,6 +7,7 @@ import {
   updateTask,
   deleteTask,
   quickOrder,
+  refreshAllTaskStatus,
 } from '../controllers/taskController';
 import { requireEditPermission, requireViewPermission } from '../middleware/auth';
 
@@ -19,5 +20,6 @@ router.post('/batch', requireEditPermission('tasks'), batchCreateTasks);
 router.put('/:id', requireEditPermission('tasks'), updateTask);
 router.delete('/:id', requireEditPermission('tasks'), deleteTask);
 router.post('/quick-order', requireEditPermission('tasks'), quickOrder);
+router.post('/refresh-status', requireEditPermission('tasks'), refreshAllTaskStatus);
 
 export default router;
