@@ -37,7 +37,7 @@ export default function AnomalyAlerts() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight gradient-text">异常预警</h2>
+          <h2 className="text-3xl font-bold tracking-tight apple-text-title-1">异常预警</h2>
           <p className="text-muted-foreground mt-1">自动检测重复订单、超长间隔接单人</p>
         </div>
         <button
@@ -52,7 +52,7 @@ export default function AnomalyAlerts() {
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-2xl premium-card p-5">
+            <div key={i} className="rounded-2xl apple-card p-5">
               <div className="space-y-2">
                 <div className="h-4 w-20 animate-pulse rounded bg-muted" />
                 <div className="h-8 w-12 animate-pulse rounded bg-muted" />
@@ -93,7 +93,7 @@ export default function AnomalyAlerts() {
                 bg: anomalies?.summary?.totalAnomalies > 0 ? 'bg-orange-100 dark:bg-orange-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30',
               },
             ].map(card => (
-              <div key={card.title} className="rounded-2xl premium-card p-5 card-hover">
+              <div key={card.title} className="rounded-2xl apple-card p-5 card-hover">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">{card.title}</p>
@@ -114,7 +114,7 @@ export default function AnomalyAlerts() {
 
           {/* Duplicate Order Numbers */}
           {anomalies?.duplicateOrderNos?.length > 0 && (
-            <div className="rounded-2xl premium-card p-6">
+            <div className="rounded-2xl apple-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Hash className="h-5 w-5 text-rose-500" />
@@ -147,7 +147,7 @@ export default function AnomalyAlerts() {
 
           {/* Duplicate 19 Order Numbers */}
           {anomalies?.duplicate19Nos?.length > 0 && (
-            <div className="rounded-2xl premium-card p-6">
+            <div className="rounded-2xl apple-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Hash className="h-5 w-5 text-orange-500" />
@@ -180,7 +180,7 @@ export default function AnomalyAlerts() {
 
           {/* Stale Takers */}
           {anomalies?.staleTakers?.length > 0 && (
-            <div className="rounded-2xl premium-card p-6">
+            <div className="rounded-2xl apple-card p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Clock className="h-5 w-5 text-amber-500" />
@@ -223,7 +223,7 @@ export default function AnomalyAlerts() {
 
           {/* No Anomalies */}
           {anomalies?.summary?.totalAnomalies === 0 && (
-            <div className="rounded-2xl premium-card p-12 text-center">
+            <div className="rounded-2xl apple-card p-12 text-center">
               <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
               <p className="text-lg font-medium">一切正常</p>
               <p className="text-sm text-muted-foreground mt-1">未检测到异常订单或超长间隔接单人</p>
