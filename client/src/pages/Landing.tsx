@@ -11,7 +11,7 @@ export default function Landing() {
           <span className="text-xs font-medium text-indigo-600 dark:text-indigo-400">订单管理系统</span>
         </div>
         <h1 className="text-5xl font-bold tracking-tight mb-3">
-          天猫<span className="gradient-text">激励系统</span>
+          天猫<span className="apple-text-title-1">激励系统</span>
         </h1>
         <p className="text-muted-foreground text-lg max-w-md mx-auto">
           选择要进入的模块，开始管理你的业务数据
