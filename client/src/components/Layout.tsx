@@ -379,13 +379,21 @@ export default function AppleLayout({ children }: LayoutProps) {
             </div>
             
             {/* Notifications */}
-            <button className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <Link
+              to="/logs"
+              className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              title="操作日志"
+            >
               <Bell className="h-5 w-5" />
               <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900" />
-            </button>
+            </Link>
             
             {/* User Avatar */}
-            <Link to="/settings" className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+            <Link
+              to="/settings"
+              className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              title="个人设置"
+            >
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 flex items-center justify-center">
                 <User className="h-3.5 w-3.5 text-white" />
               </div>
