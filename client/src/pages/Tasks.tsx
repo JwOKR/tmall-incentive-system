@@ -136,6 +136,7 @@ export default function Tasks() {
     },
   });
 
+const refreshStatusMutation = useMutation({    mutationFn: tasksApi.refreshStatus,    onSuccess: (data: any) => {      queryClient.invalidateQueries({ queryKey: ['tasks'] });      queryClient.invalidateQueries({ queryKey: ['dashboard'] });      toastSuccess(data?.message || '任务状态已更新');    },    onError: () => {      toastError('更新任务状态失败');    },  });
   const quickOrderMutation = useMutation({
     mutationFn: tasksApi.quickOrder,
     onSuccess: (data: any) => {
@@ -619,17 +620,16 @@ export default function Tasks() {
       {/* Quick Order Modal */}
       {showQuickOrder && selectedTask && (
         <div
-          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm"
           onClick={() => { setShowQuickOrder(false); setSelectedTask(null); setSelectedTaker(''); setTakerSearch(''); setShowTakerDropdown(false); setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }); }}
           onKeyDown={(e) => e.key === 'Escape' && (setShowQuickOrder(false), setSelectedTask(null), setSelectedTaker(''), setTakerSearch(''), setShowTakerDropdown(false), setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }))}
           tabIndex={-1}
           ref={quickOrderModalRef}
         >
           <div
-            className="fixed left-0 top-0 bottom-0 w-full max-w-md bg-card shadow-2xl border-r border-border/50 overflow-y-auto animate-slide-in-left"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 apple-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6">
             <h3 className="text-lg font-semibold mb-4">快速接单</h3>
             <div className="space-y-4">
               <div className="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40">
@@ -778,7 +778,6 @@ export default function Tasks() {
                   {quickOrderMutation.isPending ? '接单中...' : '确认接单'}
                 </button>
               </div>
-            </div>
             </div>
           </div>
         </div>
