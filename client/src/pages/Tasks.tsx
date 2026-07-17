@@ -289,6 +289,7 @@ export default function Tasks() {
   const renderStatusSelect = (task: any) => {
     const editing = isEditing(task.id, 'status');
     const statusOptions = [
+      { value: 'refunded', label: '已返款', color: 'badge-warning' },
       { value: 'active', label: '进行中', color: 'badge-success' },
       { value: 'completed', label: '已完成', color: 'badge-info' },
       { value: 'cancelled', label: '已取消', color: 'badge-danger' },
@@ -537,6 +538,7 @@ export default function Tasks() {
         >
           <option value="">全部状态</option>
           <option value="active">进行中</option>
+          <option value="refunded">已返款</option>
           <option value="completed">已完成</option>
           <option value="cancelled">已取消</option>
         </select>
@@ -835,7 +837,7 @@ export default function Tasks() {
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>状态</div>
-                <ColumnFilter type="select" value={columnFilters['status'] || ''} onChange={(v) => setColFilter('status', v)} options={[{ value: 'active', label: '进行中' }, { value: 'completed', label: '已完成' }, { value: 'cancelled', label: '已取消' }]} />
+                <ColumnFilter type="select" value={columnFilters['status'] || ''} onChange={(v) => setColFilter('status', v)} options={[{ value: 'active', label: '进行中' }, { value: 'refunded', label: '已返款' }, { value: 'completed', label: '已完成' }, { value: 'cancelled', label: '已取消' }]} />
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>发布日期</div>
