@@ -149,14 +149,14 @@ export default function Dashboard() {
             />
             <button
               onClick={handleCopySummary}
-              className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-all hover:shadow-md"
+              className="btn-press inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors hover:shadow-md"
             >
               <Copy className="h-4 w-4" />
               复制激励汇总
             </button>
             <button
               onClick={handleShowRemind}
-              className="inline-flex items-center gap-2 rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-700 transition-all hover:shadow-md"
+              className="btn-press inline-flex items-center gap-2 rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-700 transition-colors hover:shadow-md"
             >
               <ListTodo className="h-4 w-4" />
               催单列表
@@ -179,14 +179,14 @@ export default function Dashboard() {
           ref={summaryModalRef}
         >
           <div
-            className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in"
+            className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">激励汇总</h3>
               <button
                 onClick={() => setShowSummary(false)}
-                className="p-1.5 hover:bg-accent rounded-lg transition-colors"
+                className="btn-press p-1.5 hover:bg-accent rounded-lg transition-colors"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -226,7 +226,7 @@ export default function Dashboard() {
           ref={remindModalRef}
         >
           <div
-            className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in max-h-[80vh] flex flex-col"
+            className="w-full max-w-2xl rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-modal-in max-h-[80vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -236,7 +236,7 @@ export default function Dashboard() {
                   {remindData.totalTakers} 人 · {remindData.totalPendingOrders} 单待处理
                 </span>
               </h3>
-              <button onClick={() => setShowRemind(false)} className="p-1.5 hover:bg-accent rounded-lg transition-colors">
+              <button onClick={() => setShowRemind(false)} className="btn-press p-1.5 hover:bg-accent rounded-lg transition-colors">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -264,10 +264,10 @@ export default function Dashboard() {
               )}
             </div>
             <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
-              <button onClick={handleCopyRemind} className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
+              <button onClick={handleCopyRemind} className="btn-press inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
                 <Copy className="h-4 w-4" /> 复制催单文本
               </button>
-              <button onClick={() => setShowRemind(false)} className="rounded-md border px-4 py-2 text-sm hover:bg-accent">关闭</button>
+              <button onClick={() => setShowRemind(false)} className="btn-press rounded-md border px-4 py-2 text-sm hover:bg-accent">关闭</button>
             </div>
           </div>
         </div>
@@ -275,10 +275,11 @@ export default function Dashboard() {
 
       {/* Main Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {mainCards.map((card) => (
+        {mainCards.map((card, index) => (
           <div
             key={card.title}
-            className="relative overflow-hidden rounded-xl border bg-card p-6 shadow-sm card-hover"
+            className="stagger-item relative overflow-hidden rounded-xl border bg-card p-6 shadow-sm card-hover"
+            style={{ animationDelay: `${index * 50}ms` }}
           >
             {/* Gradient accent */}
             <div className={`absolute top-0 right-0 w-24 h-24 rounded-full bg-gradient-to-br ${card.gradient} opacity-5 dark:opacity-10 blur-2xl -mr-8 -mt-8`} />

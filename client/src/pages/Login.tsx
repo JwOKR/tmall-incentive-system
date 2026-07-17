@@ -45,7 +45,7 @@ export default function Login() {
       {/* 主题切换 */}
       <button
         onClick={toggleTheme}
-        className="absolute top-6 right-6 p-3 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-accent transition-all shadow-sm z-10"
+        className="btn-press absolute top-6 right-6 p-3 rounded-full bg-card/80 backdrop-blur-sm border border-border hover:bg-accent transition-colors shadow-sm z-10"
         title="切换主题"
       >
         {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
@@ -102,7 +102,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="btn-press w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>
