@@ -642,7 +642,7 @@ export default function RepeatDiscounts() {
               }
             }}
             placeholder="粘贴数据后自动解析..."
-            className="w-full h-20 rounded-xl border border-dashed border-input bg-muted/20 px-3 py-2.5 text-xs resize-none premium-input placeholder:text-muted-foreground/60"
+            className="w-full h-20 rounded-xl border border-dashed border-input bg-muted/20 px-3 py-2.5 text-xs resize-none apple-input placeholder:text-muted-foreground/60"
           />
         </div>
         {/* Input fields */}
@@ -656,7 +656,7 @@ export default function RepeatDiscounts() {
             <div key={field}>
               <label className="text-xs font-medium text-muted-foreground">{lbl}</label>
               <input type="number" step={step} value={data[field]} onChange={e => onChange(field, e.target.value)}
-                className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" placeholder={ph} />
+                className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" placeholder={ph} />
             </div>
           ))}
         </div>
@@ -685,7 +685,7 @@ export default function RepeatDiscounts() {
         </div>
         <input type="date" value={form.recordDate}
           onChange={e => setForm(f => ({ ...f, recordDate: e.target.value }))}
-          className="rounded-xl border border-input bg-background/50 px-4 py-2.5 text-sm premium-input" />
+          className="rounded-xl border border-input bg-background/50 px-4 py-2.5 text-sm apple-input" />
       </div>
 
       {/* Two group cards */}
@@ -741,12 +741,12 @@ export default function RepeatDiscounts() {
       <div className="flex items-center gap-3 animate-fade-up" style={{ animationDelay: '150ms' }}>
         <button onClick={handleSave}
           disabled={createMutation.isPending || updateMutation.isPending}
-          className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed">
+          className="apple-btn inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-red-500/25 hover:shadow-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed">
           {(createMutation.isPending || updateMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           {editingId ? '保存修改' : '保存登记'}
         </button>
         <button onClick={() => { setForm(emptyForm); setPasteText1(''); setPasteText2(''); setEditingId(null); }}
-          className="magnetic-btn inline-flex items-center gap-2 rounded-xl border border-border bg-background/50 px-5 py-3 text-sm font-medium hover:bg-accent">
+          className="apple-btn inline-flex items-center gap-2 rounded-xl border border-border bg-background/50 px-5 py-3 text-sm font-medium hover:bg-accent">
           <X className="h-4 w-4" /> 清空
         </button>
       </div>
@@ -776,12 +776,12 @@ export default function RepeatDiscounts() {
           <div className="flex items-center gap-2">
             <label className="text-sm text-muted-foreground">起始日期</label>
             <input type="date" value={startDate} onChange={e => { setStartDate(e.target.value); setPage(1); }}
-              className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" />
+              className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" />
           </div>
           <div className="flex items-center gap-2">
             <label className="text-sm text-muted-foreground">结束日期</label>
             <input type="date" value={endDate} onChange={e => { setEndDate(e.target.value); setPage(1); }}
-              className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" />
+              className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" />
           </div>
           {/* 快捷筛选按钮 */}
           <div className="flex gap-1.5 ml-1">
@@ -791,14 +791,14 @@ export default function RepeatDiscounts() {
               { label: '近30天', days: 30 },
             ].map(q => (
               <button key={q.days} onClick={() => setQuickRange(q.days)}
-                className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/60 bg-background/40 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30 transition-all magnetic-btn">
+                className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/60 bg-background/40 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30 transition-all apple-btn">
                 {q.label}
               </button>
             ))}
           </div>
           {(startDate || endDate) && (
             <button onClick={() => { setStartDate(''); setEndDate(''); setPage(1); }}
-              className="text-sm text-muted-foreground hover:text-foreground magnetic-btn rounded-lg px-2 py-1">清除筛选</button>
+              className="text-sm text-muted-foreground hover:text-foreground apple-btn rounded-lg px-2 py-1">清除筛选</button>
           )}
           <span className="text-sm text-muted-foreground ml-auto">共 {total} 条</span>
         </div>
@@ -828,7 +828,7 @@ export default function RepeatDiscounts() {
           <div className="flex items-center gap-3 flex-wrap mb-4">
             <button onClick={handleOverallAiAnalysis}
               disabled={overallAiLoading || !summary}
-              className={`magnetic-btn inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-lg disabled:opacity-50 ${
+              className={`apple-btn inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white shadow-lg disabled:opacity-50 ${
                 overallAiSource === 'ai'
                   ? 'bg-gradient-to-r from-green-600 to-emerald-500 shadow-green-500/25 hover:shadow-green-500/40'
                   : overallAiSource === 'local'
@@ -988,10 +988,10 @@ export default function RepeatDiscounts() {
                         </td>
                         <td className="px-4 py-3.5 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            <button onClick={() => handleEdit(item)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground magnetic-btn" title="编辑">
+                            <button onClick={() => handleEdit(item)} className="p-2 rounded-lg hover:bg-accent text-muted-foreground hover:text-foreground apple-btn" title="编辑">
                               <Pencil className="h-3.5 w-3.5" />
                             </button>
-                            <button onClick={() => handleDelete(item.id, item.recordDate)} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive magnetic-btn" title="删除">
+                            <button onClick={() => handleDelete(item.id, item.recordDate)} className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive apple-btn" title="删除">
                               <Trash2 className="h-3.5 w-3.5" />
                             </button>
                           </div>
@@ -1006,10 +1006,10 @@ export default function RepeatDiscounts() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-5 py-4 border-t">
               <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                className="magnetic-btn px-4 py-2 rounded-xl border text-sm disabled:opacity-40 hover:bg-accent">上一页</button>
+                className="apple-btn px-4 py-2 rounded-xl border text-sm disabled:opacity-40 hover:bg-accent">上一页</button>
               <span className="text-sm text-muted-foreground font-medium">第 {page} / {totalPages} 页</span>
               <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                className="magnetic-btn px-4 py-2 rounded-xl border text-sm disabled:opacity-40 hover:bg-accent">下一页</button>
+                className="apple-btn px-4 py-2 rounded-xl border text-sm disabled:opacity-40 hover:bg-accent">下一页</button>
             </div>
           )}
         </div>
@@ -1023,40 +1023,40 @@ export default function RepeatDiscounts() {
                   <div className="icon-badge bg-red-500/15 text-red-600 dark:text-red-400"><Pencil className="h-4 w-4" /></div>
                   <h3 className="text-lg font-bold">编辑记录</h3>
                 </div>
-                <button onClick={() => setShowEditModal(false)} className="p-2 rounded-lg hover:bg-accent magnetic-btn"><X className="h-4 w-4" /></button>
+                <button onClick={() => setShowEditModal(false)} className="p-2 rounded-lg hover:bg-accent apple-btn"><X className="h-4 w-4" /></button>
               </div>
               <div className="mb-5">
                 <label className="text-sm font-medium">日期</label>
                 <input type="date" value={editForm.recordDate}
                   onChange={e => setEditForm(f => ({ ...f, recordDate: e.target.value }))}
-                  className="mt-1.5 w-full rounded-xl border border-input bg-background/50 px-4 py-2.5 text-sm premium-input" />
+                  className="mt-1.5 w-full rounded-xl border border-input bg-background/50 px-4 py-2.5 text-sm apple-input" />
               </div>
               <div className="flex flex-col lg:flex-row gap-5">
                 <div className="flex-1">
                   <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500" />近2年已购用户人群</h4>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g1.grantAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g1.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付买家数</label><input type="number" value={editForm.g1.paymentBuyers} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentBuyers: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付件数</label><input type="number" value={editForm.g1.paymentItems} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentItems: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g1.grantAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g1.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付买家数</label><input type="number" value={editForm.g1.paymentBuyers} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentBuyers: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付件数</label><input type="number" value={editForm.g1.paymentItems} onChange={e => setEditForm(f => ({ ...f, g1: { ...f.g1, paymentItems: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" /></div>
                   </div>
                 </div>
                 <div className="flex-1">
                   <h4 className="text-sm font-bold mb-3 flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-orange-500" />365天内有购买且60天无购买人群</h4>
                   <div className="grid grid-cols-2 gap-3">
-                    <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g2.grantAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g2.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付买家数</label><input type="number" value={editForm.g2.paymentBuyers} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentBuyers: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
-                    <div><label className="text-xs text-muted-foreground">支付件数</label><input type="number" value={editForm.g2.paymentItems} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentItems: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">发放金额</label><input type="number" step="0.01" value={editForm.g2.grantAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, grantAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付金额</label><input type="number" step="0.01" value={editForm.g2.paymentAmount} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentAmount: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付买家数</label><input type="number" value={editForm.g2.paymentBuyers} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentBuyers: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" /></div>
+                    <div><label className="text-xs text-muted-foreground">支付件数</label><input type="number" value={editForm.g2.paymentItems} onChange={e => setEditForm(f => ({ ...f, g2: { ...f.g2, paymentItems: e.target.value } }))} className="mt-1 w-full rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" /></div>
                   </div>
                 </div>
               </div>
               <div className="flex gap-2 mt-6">
                 <button onClick={handleSaveEdit} disabled={updateMutation.isPending}
-                  className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-500/25 disabled:opacity-50">
+                  className="apple-btn inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-red-600 to-orange-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-500/25 disabled:opacity-50">
                   {updateMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}保存修改
                 </button>
-                <button onClick={() => setShowEditModal(false)} className="magnetic-btn inline-flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium hover:bg-accent">取消</button>
+                <button onClick={() => setShowEditModal(false)} className="apple-btn inline-flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium hover:bg-accent">取消</button>
               </div>
             </div>
           </div>
@@ -1094,12 +1094,12 @@ export default function RepeatDiscounts() {
             <div className="flex items-center gap-2">
               <label className="text-sm text-muted-foreground">起始</label>
               <input type="date" value={chartStartDate} onChange={e => setChartStartDate(e.target.value)}
-                className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" />
+                className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" />
             </div>
             <div className="flex items-center gap-2">
               <label className="text-sm text-muted-foreground">结束</label>
               <input type="date" value={chartEndDate} onChange={e => setChartEndDate(e.target.value)}
-                className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm premium-input" />
+                className="rounded-xl border border-input bg-background/50 px-3 py-2 text-sm apple-input" />
             </div>
             <div className="flex gap-1.5 ml-1">
               {[
@@ -1117,7 +1117,7 @@ export default function RepeatDiscounts() {
                     setChartStartDate(start.toISOString().slice(0, 10));
                     setChartEndDate(end.toISOString().slice(0, 10));
                   }
-                }} className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/60 bg-background/40 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30 transition-all magnetic-btn">
+                }} className="text-xs font-medium px-3 py-1.5 rounded-lg border border-border/60 bg-background/40 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30 transition-all apple-btn">
                   {q.label}
                 </button>
               ))}
@@ -1375,7 +1375,7 @@ export default function RepeatDiscounts() {
           </div>
           <div className="relative">
             <select value={previewDate} onChange={e => setPreviewDate(e.target.value)}
-              className="rounded-xl border border-input bg-background/50 px-4 py-2.5 text-sm pr-10 appearance-none premium-input cursor-pointer">
+              className="rounded-xl border border-input bg-background/50 px-4 py-2.5 text-sm pr-10 appearance-none apple-input cursor-pointer">
               {allRecords.length === 0 && <option value="">暂无数据</option>}
               {allRecords.slice().reverse().map(r => (
                 <option key={r.id} value={r.recordDate.slice(0, 10)}>{r.recordDate.slice(0, 10)}</option>
@@ -1384,11 +1384,11 @@ export default function RepeatDiscounts() {
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 pointer-events-none text-muted-foreground" />
           </div>
           <button onClick={downloadHtml} disabled={!rec}
-            className="magnetic-btn inline-flex items-center gap-2 rounded-xl border border-border bg-background/50 px-4 py-2.5 text-sm font-medium hover:bg-accent disabled:opacity-50">
+            className="apple-btn inline-flex items-center gap-2 rounded-xl border border-border bg-background/50 px-4 py-2.5 text-sm font-medium hover:bg-accent disabled:opacity-50">
             <Download className="h-4 w-4" />下载HTML
           </button>
           <button onClick={handleAiAnalysis} disabled={!rec || aiLoading}
-            className={`magnetic-btn inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-lg disabled:opacity-50 ${
+            className={`apple-btn inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white shadow-lg disabled:opacity-50 ${
               aiSource === 'ai'
                 ? 'bg-gradient-to-r from-green-600 to-emerald-500 shadow-green-500/25 hover:shadow-green-500/40'
                 : aiSource === 'local'
@@ -1641,7 +1641,7 @@ export default function RepeatDiscounts() {
     <div className="space-y-6">
       {/* Header */}
       <div className="animate-fade-up">
-        <h2 className="text-3xl font-extrabold tracking-tight gradient-text-red">回头客立减</h2>
+        <h2 className="text-3xl font-extrabold tracking-tight apple-text-title-1-red">回头客立减</h2>
         <p className="text-muted-foreground mt-1">每日立减数据录入、分析与日报生成</p>
       </div>
 
@@ -1652,7 +1652,7 @@ export default function RepeatDiscounts() {
           const active = activeTab === tab.key;
           return (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-              className={`tab-pill inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all magnetic-btn ${
+              className={`tab-pill inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all apple-btn ${
                 active
                   ? 'tab-pill-active text-red-600 dark:text-red-400 shadow-sm'
                   : 'border-border bg-background/40 text-muted-foreground hover:text-foreground hover:bg-accent'
