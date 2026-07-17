@@ -61,15 +61,15 @@ export default function CommissionStats() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-3xl font-bold tracking-tight gradient-text">佣金成本分析</h2>
+        <h2 className="text-3xl font-bold tracking-tight apple-text-title-1">佣金成本分析</h2>
         <p className="text-muted-foreground mt-1">多维度查看佣金支出，优化成本结构</p>
       </div>
 
       {/* Date filters */}
       <div className="flex items-center gap-3 flex-wrap">
-        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="premium-input rounded-lg" />
+        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="apple-input rounded-lg" />
         <span className="text-muted-foreground text-sm">至</span>
-        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="premium-input rounded-lg" />
+        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="apple-input rounded-lg" />
         {[
           { label: '全部', v: 'all' as const },
           { label: '本月', v: 'month' as const },
@@ -85,7 +85,7 @@ export default function CommissionStats() {
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl premium-card p-5">
+            <div key={i} className="rounded-2xl apple-card p-5">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <div className="h-4 w-20 animate-pulse rounded bg-muted" />
@@ -106,7 +106,7 @@ export default function CommissionStats() {
               { title: '好评返佣合计', value: formatCurrency(summary?.totalReviewCommission || 0), icon: TrendingUp, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-100 dark:bg-violet-900/30' },
               { title: '单均佣金', value: formatCurrency(summary?.avgCommissionPerOrder || 0), icon: DollarSign, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30' },
             ].map(card => (
-              <div key={card.title} className="rounded-2xl premium-card p-5 card-hover">
+              <div key={card.title} className="rounded-2xl apple-card p-5 card-hover">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">{card.title}</p>
@@ -137,7 +137,7 @@ export default function CommissionStats() {
           </div>
 
           {/* Table */}
-          <div className="rounded-2xl premium-card overflow-x-auto">
+          <div className="rounded-2xl apple-card overflow-x-auto">
             {activeTab === 'taker' && (
               <table className="w-full text-sm">
                 <thead>
