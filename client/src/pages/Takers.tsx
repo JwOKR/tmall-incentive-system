@@ -126,7 +126,7 @@ export default function Takers() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight gradient-text">接单人管理</h2>
+          <h2 className="text-3xl font-bold tracking-tight apple-text-title-1">接单人管理</h2>
           <p className="text-muted-foreground mt-1">管理所有接单人信息</p>
         </div>
         <div className="flex gap-2">
@@ -168,7 +168,7 @@ export default function Takers() {
               setFormData({ wechatName: '', wechatId: '' });
               setShowForm(true);
             }}
-            className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-500/20"
+            className="apple-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-500/20"
           >
             <Plus className="h-4 w-4" />
             添加接单人
@@ -185,7 +185,7 @@ export default function Takers() {
             placeholder="搜索接单人..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="premium-input rounded-lg pl-10"
+            className="apple-input rounded-lg pl-10"
           />
         </div>
       </div>
@@ -200,7 +200,7 @@ export default function Takers() {
           ref={formModalRef}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 animate-modal-in"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 apple-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4">
@@ -214,7 +214,7 @@ export default function Takers() {
                   required
                   value={formData.wechatName}
                   onChange={(e) => setFormData({ ...formData, wechatName: e.target.value })}
-                  className="premium-input rounded-lg mt-1"
+                  className="apple-input rounded-lg mt-1"
                   placeholder="请输入微信昵称"
                 />
               </div>
@@ -225,7 +225,7 @@ export default function Takers() {
                   required
                   value={formData.wechatId}
                   onChange={(e) => setFormData({ ...formData, wechatId: e.target.value })}
-                  className="premium-input rounded-lg mt-1"
+                  className="apple-input rounded-lg mt-1"
                   placeholder="请输入微信号"
                 />
               </div>
@@ -242,7 +242,7 @@ export default function Takers() {
                 </button>
                 <button
                   type="submit"
-                  className="magnetic-btn rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 transition-colors"
+                  className="apple-btn rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 transition-colors"
                 >
                   {editingTaker ? '更新' : '创建'}
                 </button>
@@ -253,7 +253,7 @@ export default function Takers() {
       )}
 
       {/* Table */}
-      <div className="rounded-2xl premium-card">
+      <div className="rounded-2xl apple-card">
         <table className="w-full">
           <thead>
             <tr className="table-header">
