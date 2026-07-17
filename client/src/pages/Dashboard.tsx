@@ -165,14 +165,14 @@ export default function AppleDashboard() {
             />
             <button
               onClick={handleCopySummary}
-              className="apple-btn apple-btn-primary px-5 py-2.5"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 hover:from-indigo-600 hover:to-violet-700 transition-all duration-200 transform hover:scale-105 active:scale-95"
             >
               <Copy className="h-4 w-4" />
               复制激励汇总
             </button>
             <button
               onClick={handleShowRemind}
-              className="apple-btn apple-btn-secondary px-5 py-2.5"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-sm font-medium shadow-lg shadow-amber-500/25 hover:shadow-xl hover:shadow-amber-500/30 hover:from-amber-600 hover:to-orange-700 transition-all duration-200 transform hover:scale-105 active:scale-95"
             >
               <ListTodo className="h-4 w-4" />
               催单列表
