@@ -328,7 +328,6 @@ export default function AppleDashboard() {
                 <button onClick={() => setShowRemind(false)} className="apple-btn apple-btn-ghost px-5 py-2">关闭</button>
               </div>
             </div>
-            </div>
           </div>
         </div>
       )}
