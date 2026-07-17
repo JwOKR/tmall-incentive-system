@@ -27,6 +27,7 @@ export default function Tasks() {
   const [statusFilter, setStatusFilter] = useState('');
   const debouncedSearch = useDebouncedValue(search, 300);
   const [showQuickOrder, setShowQuickOrder] = useState(false);
+  const [quickOrderPosition, setQuickOrderPosition] = useState({ top: 0, left: 0 });
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedTaker, setSelectedTaker] = useState('');
   const [takerSearch, setTakerSearch] = useState('');
@@ -416,7 +417,13 @@ export default function Tasks() {
     batchCreateMutation.mutate(tasks);
   };
 
-  const handleQuickOrder = (task: any) => {
+  const handleQuickOrder = (task: any, event: React.MouseEvent) => {
+    const button = event.currentTarget as HTMLElement;
+    const rect = button.getBoundingClientRect();
+    setQuickOrderPosition({
+      top: rect.bottom + window.scrollY + 8,
+      left: rect.left + window.scrollX
+    });
     setSelectedTask(task);
     setTakerSearch('');
     setSelectedTaker('');
@@ -619,18 +626,19 @@ export default function Tasks() {
       {/* Quick Order Modal */}
       {showQuickOrder && selectedTask && (
         <div
-          className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-sm"
+          className="fixed inset-0 z-50"
           onClick={() => { setShowQuickOrder(false); setSelectedTask(null); setSelectedTaker(''); setTakerSearch(''); setShowTakerDropdown(false); setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }); }}
           onKeyDown={(e) => e.key === 'Escape' && (setShowQuickOrder(false), setSelectedTask(null), setSelectedTaker(''), setTakerSearch(''), setShowTakerDropdown(false), setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }))}
           tabIndex={-1}
           ref={quickOrderModalRef}
         >
           <div
-            className="fixed left-0 top-0 bottom-0 w-full max-w-md bg-card shadow-2xl border-r border-border/50 overflow-y-auto animate-slide-in-left"
+            className="absolute w-80 bg-card rounded-xl shadow-2xl border border-border/50 overflow-hidden animate-fade-in"
+            style={{ top: quickOrderPosition.top, left: quickOrderPosition.left }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6">
-            <h3 className="text-lg font-semibold mb-4">快速接单</h3>
+            <div className="p-4">
+            <h3 className="text-lg font-semibold mb-3">快速接单</h3>
             <div className="space-y-4">
               <div className="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40">
                 <p className="font-medium">商品ID: {selectedTask.productId || '未填写'}</p>
@@ -1046,7 +1054,7 @@ export default function Tasks() {
                   <td className="px-4 py-2 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button
-                        onClick={() => handleQuickOrder(task)}
+                        onClick={(e) => handleQuickOrder(task, e)}
                         disabled={task.currentOrders >= task.maxOrders || task.status !== 'active'}
                         className="apple-btn p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         title="快速接单"
