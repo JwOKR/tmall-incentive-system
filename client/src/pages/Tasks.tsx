@@ -626,7 +626,7 @@ export default function Tasks() {
       {/* Quick Order Modal */}
       {showQuickOrder && selectedTask && (
         <div
-          className="fixed inset-0 z-50"
+          className="fixed inset-0 z-50 bg-black/20"
           onClick={() => { setShowQuickOrder(false); setSelectedTask(null); setSelectedTaker(''); setTakerSearch(''); setShowTakerDropdown(false); setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }); }}
           onKeyDown={(e) => e.key === 'Escape' && (setShowQuickOrder(false), setSelectedTask(null), setSelectedTaker(''), setTakerSearch(''), setShowTakerDropdown(false), setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }))}
           tabIndex={-1}
