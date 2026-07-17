@@ -70,6 +70,7 @@ export const tasksApi = {
   update: (id: string, data: any) => api.put(`/tasks/${id}`, data),
   delete: (id: string) => api.delete(`/tasks/${id}`),
   quickOrder: (data: { taskId: string; takerId: string; orderNo?: string; orderNo19?: string; actualPayment?: number; force?: boolean }) => api.post('/tasks/quick-order', data),
+  refreshStatus: () => api.post('/tasks/refresh-status'),
 };
 
 // Orders API
