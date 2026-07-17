@@ -105,11 +105,11 @@
 }
 
 @layer utilities {
-  /* Smooth theme transition */
+  /* Smooth theme transition - using transform for GPU acceleration */
   * {
     transition-property: background-color, border-color, color, fill, stroke;
     transition-duration: 150ms;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-timing-function: var(--ease-out);
   }
 
   /* Custom scrollbar */
@@ -127,9 +127,15 @@
     @apply bg-muted-foreground/50;
   }
 
-  /* Card hover lift */
+  /* Card hover lift - using transform for GPU acceleration */
   .card-hover {
-    @apply transition-all duration-300 hover:shadow-lg hover:-translate-y-0.5;
+    transition: transform 200ms var(--ease-out), box-shadow 200ms var(--ease-out);
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .card-hover:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    }
   }
 
   /* Emil Kowalski's Button Press Feedback */
@@ -147,12 +153,12 @@
     }
   }
 
-  /* Modal/Popover animation */
+  /* Modal/Popover animation - using scale(0.95) not scale(0) */
   .animate-modal-in {
     animation: modalIn 200ms var(--ease-out) forwards;
   }
   .animate-modal-out {
-    animation: modalOut 150ms ease-in forwards;
+    animation: modalOut 150ms var(--ease-out) forwards;
   }
 
   @keyframes modalIn {
@@ -177,7 +183,7 @@
     }
   }
 
-  /* Stagger animation for lists */
+  /* Stagger animation for lists - 30-80ms between items */
   .stagger-item {
     opacity: 0;
     transform: translateY(8px);
@@ -187,6 +193,8 @@
   .stagger-item:nth-child(2) { animation-delay: 50ms; }
   .stagger-item:nth-child(3) { animation-delay: 100ms; }
   .stagger-item:nth-child(4) { animation-delay: 150ms; }
+  .stagger-item:nth-child(5) { animation-delay: 200ms; }
+  .stagger-item:nth-child(6) { animation-delay: 250ms; }
 
   @keyframes fadeInUp {
     to {
@@ -195,12 +203,12 @@
     }
   }
 
-  /* Toast animation */
+  /* Toast animation - symmetric enter/exit */
   .animate-toast-in {
     animation: toastIn 300ms var(--ease-out) forwards;
   }
   .animate-toast-out {
-    animation: toastOut 200ms ease-in forwards;
+    animation: toastOut 200ms var(--ease-out) forwards;
   }
 
   @keyframes toastIn {
@@ -225,7 +233,7 @@
     }
   }
 
-  /* Reduced motion support */
+  /* Reduced motion support - gentler, not zero */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -260,21 +268,23 @@
     -webkit-text-fill-color: transparent;
   }
 
-  /* Magnetic button base */
+  /* Magnetic button base - using transform for GPU acceleration */
   .magnetic-btn {
-    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, background-color 0.2s ease;
+    transition: transform 250ms var(--ease-out), box-shadow 250ms var(--ease-out), background-color 200ms ease;
   }
-  .magnetic-btn:hover {
-    transform: translateY(-1px) scale(1.02);
+  @media (hover: hover) and (pointer: fine) {
+    .magnetic-btn:hover {
+      transform: translateY(-1px) scale(1.02);
+    }
   }
   .magnetic-btn:active {
     transform: translateY(0) scale(0.98);
   }
 
-  /* Tab pill style */
+  /* Tab pill style - using transform for GPU acceleration */
   .tab-pill {
     position: relative;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 200ms var(--ease-out), background-color 200ms ease, border-color 200ms ease;
   }
   .tab-pill-active {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(249, 115, 22, 0.08));
@@ -313,18 +323,18 @@
     flex-shrink: 0;
   }
 
-  /* Fade-in entrance animation */
+  /* Fade-in entrance animation - using @starting-style pattern */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(12px); }
     to { opacity: 1; transform: translateY(0); }
   }
   .animate-fade-up {
-    animation: fadeUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: fadeUp 400ms var(--ease-out) both;
   }
 
-  /* Premium input focus */
+  /* Premium input focus - using transform for GPU acceleration */
   .premium-input {
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    transition: border-color 200ms ease, box-shadow 200ms ease;
   }
   .premium-input:focus {
     border-color: rgba(239, 68, 68, 0.5);
@@ -342,5 +352,195 @@
     background: conic-gradient(from 180deg, #ef4444 0%, #f97316 50%, #fbbf24 100%);
     padding: 2px;
     border-radius: 12px;
+  }
+
+  /* Skeleton loading animation */
+  .skeleton {
+    background: linear-gradient(90deg, 
+      rgba(0, 0, 0, 0.06) 25%, 
+      rgba(0, 0, 0, 0.1) 50%, 
+      rgba(0, 0, 0, 0.06) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* Tooltip animation - 125-200ms */
+  .tooltip-content {
+    animation: tooltipIn 125ms var(--ease-out) forwards;
+  }
+
+  @keyframes tooltipIn {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Dropdown menu animation - 150-250ms */
+  .dropdown-content {
+    animation: dropdownIn 175ms var(--ease-out) forwards;
+  }
+
+  @keyframes dropdownIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(-4px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  /* Popover animation - origin-aware */
+  .popover-content {
+    transform-origin: var(--radix-popover-content-transform-origin, center);
+    animation: popoverIn 200ms var(--ease-out) forwards;
+  }
+
+  @keyframes popoverIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Drawer animation - using ease-drawer curve */
+  .drawer-content {
+    animation: drawerIn 300ms var(--ease-drawer) forwards;
+  }
+
+  @keyframes drawerIn {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+
+  /* Slide in from left */
+  .slide-in-left {
+    animation: slideInLeft 250ms var(--ease-out) forwards;
+  }
+
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Slide in from right */
+  .slide-in-right {
+    animation: slideInRight 250ms var(--ease-out) forwards;
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Scale in */
+  .scale-in {
+    animation: scaleIn 200ms var(--ease-out) forwards;
+  }
+
+  @keyframes scaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Bounce in - for celebrations/delight */
+  .bounce-in {
+    animation: bounceIn 500ms var(--ease-out) forwards;
+  }
+
+  @keyframes bounceIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* Pulse animation - for loading states */
+  .pulse {
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  /* Spin animation - for loading spinners */
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* Ping animation - for notifications */
+  .ping {
+    animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  @keyframes ping {
+    75%, 100% {
+      transform: scale(2);
+      opacity: 0;
+    }
   }
 }

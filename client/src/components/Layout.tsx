@@ -74,11 +74,11 @@ export default function Layout({ children }: LayoutProps) {
         />
       )}
 
-      {/* Sidebar */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r flex flex-col transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Sidebar - using transition-transform for GPU acceleration */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r flex flex-col transition-transform duration-300 ease-[var(--ease-drawer)] lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Brand */}
         <div className="flex h-16 items-center justify-between px-6 border-b">
-          <Link to="/" onClick={closeSidebar} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+          <Link to="/" onClick={closeSidebar} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity duration-200">
             <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 shadow-sm">
               <Sparkles className="h-4 w-4 text-primary-foreground" />
             </div>
@@ -87,14 +87,14 @@ export default function Layout({ children }: LayoutProps) {
           <div className="flex items-center gap-1">
             <button
               onClick={toggleTheme}
-              className="p-2 rounded-lg hover:bg-accent transition-all hover:scale-110 active:scale-95"
+              className="btn-press p-2 rounded-lg hover:bg-accent transition-colors"
               title={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
             >
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
             <button
               onClick={closeSidebar}
-              className="p-2 rounded-lg hover:bg-accent transition-colors lg:hidden"
+              className="btn-press p-2 rounded-lg hover:bg-accent transition-colors lg:hidden"
             >
               <X className="h-4 w-4" />
             </button>
@@ -107,7 +107,7 @@ export default function Layout({ children }: LayoutProps) {
           <Link
             to="/"
             onClick={closeSidebar}
-            className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+            className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
               location.pathname === '/'
                 ? 'bg-primary text-primary-foreground shadow-sm'
                 : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
@@ -128,16 +128,16 @@ export default function Layout({ children }: LayoutProps) {
                 key={item.name}
                 to={item.href}
                 onClick={closeSidebar}
-                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                   active
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 }`}
               >
                 {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80 animate-scale-in" />
                 )}
-                <item.icon className={`h-5 w-5 transition-transform ${active ? '' : 'group-hover:scale-110'}`} />
+                <item.icon className={`h-5 w-5 transition-transform duration-200 ${active ? '' : 'group-hover:scale-110'}`} />
                 {item.name}
               </Link>
             );
@@ -154,16 +154,16 @@ export default function Layout({ children }: LayoutProps) {
                 key={item.name}
                 to={item.href}
                 onClick={closeSidebar}
-                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                   active
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
                 }`}
               >
                 {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80 animate-scale-in" />
                 )}
-                <item.icon className={`h-5 w-5 transition-transform ${active ? '' : 'group-hover:scale-110'}`} />
+                <item.icon className={`h-5 w-5 transition-transform duration-200 ${active ? '' : 'group-hover:scale-110'}`} />
                 {item.name}
               </Link>
             );
@@ -174,7 +174,7 @@ export default function Layout({ children }: LayoutProps) {
         <div className="border-t p-3 space-y-1">
           <Link
             to="/settings"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors duration-200"
           >
             <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-primary/80 to-primary/60 shrink-0">
               <User className="h-4 w-4 text-primary-foreground" />
@@ -187,7 +187,7 @@ export default function Layout({ children }: LayoutProps) {
           </Link>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-all hover:translate-x-0.5"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-all duration-200 hover:translate-x-0.5"
           >
             <LogOut className="h-5 w-5" />
             退出登录
