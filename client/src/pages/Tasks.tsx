@@ -420,30 +420,36 @@ export default function Tasks() {
   const handleQuickOrder = (task: any, event: React.MouseEvent) => {
     const button = event.currentTarget as HTMLElement;
     const rect = button.getBoundingClientRect();
-    
-    // 计算弹窗位置，确保不超出视口
-    let top = rect.bottom + window.scrollY + 8;
-    let left = rect.left + window.scrollX;
-    
+
+    // getBoundingClientRect 返回相对于视口的坐标
+    // 外层容器是 fixed inset-0，absolute 子元素基于视口坐标定位
+    // 因此不需要加 window.scrollY / window.scrollX
+    // 默认位置：按钮左下方
+    let top = rect.bottom + 8;
+    let left = rect.left;
+
     // 弹窗尺寸
     const modalWidth = 320; // w-80 = 320px
-    const modalHeight = 400; // 估计高度
+    const modalHeight = 500; // 估计高度（含标题、商品信息、接单人选择、3个输入框、按钮）
     const padding = 16; // 边距
-    
-    // 检查右边界
+
+    // 右边界检查：如果右侧空间不足，弹窗右边缘与按钮右边缘对齐
+    // 这样弹窗始终与按钮保持视觉关联，不会贴到视口右边缘
     if (left + modalWidth > window.innerWidth - padding) {
-      left = window.innerWidth - modalWidth - padding;
+      left = rect.right - modalWidth;
     }
-    
-    // 检查下边界
-    if (top + modalHeight > window.innerHeight + window.scrollY - padding) {
-      top = rect.top + window.scrollY - modalHeight - 8;
-    }
-    
-    // 确保不超出左边界和上边界
+
+    // 确保不超出左边界
     left = Math.max(padding, left);
+
+    // 下边界检查：如果下方空间不够，弹窗显示在按钮上方
+    if (top + modalHeight > window.innerHeight - padding) {
+      top = rect.top - modalHeight - 8;
+    }
+
+    // 确保不超出上边界
     top = Math.max(padding, top);
-    
+
     setQuickOrderPosition({ top, left });
     setSelectedTask(task);
     setTakerSearch('');
