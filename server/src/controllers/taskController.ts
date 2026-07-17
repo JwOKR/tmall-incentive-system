@@ -492,3 +492,78 @@ export const quickOrder = async (req: AuthRequest, res: Response) => {
     });
   }
 };
+// 一键手动更新所有任务状态
+export const refreshAllTaskStatus = async (req: AuthRequest, res: Response) => {
+  try {
+    // 获取所有活跃状态的任务
+    const tasks = await prisma.task.findMany({
+      where: {
+        status: { in: ['active', 'refunded'] },
+      },
+      include: {
+        orders: {
+          select: {
+            isRefunded: true,
+            isGoodReview: true,
+          },
+        },
+      },
+    });
+
+    let updatedCount = 0;
+    const results = [];
+
+    for (const task of tasks) {
+      const totalOrders = task.orders.length;
+      const refundedOrders = task.orders.filter(o => o.isRefunded).length;
+      const reviewedOrders = task.orders.filter(o => o.isGoodReview === 'reviewed').length;
+
+      // 计算新状态
+      const allOrdersCompleted = totalOrders > 0 && refundedOrders === totalOrders && reviewedOrders === totalOrders;
+      const allOrdersRefunded = totalOrders > 0 && refundedOrders === totalOrders;
+      const reachedMaxOrders = totalOrders >= task.maxOrders;
+
+      let newStatus = task.status;
+      if (allOrdersCompleted) {
+        newStatus = 'completed';
+      } else if (allOrdersRefunded || reachedMaxOrders) {
+        newStatus = 'refunded';
+      }
+
+      // 更新任务状态和已接人数
+      if (task.currentOrders !== totalOrders || task.status !== newStatus) {
+        await prisma.task.update({
+          where: { id: task.id },
+          data: {
+            currentOrders: totalOrders,
+            status: newStatus,
+          },
+        });
+        updatedCount++;
+        results.push({
+          id: task.id,
+          productCode: task.productCode,
+          oldStatus: task.status,
+          newStatus: newStatus,
+          currentOrders: totalOrders,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `已更新 ${updatedCount} 个任务状态`,
+      data: {
+        totalTasks: tasks.length,
+        updatedCount,
+        results,
+      },
+    });
+  } catch (error) {
+    console.error('Error refreshing task status:', error);
+    res.status(500).json({
+      success: false,
+      message: '更新任务状态失败',
+    });
+  }
+};
