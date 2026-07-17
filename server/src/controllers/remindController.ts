@@ -13,11 +13,17 @@ export const getRemindList = async (req: Request, res: Response) => {
     });
 
     // 获取未返款/未好评订单
+    // isGoodReview 是字符串类型: "pending"(未好评), "reviewed"(已好评), "creating"(作图中), "returned"(已返图)
     const where: any = {};
-    if (type === 'refund') where.isRefunded = false;
-    else if (type === 'review') where.isGoodReview = false;
-    else {
-      where.OR = [{ isRefunded: false }, { isGoodReview: false }];
+    if (type === 'refund') {
+      where.isRefunded = false;
+    } else if (type === 'review') {
+      where.isGoodReview = { not: 'reviewed' }; // 未好评的订单
+    } else {
+      where.OR = [
+        { isRefunded: false },
+        { isGoodReview: { not: 'reviewed' } } // 未好评的订单
+      ];
     }
 
     const pendingOrders = await prisma.order.findMany({
@@ -56,7 +62,8 @@ export const getRemindList = async (req: Request, res: Response) => {
           orderDate: order.orderDate,
         });
       }
-      if (!order.isGoodReview) {
+      // isGoodReview 不是 "reviewed" 就算未好评
+      if (order.isGoodReview !== 'reviewed') {
         entry.unreviewedOrders.push({
           orderId: order.id,
           orderNo19: order.orderNo19,
