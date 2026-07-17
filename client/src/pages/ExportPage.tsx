@@ -133,13 +133,13 @@ export default function ExportPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">数据导出</h2>
-        <p className="text-muted-foreground">选择要导出的表格和数据</p>
+        <h2 className="text-3xl font-bold tracking-tight gradient-text">数据导出</h2>
+        <p className="text-muted-foreground mt-1">选择要导出的表格和数据</p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Export Settings */}
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
+        <div className="rounded-2xl premium-card p-6">
           <h3 className="text-lg font-semibold mb-4">导出设置</h3>
 
           <div className="space-y-4">
@@ -149,7 +149,7 @@ export default function ExportPage() {
                 type="text"
                 value={filename}
                 onChange={(e) => setFilename(e.target.value)}
-                className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                className="premium-input rounded-lg mt-1"
                 placeholder="输入导出文件名"
               />
             </div>
@@ -160,18 +160,18 @@ export default function ExportPage() {
                 {sheets.map(sheet => (
                   <label
                     key={sheet.key}
-                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent cursor-pointer"
+                    className="flex items-center justify-between p-3 border rounded-xl hover:bg-accent cursor-pointer transition-colors"
                   >
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
                         checked={selectedSheets[sheet.key as keyof typeof selectedSheets]}
                         onChange={() => handleToggleSheet(sheet.key as keyof typeof selectedSheets)}
-                        className="rounded w-4 h-4"
+                        className="rounded w-4 h-4 accent-indigo-500"
                       />
                       <div>
                         <span className="font-medium">{sheet.label}</span>
-                        <span className="text-xs text-muted-foreground ml-2">
+                        <span className="text-xs text-muted-foreground ml-2 tabular-nums">
                           {sheet.count}条数据
                         </span>
                       </div>
@@ -185,25 +185,25 @@ export default function ExportPage() {
         </div>
 
         {/* Preview */}
-        <div className="rounded-lg border bg-card p-6 shadow-sm">
+        <div className="rounded-2xl premium-card p-6">
           <h3 className="text-lg font-semibold mb-4">导出预览</h3>
 
           <div className="space-y-4">
-            <div className="p-4 bg-muted/50 rounded-lg">
+            <div className="p-4 bg-muted/50 rounded-xl">
               <p className="text-sm text-muted-foreground mb-2">文件名</p>
               <p className="font-medium">{new Date().toISOString().split('T')[0]}_{filename || '天猫激励数据导出'}.xlsx</p>
             </div>
 
-            <div className="p-4 bg-muted/50 rounded-lg">
+            <div className="p-4 bg-muted/50 rounded-xl">
               <p className="text-sm text-muted-foreground mb-2">包含工作表</p>
               <div className="space-y-1">
                 {sheets
                   .filter(sheet => selectedSheets[sheet.key as keyof typeof selectedSheets])
                   .map(sheet => (
                     <div key={sheet.key} className="flex items-center gap-2">
-                      <span className="text-green-600 dark:text-green-400">✓</span>
+                      <span className="text-emerald-600 dark:text-emerald-400">✓</span>
                       <span>{sheet.label}</span>
-                      <span className="text-xs text-muted-foreground">({sheet.count}条)</span>
+                      <span className="text-xs text-muted-foreground tabular-nums">({sheet.count}条)</span>
                     </div>
                   ))}
                 {!Object.values(selectedSheets).some(v => v) && (
@@ -212,7 +212,7 @@ export default function ExportPage() {
               </div>
             </div>
 
-            <div className="p-4 bg-muted/50 rounded-lg">
+            <div className="p-4 bg-muted/50 rounded-xl">
               <p className="text-sm text-muted-foreground mb-2">导出说明</p>
               <ul className="text-xs text-muted-foreground space-y-1">
                 <li>• 导出格式为 Excel (.xlsx)</li>
@@ -226,11 +226,11 @@ export default function ExportPage() {
             <button
               onClick={handleExport}
               disabled={exporting || !Object.values(selectedSheets).some(v => v)}
-              className="w-full inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="magnetic-btn w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 py-3 text-sm font-medium text-white hover:shadow-lg hover:shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               {exporting ? (
                 <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground"></div>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                   导出中...
                 </>
               ) : (

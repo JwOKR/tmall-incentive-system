@@ -219,19 +219,19 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">系统设置</h2>
-        <p className="text-muted-foreground">管理账户、备份数据和系统配置</p>
+        <h2 className="text-3xl font-bold tracking-tight gradient-text">系统设置</h2>
+        <p className="text-muted-foreground mt-1">管理账户、备份数据和系统配置</p>
       </div>
 
       {/* Tab nav */}
-      <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
+      <div className="flex gap-1 bg-muted/50 rounded-xl p-1 w-fit">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
               activeTab === tab.id
-                ? 'bg-background text-foreground shadow-sm'
+                ? 'bg-background text-indigo-600 dark:text-indigo-400 shadow-sm'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >
@@ -242,25 +242,25 @@ export default function Settings() {
       </div>
 
       {/* Tab content */}
-      <div className="rounded-xl border bg-card p-6 shadow-sm">
+      <div className="premium-card p-6">
         {activeTab === 'account' && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">账户信息</h3>
             <div className="grid gap-4 max-w-md">
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
                 <span className="text-sm text-muted-foreground">用户名</span>
                 <span className="font-medium">{user?.username || '-'}</span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
                 <span className="text-sm text-muted-foreground">角色</span>
                 <span className="inline-flex items-center gap-1.5">
-                  <Shield className="h-4 w-4 text-primary" />
+                  <Shield className="h-4 w-4 text-indigo-500" />
                   <span className="font-medium">{user?.role || 'admin'}</span>
                 </span>
               </div>
-              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
                 <span className="text-sm text-muted-foreground">登录状态</span>
-                <span className="inline-flex items-center gap-1.5 text-green-600 dark:text-green-400">
+                <span className="inline-flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400">
                   <CheckCircle className="h-4 w-4" />
                   <span className="text-sm font-medium">已登录</span>
                 </span>
@@ -280,7 +280,7 @@ export default function Settings() {
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
                   placeholder="请输入旧密码"
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="premium-input rounded-lg mt-1"
                 />
               </div>
               <div>
@@ -290,7 +290,7 @@ export default function Settings() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="至少6位"
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="premium-input rounded-lg mt-1"
                 />
               </div>
               <div>
@@ -300,13 +300,13 @@ export default function Settings() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="再次输入新密码"
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="premium-input rounded-lg mt-1"
                 />
               </div>
               <button
                 onClick={handleChangePassword}
                 disabled={changing}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
               >
                 {changing && <Loader2 className="h-4 w-4 animate-spin" />}
                 {changing ? '修改中...' : '确认修改'}
@@ -320,7 +320,7 @@ export default function Settings() {
             <h3 className="text-lg font-semibold">数据备份与恢复</h3>
 
             {/* 导出 */}
-            <div className="rounded-lg border p-4">
+            <div className="rounded-xl border p-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h4 className="font-medium">导出备份</h4>
@@ -331,7 +331,7 @@ export default function Settings() {
                 <button
                   onClick={handleExportBackup}
                   disabled={backingUp}
-                  className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
                 >
                   {backingUp ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -344,7 +344,7 @@ export default function Settings() {
             </div>
 
             {/* 导入 */}
-            <div className="rounded-lg border p-4">
+            <div className="rounded-xl border p-4">
               <h4 className="font-medium mb-2">导入备份</h4>
               <p className="text-sm text-muted-foreground mb-4">
                 从 JSON 备份文件恢复数据。支持两种模式：
@@ -355,7 +355,7 @@ export default function Settings() {
                     type="radio"
                     checked={importMode === 'merge'}
                     onChange={() => setImportMode('merge')}
-                    className="w-4 h-4"
+                    className="w-4 h-4 accent-indigo-500"
                   />
                   <div>
                     <span className="font-medium">合并模式</span>
@@ -367,7 +367,7 @@ export default function Settings() {
                     type="radio"
                     checked={importMode === 'overwrite'}
                     onChange={() => setImportMode('overwrite')}
-                    className="w-4 h-4"
+                    className="w-4 h-4 accent-indigo-500"
                   />
                   <div>
                     <span className="font-medium">覆盖模式</span>
@@ -386,7 +386,7 @@ export default function Settings() {
                 />
                 <label
                   htmlFor="backup-import"
-                  className={`inline-flex items-center gap-2 rounded-md border px-4 py-2 text-sm font-medium cursor-pointer hover:bg-accent ${importing ? 'opacity-50 pointer-events-none' : ''}`}
+                  className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium cursor-pointer hover:bg-accent transition-colors ${importing ? 'opacity-50 pointer-events-none' : ''}`}
                 >
                   {importing ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -396,8 +396,8 @@ export default function Settings() {
                   {importing ? '导入中...' : '选择备份文件'}
                 </label>
               </div>
-              <div className="mt-3 p-3 rounded bg-yellow-50 dark:bg-yellow-900/10 border border-yellow-200 dark:border-yellow-900/30">
-                <p className="text-xs text-yellow-700 dark:text-yellow-400 flex items-start gap-2">
+              <div className="mt-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/30">
+                <p className="text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                   <span>
                     导入操作会写入数据库。建议先使用「导出备份」保存当前数据。
@@ -415,7 +415,7 @@ export default function Settings() {
               <h3 className="text-lg font-semibold">用户管理</h3>
               <button
                 onClick={() => { setEditingUser(null); setUserForm({ username: '', password: '', role: 'user', permissions: {} }); setShowUserForm(true); }}
-                className="btn-press inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 添加用户
@@ -427,7 +427,7 @@ export default function Settings() {
             ) : users.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">暂无用户</div>
             ) : (
-              <div className="rounded-lg border overflow-hidden">
+              <div className="rounded-xl border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="table-header">
@@ -491,7 +491,7 @@ export default function Settings() {
                 tabIndex={-1}
               >
                 <div
-                  className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-modal-in"
+                  className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 animate-modal-in"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between mb-4">
@@ -508,7 +508,7 @@ export default function Settings() {
                         value={userForm.username}
                         onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
                         placeholder="请输入用户名"
-                        className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        className="premium-input rounded-lg mt-1"
                       />
                     </div>
                     <div>
@@ -518,7 +518,7 @@ export default function Settings() {
                         value={userForm.password}
                         onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                         placeholder={editingUser ? '留空则不修改' : '至少6位'}
-                        className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        className="premium-input rounded-lg mt-1"
                       />
                     </div>
                     <div>
@@ -526,7 +526,7 @@ export default function Settings() {
                       <select
                         value={userForm.role}
                         onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
-                        className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                        className="premium-input rounded-lg mt-1"
                       >
                         <option value="user">普通用户</option>
                         <option value="admin">管理员</option>
@@ -538,7 +538,7 @@ export default function Settings() {
                       <div>
                         <label className="text-sm font-medium">权限设置</label>
                         <p className="text-xs text-muted-foreground mb-2">为普通用户设置模块访问和编辑权限</p>
-                        <div className="space-y-2 rounded-md border p-3 bg-muted/30">
+                        <div className="space-y-2 rounded-xl border p-3 bg-muted/30">
                           {[
                             { key: 'orders', label: '订单明细' },
                             { key: 'takers', label: '接单人' },
@@ -593,13 +593,13 @@ export default function Settings() {
                     <div className="flex justify-end gap-2 pt-2">
                       <button
                         onClick={() => { setShowUserForm(false); setEditingUser(null); }}
-                        className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
+                        className="rounded-xl border px-4 py-2 text-sm hover:bg-accent transition-colors"
                       >
                         取消
                       </button>
                       <button
                         onClick={handleSaveUser}
-                        className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+                        className="magnetic-btn rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 transition-colors"
                       >
                         {editingUser ? '保存修改' : '创建用户'}
                       </button>
@@ -621,7 +621,7 @@ export default function Settings() {
               <button
                 onClick={handleSaveAiSettings}
                 disabled={savingAi}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
               >
                 {savingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {savingAi ? '保存中...' : '保存配置'}
@@ -634,9 +634,9 @@ export default function Settings() {
               </div>
             ) : (
               <div className="grid gap-5 max-w-xl">
-                <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="rounded-xl border bg-muted/30 p-4">
                   <p className="text-xs text-muted-foreground flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-indigo-500" />
                     <span>
                       支持所有 OpenAI 兼容格式的 API（DeepSeek、千问、豆包、OpenAI、Claude 等）。
                       配置保存后立即生效，无需重启服务。
@@ -658,12 +658,12 @@ export default function Settings() {
                       value={aiSettings[field.key] || ''}
                       onChange={e => setAiSettings(prev => ({ ...prev, [field.key]: e.target.value }))}
                       placeholder={field.placeholder}
-                      className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                      className="premium-input rounded-lg mt-1"
                     />
                   </div>
                 ))}
 
-                <div className="rounded-lg border p-4">
+                <div className="rounded-xl border p-4">
                   <h4 className="text-sm font-medium mb-2">常见模型配置参考</h4>
                   <div className="text-xs text-muted-foreground space-y-1">
                     <p><strong>DeepSeek：</strong>https://api.deepseek.com/chat/completions · deepseek-chat</p>
@@ -695,9 +695,9 @@ export default function Settings() {
                 { key: 'Alt + 9', desc: '跳转到 系统设置' },
                 { key: 'Esc', desc: '关闭弹窗' },
               ].map((item) => (
-                <div key={item.key} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                <div key={item.key} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
                   <span className="text-sm text-muted-foreground">{item.desc}</span>
-                  <kbd className="px-2 py-1 text-xs font-mono bg-background border rounded shadow-sm">
+                  <kbd className="px-2 py-1 text-xs font-mono bg-background border rounded-lg shadow-sm">
                     {item.key}
                   </kbd>
                 </div>

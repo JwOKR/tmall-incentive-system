@@ -126,8 +126,8 @@ export default function Takers() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">接单人管理</h2>
-          <p className="text-muted-foreground">管理所有接单人信息</p>
+          <h2 className="text-3xl font-bold tracking-tight gradient-text">接单人管理</h2>
+          <p className="text-muted-foreground mt-1">管理所有接单人信息</p>
         </div>
         <div className="flex gap-2">
           <ExportDialog
@@ -168,7 +168,7 @@ export default function Takers() {
               setFormData({ wechatName: '', wechatId: '' });
               setShowForm(true);
             }}
-            className="btn-press inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-500/20"
           >
             <Plus className="h-4 w-4" />
             添加接单人
@@ -185,7 +185,7 @@ export default function Takers() {
             placeholder="搜索接单人..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-md border border-input bg-background pl-10 pr-4 py-2 text-sm"
+            className="premium-input rounded-lg pl-10"
           />
         </div>
       </div>
@@ -200,7 +200,7 @@ export default function Takers() {
           ref={formModalRef}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-modal-in"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4">
@@ -214,7 +214,7 @@ export default function Takers() {
                   required
                   value={formData.wechatName}
                   onChange={(e) => setFormData({ ...formData, wechatName: e.target.value })}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="premium-input rounded-lg mt-1"
                   placeholder="请输入微信昵称"
                 />
               </div>
@@ -225,7 +225,7 @@ export default function Takers() {
                   required
                   value={formData.wechatId}
                   onChange={(e) => setFormData({ ...formData, wechatId: e.target.value })}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="premium-input rounded-lg mt-1"
                   placeholder="请输入微信号"
                 />
               </div>
@@ -236,13 +236,13 @@ export default function Takers() {
                     setShowForm(false);
                     setEditingTaker(null);
                   }}
-                  className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
+                  className="rounded-xl border px-4 py-2 text-sm hover:bg-accent transition-colors"
                 >
                   取消
                 </button>
                 <button
                   type="submit"
-                  className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90"
+                  className="magnetic-btn rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 transition-colors"
                 >
                   {editingTaker ? '更新' : '创建'}
                 </button>
@@ -253,7 +253,7 @@ export default function Takers() {
       )}
 
       {/* Table */}
-      <div className="rounded-lg border bg-card shadow-sm">
+      <div className="rounded-2xl premium-card">
         <table className="w-full">
           <thead>
             <tr className="table-header">
@@ -301,7 +301,7 @@ export default function Takers() {
               filteredTakers.map((taker: any) => (
                 <tr key={taker.id} className="table-row-hover table-row-zebra">
                   <td className="px-4 py-3 text-sm font-medium">
-                    <Link to={`/takers/${taker.id}`} className="hover:text-primary hover:underline transition-colors">
+                    <Link to={`/takers/${taker.id}`} className="hover:text-indigo-500 hover:underline transition-colors">
                       {taker.wechatName}
                     </Link>
                   </td>
@@ -317,30 +317,30 @@ export default function Takers() {
                       {taker.status === 'active' ? '活跃' : '停用'}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-sm">{taker.totalOrders}</td>
-                  <td className="px-4 py-3 text-sm">{formatCurrency(taker.totalAmount)}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">
+                  <td className="px-4 py-3 text-sm tabular-nums">{taker.totalOrders}</td>
+                  <td className="px-4 py-3 text-sm tabular-nums">{formatCurrency(taker.totalAmount)}</td>
+                  <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">
                     {formatDate(taker.createdAt)}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <Link
                       to={`/takers/${taker.id}`}
-                      className="p-1 hover:bg-accent rounded-md inline-block"
+                      className="p-1 hover:bg-accent rounded-lg inline-block"
                       title="查看详情"
                     >
                       <Eye className="h-4 w-4 text-muted-foreground" />
                     </Link>
                     <button
                       onClick={() => handleEdit(taker)}
-                      className="p-1 hover:bg-accent rounded-md"
+                      className="p-1 hover:bg-accent rounded-lg"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
                       onClick={() => handleDelete(taker.id)}
-                      className="p-1 hover:bg-accent rounded-md ml-1"
+                      className="p-1 hover:bg-rose-500/10 rounded-lg ml-1"
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      <Trash2 className="h-4 w-4 text-rose-500" />
                     </button>
                   </td>
                 </tr>
@@ -356,17 +356,17 @@ export default function Takers() {
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
+            className="rounded-xl border px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-accent transition-colors"
           >
             上一页
           </button>
-          <span className="flex items-center px-3 text-sm">
+          <span className="flex items-center px-3 text-sm tabular-nums">
             第 {page} 页 / 共 {Math.ceil(total / 20)} 页
           </span>
           <button
             onClick={() => setPage(p => p + 1)}
             disabled={page >= Math.ceil(total / 20)}
-            className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
+            className="rounded-xl border px-3 py-1.5 text-sm disabled:opacity-50 hover:bg-accent transition-colors"
           >
             下一页
           </button>

@@ -271,7 +271,7 @@ export default function Orders() {
           />
           <button
             onClick={handleSave}
-            className="p-1 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"
+            className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded"
           >
             <Save className="h-3 w-3" />
           </button>
@@ -421,12 +421,12 @@ export default function Orders() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">接单明细</h2>
-          <p className="text-muted-foreground">点击任意单元格直接编辑，按 Enter 保存，Esc 取消</p>
+          <p className="text-muted-foreground mt-1">点击任意单元格直接编辑，按 Enter 保存，Esc 取消</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <ExportDialog
             title="导出订单数据"
             filename="订单数据"
@@ -528,7 +528,7 @@ export default function Orders() {
 
       {/* Filters */}
       <div className="space-y-3">
-        <div className="flex items-center gap-4 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
@@ -536,13 +536,13 @@ export default function Orders() {
               placeholder="搜索订单号、商品ID、微信昵称..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-md border border-input bg-background pl-10 pr-4 py-2 text-sm"
+              className="premium-input w-full rounded-xl border bg-card pl-10 pr-4 py-2 text-sm"
             />
           </div>
           <select
             value={refundFilter}
             onChange={(e) => setRefundFilter(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="premium-input rounded-xl border bg-card px-3 py-2 text-sm"
           >
             <option value="">返款状态</option>
             <option value="true">已返款</option>
@@ -551,7 +551,7 @@ export default function Orders() {
           <select
             value={reviewFilter}
             onChange={(e) => setReviewFilter(e.target.value)}
-            className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+            className="premium-input rounded-xl border bg-card px-3 py-2 text-sm"
           >
             <option value="">好评状态</option>
             <option value="pending">未好评</option>
@@ -564,15 +564,15 @@ export default function Orders() {
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="premium-input rounded-xl border bg-card px-3 py-2 text-sm"
               placeholder="开始日期"
             />
-            <span className="text-muted-foreground">至</span>
+            <span className="text-muted-foreground text-sm">至</span>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+              className="premium-input rounded-xl border bg-card px-3 py-2 text-sm"
               placeholder="结束日期"
             />
           </div>
@@ -590,7 +590,7 @@ export default function Orders() {
             <button
               key={preset.value}
               onClick={() => applyDatePreset(preset.value)}
-              className="rounded-md border border-input bg-background px-3 py-1 text-xs hover:bg-accent transition-colors"
+              className="btn-press rounded-lg border bg-card px-3 py-1 text-xs font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             >
               {preset.label}
             </button>
@@ -600,39 +600,39 @@ export default function Orders() {
 
       {/* Quick Stats Bar */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="stagger-item rounded-lg border bg-card p-3 text-center">
-          <p className="text-xs text-muted-foreground">当前结果</p>
-          <p className="text-lg font-bold mt-0.5">{stats.count}</p>
+        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center premium-card">
+          <p className="text-xs text-muted-foreground font-medium">当前结果</p>
+          <p className="text-xl font-bold mt-0.5 tabular-nums">{stats.count}</p>
         </div>
-        <div className="stagger-item rounded-lg border bg-card p-3 text-center">
-          <p className="text-xs text-muted-foreground">待返款</p>
-          <p className="text-lg font-bold mt-0.5 text-yellow-600 dark:text-yellow-400">{stats.refundPending}</p>
+        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center premium-card stat-accent-amber">
+          <p className="text-xs text-muted-foreground font-medium">待返款</p>
+          <p className="text-xl font-bold mt-0.5 text-amber-600 dark:text-amber-400 tabular-nums">{stats.refundPending}</p>
         </div>
-        <div className="stagger-item rounded-lg border bg-card p-3 text-center">
-          <p className="text-xs text-muted-foreground">待好评</p>
-          <p className="text-lg font-bold mt-0.5 text-blue-600 dark:text-blue-400">{stats.reviewPending}</p>
+        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center premium-card stat-accent-sky">
+          <p className="text-xs text-muted-foreground font-medium">待好评</p>
+          <p className="text-xl font-bold mt-0.5 text-sky-600 dark:text-sky-400 tabular-nums">{stats.reviewPending}</p>
         </div>
-        <div className="stagger-item rounded-lg border bg-card p-3 text-center">
-          <p className="text-xs text-muted-foreground">实付总额</p>
-          <p className="text-lg font-bold mt-0.5">{formatCurrency(stats.totalAmount)}</p>
+        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center premium-card stat-accent-emerald">
+          <p className="text-xs text-muted-foreground font-medium">实付总额</p>
+          <p className="text-xl font-bold mt-0.5 tabular-nums">{formatCurrency(stats.totalAmount)}</p>
         </div>
-        <div className="stagger-item rounded-lg border bg-card p-3 text-center">
-          <p className="text-xs text-muted-foreground">返款总额</p>
-          <p className="text-lg font-bold mt-0.5 text-green-600 dark:text-green-400">{formatCurrency(stats.totalRefund)}</p>
+        <div className="stagger-item rounded-xl border bg-card p-3.5 text-center premium-card stat-accent-emerald">
+          <p className="text-xs text-muted-foreground font-medium">返款总额</p>
+          <p className="text-xl font-bold mt-0.5 text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(stats.totalRefund)}</p>
         </div>
       </div>
 
       {/* Batch Actions */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg flex-wrap animate-fade-up">
+        <div className="flex items-center gap-3 p-4 bg-indigo-50/80 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/30 flex-wrap animate-fade-up">
           <span className="text-sm text-muted-foreground">
-            已选择 <span className="font-bold text-foreground">{selectedIds.size}</span> 项
+            已选择 <span className="font-bold text-indigo-600 dark:text-indigo-400">{selectedIds.size}</span> 项
           </span>
           <div className="h-4 w-px bg-border" />
           <button
             onClick={() => handleBatchStatus('isRefunded', true)}
             disabled={batchStatusMutation.isPending}
-            className="btn-press inline-flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+            className="btn-press inline-flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50 transition-colors shadow-sm"
           >
             <CheckCircle className="h-4 w-4" />
             批量已返款
@@ -640,7 +640,7 @@ export default function Orders() {
           <button
             onClick={() => handleBatchStatus('isGoodReview', 'reviewed')}
             disabled={batchStatusMutation.isPending}
-            className="btn-press inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="btn-press inline-flex items-center gap-1.5 rounded-lg bg-sky-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-sky-600 disabled:opacity-50 transition-colors shadow-sm"
           >
             <Star className="h-4 w-4" />
             批量已好评
@@ -648,7 +648,7 @@ export default function Orders() {
           <button
             onClick={handleBatchDelete}
             disabled={batchDeleteMutation.isPending}
-            className="btn-press inline-flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
+            className="btn-press inline-flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-rose-600 disabled:opacity-50 transition-colors shadow-sm"
           >
             <Trash2 className="h-4 w-4" />
             {batchDeleteMutation.isPending ? '删除中...' : '批量删除'}
@@ -663,7 +663,7 @@ export default function Orders() {
       )}
 
       {/* Table */}
-      <div className="rounded-lg border bg-card shadow-sm overflow-x-auto">
+      <div className="rounded-2xl border bg-card shadow-sm overflow-x-auto premium-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="table-header">
@@ -782,7 +782,7 @@ export default function Orders() {
                   <td className="px-3 py-2 text-muted-foreground">
                     {order.taker?.wechatId}
                   </td>
-                  <td className="px-3 py-2 text-green-600 dark:text-green-400 font-medium">
+                  <td className="px-3 py-2 text-emerald-600 dark:text-emerald-400 font-medium">
                     <div title={`实付 ${formatCurrency(order.actualPayment)} + 基础返佣 ${formatCurrency(order.baseCommission)} + 好评返佣 ${formatCurrency(order.reviewCommission)}`}>
                       {renderReadOnlyCell(calculateTotalRefund(order), 'number')}
                     </div>
@@ -807,7 +807,7 @@ export default function Orders() {
                           href={`http://web.19buy.com/search.aspx?id=${order.productCode}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 text-xs"
+                          className="text-sky-600 dark:text-sky-400 hover:text-sky-800 dark:hover:text-sky-300 text-xs"
                           title="查看产品页面"
                         >
                           ↗
@@ -833,7 +833,7 @@ export default function Orders() {
                           onKeyDown={handleKeyDown}
                           className="w-full rounded border border-primary px-2 py-1 text-sm bg-background"
                         />
-                        <button onClick={handleSave} className="p-1 text-green-600 hover:bg-green-100 rounded">
+                        <button onClick={handleSave} className="p-1 text-emerald-600 hover:bg-emerald-100 rounded">
                           <Save className="h-3 w-3" />
                         </button>
                       </div>
@@ -843,7 +843,7 @@ export default function Orders() {
                           href={order.orderLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 dark:text-blue-400 hover:underline text-xs"
+                          className="text-sky-600 dark:text-sky-400 hover:underline text-xs"
                           title="点击打开链接"
                         >
                           打开
@@ -902,10 +902,10 @@ export default function Orders() {
                       </button>
                       <button
                         onClick={() => handleDelete(order.id)}
-                        className="p-1 hover:bg-destructive/10 rounded-md"
+                        className="p-1 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-md"
                         title="删除订单"
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4 text-rose-500" />
                       </button>
                     </div>
                   </td>
@@ -918,21 +918,21 @@ export default function Orders() {
 
       {/* Pagination */}
       {total > 20 && (
-        <div className="flex justify-center gap-2">
+        <div className="flex justify-center items-center gap-3">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
+            className="btn-press rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             上一页
           </button>
-          <span className="flex items-center px-3 text-sm">
+          <span className="flex items-center px-4 text-sm text-muted-foreground tabular-nums">
             第 {page} 页 / 共 {Math.ceil(total / 20)} 页
           </span>
           <button
             onClick={() => setPage(p => p + 1)}
             disabled={page >= Math.ceil(total / 20)}
-            className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
+            className="btn-press rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             下一页
           </button>

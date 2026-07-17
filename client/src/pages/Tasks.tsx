@@ -261,7 +261,7 @@ export default function Tasks() {
           />
           <button
             onClick={() => handleSave(task.id)}
-            className="p-1 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/30 rounded"
+            className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded"
           >
             <Save className="h-3 w-3" />
           </button>
@@ -457,12 +457,12 @@ export default function Tasks() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">任务管理</h2>
-          <p className="text-muted-foreground">点击单元格直接编辑，按 Enter 保存</p>
+          <p className="text-muted-foreground mt-1">点击单元格直接编辑，按 Enter 保存</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <ExportDialog
             title="导出任务数据"
             filename="任务数据"
@@ -503,14 +503,14 @@ export default function Tasks() {
           />
           <button
             onClick={() => setShowBatchForm(true)}
-            className="btn-press inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="btn-press magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 transition-colors shadow-md shadow-indigo-500/20"
           >
             <Plus className="h-4 w-4" />
             批量新增
           </button>
           <button
             onClick={handleAddNewRow}
-            className="btn-press inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="btn-press magnetic-btn inline-flex items-center gap-2 rounded-xl bg-violet-500 px-4 py-2 text-sm font-medium text-white hover:bg-violet-600 transition-colors shadow-md shadow-violet-500/20"
           >
             <Plus className="h-4 w-4" />
             新增任务
@@ -519,7 +519,7 @@ export default function Tasks() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -527,13 +527,13 @@ export default function Tasks() {
             placeholder="搜索商品ID、产品编号..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-md border border-input bg-background pl-10 pr-4 py-2 text-sm"
+            className="premium-input w-full rounded-xl border bg-card pl-10 pr-4 py-2 text-sm"
           />
         </div>
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-input bg-background px-3 py-2 text-sm"
+          className="premium-input rounded-xl border bg-card px-3 py-2 text-sm"
         >
           <option value="">全部状态</option>
           <option value="active">进行中</option>
@@ -545,14 +545,14 @@ export default function Tasks() {
       {/* Batch Form Modal */}
       {showBatchForm && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm"
           onClick={() => { setShowBatchForm(false); setBatchProductCodes(''); }}
           onKeyDown={(e) => e.key === 'Escape' && (setShowBatchForm(false), setBatchProductCodes(''))}
           tabIndex={-1}
           ref={batchFormModalRef}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-modal-in"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4">批量新增任务</h3>
@@ -577,14 +577,14 @@ export default function Tasks() {
                     setShowBatchForm(false);
                     setBatchProductCodes('');
                   }}
-                  className="btn-press rounded-md border px-4 py-2 text-sm hover:bg-accent transition-colors"
+                  className="btn-press rounded-xl border px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                 >
                   取消
                 </button>
                 <button
                   onClick={handleBatchCreate}
                   disabled={batchCreateMutation.isPending}
-                  className="btn-press rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  className="btn-press rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
                 >
                   {batchCreateMutation.isPending ? '创建中...' : '批量创建'}
                 </button>
@@ -597,31 +597,31 @@ export default function Tasks() {
       {/* Quick Order Modal */}
       {showQuickOrder && selectedTask && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm"
           onClick={() => { setShowQuickOrder(false); setSelectedTask(null); setSelectedTaker(''); setTakerSearch(''); setShowTakerDropdown(false); setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }); }}
           onKeyDown={(e) => e.key === 'Escape' && (setShowQuickOrder(false), setSelectedTask(null), setSelectedTaker(''), setTakerSearch(''), setShowTakerDropdown(false), setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }))}
           tabIndex={-1}
           ref={quickOrderModalRef}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-modal-in"
+            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4">快速接单</h3>
             <div className="space-y-4">
-              <div className="rounded-lg border p-4 bg-muted/50">
+              <div className="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40">
                 <p className="font-medium">商品ID: {selectedTask.productId || '未填写'}</p>
                 <p className="text-sm text-muted-foreground">产品编号: {selectedTask.productCode || '未填写'}</p>
                 <p className="text-sm text-muted-foreground">商品价格: {formatCurrency(selectedTask.price)}</p>
                 <div className="border-t mt-2 pt-2">
                   <p className="text-sm text-muted-foreground">基础返佣: {formatCurrency(selectedTask.baseCommission)}</p>
                   <p className="text-sm text-muted-foreground">好评返佣: {formatCurrency(selectedTask.reviewReward)}</p>
-                  <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                  <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
                     总返款: {formatCurrency(selectedTask.price + selectedTask.baseCommission + selectedTask.reviewReward)}
                   </p>
                 </div>
                 <p className="text-sm mt-2">
-                  剩余名额: <span className="font-bold text-primary">{selectedTask.maxOrders - selectedTask.currentOrders}人</span>
+                  剩余名额: <span className="font-bold text-indigo-600 dark:text-indigo-400">{selectedTask.maxOrders - selectedTask.currentOrders}人</span>
                 </p>
               </div>
               <div>
@@ -638,8 +638,8 @@ export default function Tasks() {
                       }}
                       onFocus={() => setShowTakerDropdown(true)}
                       placeholder="点击展开或输入搜索..."
-                      className={`w-full rounded-md border bg-background px-3 py-2 text-sm pr-8 ${
-                        selectedTaker ? 'border-green-500' : 'border-input'
+                      className={`w-full rounded-lg border bg-card px-3 py-2 text-sm pr-8 premium-input ${
+                        selectedTaker ? 'border-emerald-500' : 'border-input'
                       }`}
                     />
                     <button
@@ -694,7 +694,7 @@ export default function Tasks() {
                   )}
                 </div>
                 {selectedTaker && (
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
                     <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                     已选择接单人
                   </p>
@@ -707,7 +707,7 @@ export default function Tasks() {
                   value={quickOrderForm.orderNo}
                   onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo: e.target.value })}
                   placeholder="选填"
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm premium-input"
                 />
               </div>
               <div>
@@ -717,7 +717,7 @@ export default function Tasks() {
                   value={quickOrderForm.orderNo19}
                   onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo19: e.target.value })}
                   placeholder="选填"
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm premium-input"
                 />
               </div>
               <div>
@@ -729,7 +729,7 @@ export default function Tasks() {
                   value={quickOrderForm.actualPayment}
                   onChange={(e) => setQuickOrderForm({ ...quickOrderForm, actualPayment: e.target.value })}
                   placeholder="选填，默认 0"
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm premium-input"
                 />
               </div>
               <div className="flex justify-end gap-2">
@@ -743,14 +743,14 @@ export default function Tasks() {
                     setShowTakerDropdown(false);
                     setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
                   }}
-                  className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
+                  className="btn-press rounded-xl border px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
                 >
                   取消
                 </button>
                 <button
                   onClick={() => handleConfirmQuickOrder()}
                   disabled={quickOrderMutation.isPending}
-                  className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  className="btn-press rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50"
                 >
                   {quickOrderMutation.isPending ? '接单中...' : '确认接单'}
                 </button>
@@ -762,21 +762,21 @@ export default function Tasks() {
 
       {/* Batch Actions */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+        <div className="flex items-center gap-4 p-4 bg-indigo-50/80 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/30 flex-wrap animate-fade-up">
           <span className="text-sm text-muted-foreground">
-            已选择 {selectedIds.size} 项
+            已选择 <span className="font-bold text-indigo-600 dark:text-indigo-400">{selectedIds.size}</span> 项
           </span>
           <button
             onClick={handleBatchDelete}
             disabled={batchDeleteMutation.isPending}
-            className="inline-flex items-center gap-2 rounded-md bg-destructive px-4 py-2 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
+            className="btn-press inline-flex items-center gap-2 rounded-lg bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 disabled:opacity-50 transition-colors shadow-sm"
           >
             <Trash2 className="h-4 w-4" />
             {batchDeleteMutation.isPending ? '删除中...' : '批量删除'}
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="text-sm text-muted-foreground hover:text-foreground"
+            className="btn-press text-sm text-muted-foreground hover:text-foreground"
           >
             取消选择
           </button>
@@ -784,7 +784,7 @@ export default function Tasks() {
       )}
 
       {/* Table */}
-      <div className="rounded-lg border bg-card shadow-sm overflow-x-auto">
+      <div className="rounded-2xl border bg-card shadow-sm overflow-x-auto premium-card">
         <table className="w-full">
           <thead>
             <tr className="table-header">
@@ -795,7 +795,7 @@ export default function Tasks() {
                   title={selectedIds.size === filteredTasks.length ? '取消全选' : '全选'}
                 >
                   {selectedIds.size === filteredTasks.length && filteredTasks.length > 0 ? (
-                    <CheckSquare className="h-4 w-4 text-primary" />
+                    <CheckSquare className="h-4 w-4 text-indigo-500" />
                   ) : (
                     <Square className="h-4 w-4 text-muted-foreground" />
                   )}
@@ -847,7 +847,7 @@ export default function Tasks() {
           <tbody>
             {/* New Row */}
             {addingNewRow && (
-              <tr className="border-b bg-primary/5 dark:bg-primary/10">
+              <tr className="border-b bg-indigo-50/50 dark:bg-indigo-950/20">
                 <td className="px-4 py-2"></td>
                 <td className="px-4 py-2">
                   <input
@@ -930,13 +930,13 @@ export default function Tasks() {
                     <button
                       onClick={handleSaveNewRow}
                       disabled={createMutation.isPending}
-                      className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm hover:bg-primary/90 disabled:opacity-50"
+                      className="btn-press px-3 py-1 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 disabled:opacity-50"
                     >
                       {createMutation.isPending ? '保存中...' : '保存'}
                     </button>
                     <button
                       onClick={handleCancelNewRow}
-                      className="px-3 py-1 border rounded text-sm hover:bg-accent"
+                      className="btn-press px-3 py-1 border rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
                     >
                       取消
                     </button>
@@ -960,14 +960,14 @@ export default function Tasks() {
               </tr>
             ) : (
               filteredTasks.map((task: any) => (
-                <tr key={task.id} className={`table-row-hover table-row-zebra ${selectedIds.has(task.id) ? 'bg-primary/5 dark:bg-primary/10' : ''}`}>
+                <tr key={task.id} className={`table-row-hover table-row-zebra ${selectedIds.has(task.id) ? 'table-row-selected' : ''}`}>
                   <td className="px-4 py-2">
                     <button
                       onClick={() => handleSelectOne(task.id)}
                       className="p-1 hover:bg-accent rounded"
                     >
                       {selectedIds.has(task.id) ? (
-                        <CheckSquare className="h-4 w-4 text-primary" />
+                        <CheckSquare className="h-4 w-4 text-indigo-500" />
                       ) : (
                         <Square className="h-4 w-4 text-muted-foreground" />
                       )}
@@ -1009,7 +1009,7 @@ export default function Tasks() {
                     </div>
                   </td>
                   <td className="px-4 py-2 text-sm">
-                    <span className={task.currentOrders >= task.maxOrders ? 'text-destructive font-medium' : ''}>
+                    <span className={task.currentOrders >= task.maxOrders ? 'text-rose-500 font-medium' : ''}>
                       {task.currentOrders}人
                     </span>
                   </td>
@@ -1024,17 +1024,17 @@ export default function Tasks() {
                       <button
                         onClick={() => handleQuickOrder(task)}
                         disabled={task.currentOrders >= task.maxOrders || task.status !== 'active'}
-                        className="p-1 hover:bg-accent rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn-press p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         title="快速接单"
                       >
-                        <Zap className="h-4 w-4 text-green-600 dark:text-green-400" />
+                        <Zap className="h-4 w-4 text-emerald-500" />
                       </button>
                       <button
                         onClick={() => handleDelete(task.id)}
-                        className="p-1 hover:bg-destructive/10 rounded-md"
+                        className="btn-press p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors"
                         title="删除任务"
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
+                        <Trash2 className="h-4 w-4 text-rose-500" />
                       </button>
                     </div>
                   </td>
@@ -1047,21 +1047,21 @@ export default function Tasks() {
 
       {/* Pagination */}
       {total > 20 && (
-        <div className="flex justify-center gap-2">
+        <div className="flex justify-center items-center gap-3">
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
-            className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
+            className="btn-press rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             上一页
           </button>
-          <span className="flex items-center px-3 text-sm">
+          <span className="flex items-center px-4 text-sm text-muted-foreground tabular-nums">
             第 {page} 页 / 共 {Math.ceil(total / 20)} 页
           </span>
           <button
             onClick={() => setPage(p => p + 1)}
             disabled={page >= Math.ceil(total / 20)}
-            className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
+            className="btn-press rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             下一页
           </button>

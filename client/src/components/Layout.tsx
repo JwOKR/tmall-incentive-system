@@ -64,37 +64,44 @@ export default function Layout({ children }: LayoutProps) {
 
   const isActive = (href: string) => location.pathname === href;
 
+  const navLinkClass = (active: boolean) =>
+    `group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+      active
+        ? 'bg-indigo-500/10 text-indigo-600 dark:bg-indigo-400/10 dark:text-indigo-400'
+        : 'text-slate-500 hover:bg-slate-100/80 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800/50 dark:hover:text-slate-200'
+    }`;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
           onClick={closeSidebar}
         />
       )}
 
-      {/* Sidebar - using transition-transform for GPU acceleration */}
+      {/* Sidebar */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r flex flex-col transition-transform duration-300 ease-[var(--ease-drawer)] lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         {/* Brand */}
-        <div className="flex h-16 items-center justify-between px-6 border-b">
+        <div className="flex h-16 items-center justify-between px-5 border-b">
           <Link to="/" onClick={closeSidebar} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity duration-200">
-            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary/70 shadow-sm">
-              <Sparkles className="h-4 w-4 text-primary-foreground" />
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md shadow-indigo-500/25">
+              <Sparkles className="h-4.5 w-4.5 text-white" />
             </div>
-            <h1 className="text-lg font-bold tracking-tight">天猫激励系统</h1>
+            <h1 className="text-base font-bold tracking-tight">天猫激励系统</h1>
           </Link>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <button
               onClick={toggleTheme}
-              className="btn-press p-2 rounded-lg hover:bg-accent transition-colors"
+              className="btn-press p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               title={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
             >
               {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
             <button
               onClick={closeSidebar}
-              className="btn-press p-2 rounded-lg hover:bg-accent transition-colors lg:hidden"
+              className="btn-press p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors lg:hidden"
             >
               <X className="h-4 w-4" />
             </button>
@@ -107,19 +114,18 @@ export default function Layout({ children }: LayoutProps) {
           <Link
             to="/"
             onClick={closeSidebar}
-            className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-              location.pathname === '/'
-                ? 'bg-primary text-primary-foreground shadow-sm'
-                : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-            }`}
+            className={navLinkClass(location.pathname === '/')}
           >
-            <Home className="h-5 w-5" />
+            {location.pathname === '/' && (
+              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-indigo-500 nav-active-bar" />
+            )}
+            <Home className="h-[18px] w-[18px] transition-transform duration-200 group-hover:scale-110" />
             首页
           </Link>
 
-          {/* ── 激励登记 ── */}
-          <div className="pt-3 pb-1 px-3">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">激励登记</span>
+          {/* 激励登记 */}
+          <div className="pt-4 pb-1.5 px-3">
+            <span className="section-label">激励登记</span>
           </div>
           {incentiveNav.filter(item => canView(item.module)).map((item) => {
             const active = isActive(item.href);
@@ -128,24 +134,20 @@ export default function Layout({ children }: LayoutProps) {
                 key={item.name}
                 to={item.href}
                 onClick={closeSidebar}
-                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  active
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                }`}
+                className={navLinkClass(active)}
               >
                 {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80 animate-scale-in" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-indigo-500 nav-active-bar" />
                 )}
-                <item.icon className={`h-5 w-5 transition-transform duration-200 ${active ? '' : 'group-hover:scale-110'}`} />
+                <item.icon className={`h-[18px] w-[18px] transition-transform duration-200 ${!active && 'group-hover:scale-110'}`} />
                 {item.name}
               </Link>
             );
           })}
 
-          {/* ── 回头客立减 ── */}
-          <div className="pt-3 pb-1 px-3">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">回头客立减</span>
+          {/* 回头客立减 */}
+          <div className="pt-4 pb-1.5 px-3">
+            <span className="section-label">回头客立减</span>
           </div>
           {discountNav.filter(item => canView(item.module)).map((item) => {
             const active = isActive(item.href);
@@ -154,16 +156,12 @@ export default function Layout({ children }: LayoutProps) {
                 key={item.name}
                 to={item.href}
                 onClick={closeSidebar}
-                className={`group relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                  active
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'text-muted-foreground hover:bg-accent hover:text-accent-foreground'
-                }`}
+                className={navLinkClass(active)}
               >
                 {active && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-r-full bg-primary-foreground/80 animate-scale-in" />
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-orange-500 nav-active-bar" />
                 )}
-                <item.icon className={`h-5 w-5 transition-transform duration-200 ${active ? '' : 'group-hover:scale-110'}`} />
+                <item.icon className={`h-[18px] w-[18px] transition-transform duration-200 ${!active && 'group-hover:scale-110'}`} />
                 {item.name}
               </Link>
             );
@@ -174,10 +172,10 @@ export default function Layout({ children }: LayoutProps) {
         <div className="border-t p-3 space-y-1">
           <Link
             to="/settings"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-muted/50 hover:bg-muted transition-colors duration-200"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-slate-50/80 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors duration-200"
           >
-            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-primary/80 to-primary/60 shrink-0">
-              <User className="h-4 w-4 text-primary-foreground" />
+            <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 shrink-0 shadow-sm">
+              <User className="h-4 w-4 text-white" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{user?.username || '未知'}</p>
@@ -187,13 +185,13 @@ export default function Layout({ children }: LayoutProps) {
           </Link>
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-all duration-200 hover:translate-x-0.5"
+            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all duration-200"
           >
-            <LogOut className="h-5 w-5" />
+            <LogOut className="h-[18px] w-[18px]" />
             退出登录
           </button>
           {/* Version badge */}
-          <div className="px-3 pt-1.5 pb-1 text-center">
+          <div className="px-3 pt-1 pb-0.5 text-center">
             <span className="text-[10px] text-muted-foreground/50 font-mono tabular-nums select-none">
               v{__APP_VERSION__} · {__BUILD_TIME__}
             </span>
@@ -204,21 +202,21 @@ export default function Layout({ children }: LayoutProps) {
       {/* Main content */}
       <main className="lg:pl-64">
         {/* Mobile top bar */}
-        <div className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-card/80 backdrop-blur-sm px-4 lg:hidden">
+        <div className="sticky top-0 z-30 flex h-14 items-center gap-3 border-b bg-card/80 backdrop-blur-md px-4 lg:hidden">
           <button
             onClick={() => setSidebarOpen(true)}
-            className="p-2 rounded-lg hover:bg-accent transition-colors"
+            className="btn-press p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary/70">
-              <Sparkles className="h-3.5 w-3.5 text-primary-foreground" />
+            <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600">
+              <Sparkles className="h-3.5 w-3.5 text-white" />
             </div>
             <span className="font-bold text-sm">天猫激励系统</span>
           </div>
         </div>
-        <div className="p-4 lg:p-8">
+        <div className="p-4 lg:p-8 page-enter">
           {children}
         </div>
       </main>

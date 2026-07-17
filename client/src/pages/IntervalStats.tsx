@@ -135,7 +135,7 @@ export default function IntervalStats() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
       </div>
     );
   }
@@ -143,11 +143,11 @@ export default function IntervalStats() {
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <AlertCircle className="h-12 w-12 text-destructive" />
-        <p className="text-destructive font-medium">数据加载失败</p>
+        <AlertCircle className="h-12 w-12 text-rose-500" />
+        <p className="text-rose-500 font-medium">数据加载失败</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+          className="px-4 py-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors"
         >
           重试
         </button>
@@ -196,7 +196,7 @@ export default function IntervalStats() {
       {/* Page header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">接单间隔分析</h1>
+          <h1 className="text-2xl font-bold tracking-tight gradient-text">接单间隔分析</h1>
           <p className="text-sm text-muted-foreground mt-1">
             分析每个接单人的接单频率、间隔天数及预计下次接单时间
           </p>
@@ -207,14 +207,14 @@ export default function IntervalStats() {
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="rounded-md border border-input bg-background px-2.5 py-1.5 text-sm"
+            className="premium-input rounded-lg"
           />
           <span className="text-muted-foreground text-sm">至</span>
           <input
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="rounded-md border border-input bg-background px-2.5 py-1.5 text-sm"
+            className="premium-input rounded-lg"
           />
           {(startDate || endDate) && (
             <button
@@ -235,7 +235,7 @@ export default function IntervalStats() {
         {statCards.map((card) => (
           <div
             key={card.title}
-            className="card-hover rounded-xl border bg-card p-5 relative overflow-hidden"
+            className="card-hover rounded-2xl premium-card p-5 relative overflow-hidden"
           >
             <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-gradient-to-br from-primary/5 to-transparent" />
             <div className="flex items-start justify-between relative">
@@ -253,9 +253,9 @@ export default function IntervalStats() {
 
       {/* Countdown alert banner */}
       {(overdueCount > 0 || dueTodayCount > 0) && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-          <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
-          <span className="text-sm font-medium text-destructive">接单提醒</span>
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/30 bg-rose-500/5 p-3">
+          <AlertCircle className="h-5 w-5 text-rose-500 shrink-0" />
+          <span className="text-sm font-medium text-rose-500">接单提醒</span>
           {overdueCount > 0 && (
             <span className="badge-danger px-2.5 py-0.5 rounded-full text-xs font-medium">
               {overdueCount}人已逾期
@@ -283,7 +283,7 @@ export default function IntervalStats() {
             placeholder="搜索微信昵称或微信号..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full rounded-md border border-input bg-background pl-9 pr-3 py-2 text-sm"
+            className="premium-input rounded-lg pl-9"
           />
         </div>
         <span className="text-sm text-muted-foreground">
@@ -292,7 +292,7 @@ export default function IntervalStats() {
       </div>
 
       {/* Taker intervals table */}
-      <div className="rounded-xl border bg-card overflow-hidden">
+      <div className="rounded-2xl premium-card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -326,7 +326,7 @@ export default function IntervalStats() {
                   return (
                     <Fragment key={taker.takerId}>
                       <tr
-                        className={`table-row-hover table-row-zebra cursor-pointer ${isOverdue ? 'bg-red-50/50 dark:bg-red-950/10' : ''}`}
+                        className={`table-row-hover table-row-zebra cursor-pointer ${isOverdue ? 'bg-rose-50/50 dark:bg-rose-950/10' : ''}`}
                         onClick={() => setExpandedId(isExpanded ? null : taker.takerId)}
                       >
                         <td className="px-4 py-3 text-center">
@@ -342,8 +342,8 @@ export default function IntervalStats() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
-                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-primary/60 shrink-0">
-                              <span className="text-xs font-medium text-primary-foreground">
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 shrink-0">
+                              <span className="text-xs font-medium text-white">
                                 {taker.wechatName.charAt(0)}
                               </span>
                             </div>
@@ -367,7 +367,7 @@ export default function IntervalStats() {
                           )}
                         </td>
                         <td className="px-4 py-3">
-                          <div className={isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-muted-foreground'}>
+                          <div className={isOverdue ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-muted-foreground'}>
                             {formatDate(taker.expectedNextDate)}
                           </div>
                         </td>
@@ -386,12 +386,12 @@ export default function IntervalStats() {
                                 <div
                                   className={`h-full rounded-full transition-all ${
                                     isOverdue
-                                      ? 'bg-red-500'
+                                      ? 'bg-rose-500'
                                       : progress > 80
                                       ? 'bg-orange-500'
                                       : progress > 50
-                                      ? 'bg-yellow-500'
-                                      : 'bg-green-500'
+                                      ? 'bg-amber-500'
+                                      : 'bg-emerald-500'
                                   }`}
                                   style={{ width: `${progress}%` }}
                                 />
@@ -414,7 +414,7 @@ export default function IntervalStats() {
                         </td>
                         <td className="px-4 py-3 text-center">
                           {taker.minInterval !== null ? (
-                            <span className="text-xs font-medium text-green-600 dark:text-green-400">
+                            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
                               {getIntervalLabel(taker.minInterval)}
                             </span>
                           ) : (
@@ -426,10 +426,10 @@ export default function IntervalStats() {
                             <span
                               className={`text-xs font-medium ${
                                 taker.maxInterval > 14
-                                  ? 'text-red-600 dark:text-red-400'
+                                  ? 'text-rose-600 dark:text-rose-400'
                                   : taker.maxInterval > 7
                                   ? 'text-orange-600 dark:text-orange-400'
-                                  : 'text-yellow-600 dark:text-yellow-400'
+                                  : 'text-amber-600 dark:text-amber-400'
                               }`}
                             >
                               {getIntervalLabel(taker.maxInterval)}
@@ -443,7 +443,7 @@ export default function IntervalStats() {
                       {isExpanded && taker.intervals.length > 0 && (
                         <tr>
                           <td colSpan={9} className="px-4 pb-4 bg-muted/20">
-                            <div className="rounded-lg border bg-card overflow-hidden">
+                            <div className="rounded-xl border bg-card overflow-hidden">
                               <table className="w-full text-xs">
                                 <thead>
                                   <tr className="border-b bg-muted/30">
@@ -485,7 +485,7 @@ export default function IntervalStats() {
       <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
         <span>距下次接单：</span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-red-500" />
+          <span className="w-3 h-3 rounded-full bg-rose-500" />
           逾期/今天
         </span>
         <span className="inline-flex items-center gap-1.5">
@@ -493,11 +493,11 @@ export default function IntervalStats() {
           1-3天
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-blue-400" />
+          <span className="w-3 h-3 rounded-full bg-sky-400" />
           4-7天
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-green-400" />
+          <span className="w-3 h-3 rounded-full bg-emerald-400" />
           7天+
         </span>
       </div>

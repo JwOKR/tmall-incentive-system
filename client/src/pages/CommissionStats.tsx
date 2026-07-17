@@ -61,22 +61,22 @@ export default function CommissionStats() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">佣金成本分析</h2>
-        <p className="text-muted-foreground">多维度查看佣金支出，优化成本结构</p>
+        <h2 className="text-3xl font-bold tracking-tight gradient-text">佣金成本分析</h2>
+        <p className="text-muted-foreground mt-1">多维度查看佣金支出，优化成本结构</p>
       </div>
 
       {/* Date filters */}
       <div className="flex items-center gap-3 flex-wrap">
-        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="rounded-md border border-input bg-background px-3 py-2 text-sm" />
+        <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="premium-input rounded-lg" />
         <span className="text-muted-foreground text-sm">至</span>
-        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="rounded-md border border-input bg-background px-3 py-2 text-sm" />
+        <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="premium-input rounded-lg" />
         {[
           { label: '全部', v: 'all' as const },
           { label: '本月', v: 'month' as const },
           { label: '本季度', v: 'quarter' as const },
           { label: '本年', v: 'year' as const },
         ].map(p => (
-          <button key={p.v} onClick={() => applyPreset(p.v)} className="rounded-md border border-input bg-background px-3 py-1.5 text-xs hover:bg-accent transition-colors">
+          <button key={p.v} onClick={() => applyPreset(p.v)} className="rounded-xl border border-input bg-background px-3 py-1.5 text-xs hover:bg-accent transition-colors">
             {p.label}
           </button>
         ))}
@@ -85,7 +85,7 @@ export default function CommissionStats() {
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-xl border bg-card p-5 shadow-sm">
+            <div key={i} className="rounded-2xl premium-card p-5">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
                   <div className="h-4 w-20 animate-pulse rounded bg-muted" />
@@ -101,16 +101,16 @@ export default function CommissionStats() {
           {/* Summary Cards */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {[
-              { title: '订单总数', value: summary?.totalOrders || 0, icon: BarChart3, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-900/30' },
-              { title: '基础返佣合计', value: formatCurrency(summary?.totalBaseCommission || 0), icon: DollarSign, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-100 dark:bg-green-900/30' },
-              { title: '好评返佣合计', value: formatCurrency(summary?.totalReviewCommission || 0), icon: TrendingUp, color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-900/30' },
+              { title: '订单总数', value: summary?.totalOrders || 0, icon: BarChart3, color: 'text-sky-600 dark:text-sky-400', bg: 'bg-sky-100 dark:bg-sky-900/30' },
+              { title: '基础返佣合计', value: formatCurrency(summary?.totalBaseCommission || 0), icon: DollarSign, color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' },
+              { title: '好评返佣合计', value: formatCurrency(summary?.totalReviewCommission || 0), icon: TrendingUp, color: 'text-violet-600 dark:text-violet-400', bg: 'bg-violet-100 dark:bg-violet-900/30' },
               { title: '单均佣金', value: formatCurrency(summary?.avgCommissionPerOrder || 0), icon: DollarSign, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-100 dark:bg-orange-900/30' },
             ].map(card => (
-              <div key={card.title} className="rounded-xl border bg-card p-5 shadow-sm card-hover">
+              <div key={card.title} className="rounded-2xl premium-card p-5 card-hover">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">{card.title}</p>
-                    <p className="text-2xl font-bold mt-1">{typeof card.value === 'number' ? card.value : card.value}</p>
+                    <p className="text-2xl font-bold mt-1 tabular-nums">{typeof card.value === 'number' ? card.value : card.value}</p>
                   </div>
                   <div className={`${card.bg} ${card.color} p-3 rounded-xl`}>
                     <card.icon className="h-6 w-6" />
@@ -121,13 +121,13 @@ export default function CommissionStats() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+          <div className="flex gap-1 p-1 bg-muted/50 rounded-xl w-fit">
             {tabs.map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  activeTab === tab.key ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  activeTab === tab.key ? 'bg-card shadow-sm text-indigo-600 dark:text-indigo-400' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 <tab.icon className="h-4 w-4" />
@@ -137,7 +137,7 @@ export default function CommissionStats() {
           </div>
 
           {/* Table */}
-          <div className="rounded-lg border bg-card shadow-sm overflow-x-auto">
+          <div className="rounded-2xl premium-card overflow-x-auto">
             {activeTab === 'taker' && (
               <table className="w-full text-sm">
                 <thead>
@@ -158,20 +158,20 @@ export default function CommissionStats() {
                     <tr key={row.id} className="table-row-hover table-row-zebra">
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
-                          i === 0 ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                          : i === 1 ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+                          i === 0 ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                          : i === 1 ? 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
                           : i === 2 ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400'
                           : 'bg-muted text-muted-foreground'
                         }`}>{i + 1}</span>
                       </td>
                       <td className="px-4 py-3 font-medium">{row.name}</td>
                       <td className="px-4 py-3 text-muted-foreground">{row.wechatId}</td>
-                      <td className="px-4 py-3 text-right">{row.orders}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(row.totalPayment)}</td>
-                      <td className="px-4 py-3 text-right text-green-600 dark:text-green-400">{formatCurrency(row.baseCommission)}</td>
-                      <td className="px-4 py-3 text-right text-purple-600 dark:text-purple-400">{formatCurrency(row.reviewCommission)}</td>
-                      <td className="px-4 py-3 text-right font-bold">{formatCurrency(row.baseCommission + row.reviewCommission)}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(row.avgCommission)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{row.orders}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(row.totalPayment)}</td>
+                      <td className="px-4 py-3 text-right text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(row.baseCommission)}</td>
+                      <td className="px-4 py-3 text-right text-violet-600 dark:text-violet-400 tabular-nums">{formatCurrency(row.reviewCommission)}</td>
+                      <td className="px-4 py-3 text-right font-bold tabular-nums">{formatCurrency(row.baseCommission + row.reviewCommission)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(row.avgCommission)}</td>
                     </tr>
                   ))}
                   {(!stats?.byTaker || stats.byTaker.length === 0) && (
@@ -196,11 +196,11 @@ export default function CommissionStats() {
                   {stats?.byProduct?.map((row: any) => (
                     <tr key={row.id} className="table-row-hover table-row-zebra">
                       <td className="px-4 py-3 font-medium">{row.code || '-'}</td>
-                      <td className="px-4 py-3 text-right">{row.orders}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(row.totalPayment)}</td>
-                      <td className="px-4 py-3 text-right text-green-600 dark:text-green-400">{formatCurrency(row.baseCommission)}</td>
-                      <td className="px-4 py-3 text-right text-purple-600 dark:text-purple-400">{formatCurrency(row.reviewCommission)}</td>
-                      <td className="px-4 py-3 text-right font-bold">{formatCurrency(row.baseCommission + row.reviewCommission)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{row.orders}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(row.totalPayment)}</td>
+                      <td className="px-4 py-3 text-right text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(row.baseCommission)}</td>
+                      <td className="px-4 py-3 text-right text-violet-600 dark:text-violet-400 tabular-nums">{formatCurrency(row.reviewCommission)}</td>
+                      <td className="px-4 py-3 text-right font-bold tabular-nums">{formatCurrency(row.baseCommission + row.reviewCommission)}</td>
                     </tr>
                   ))}
                   {(!stats?.byProduct || stats.byProduct.length === 0) && (
@@ -225,11 +225,11 @@ export default function CommissionStats() {
                   {stats?.byMonth?.map((row: any) => (
                     <tr key={row.month} className="table-row-hover table-row-zebra">
                       <td className="px-4 py-3 font-medium">{row.month}</td>
-                      <td className="px-4 py-3 text-right">{row.orders}</td>
-                      <td className="px-4 py-3 text-right">{formatCurrency(row.totalPayment)}</td>
-                      <td className="px-4 py-3 text-right text-green-600 dark:text-green-400">{formatCurrency(row.baseCommission)}</td>
-                      <td className="px-4 py-3 text-right text-purple-600 dark:text-purple-400">{formatCurrency(row.reviewCommission)}</td>
-                      <td className="px-4 py-3 text-right font-bold">{formatCurrency(row.totalCommission)}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{row.orders}</td>
+                      <td className="px-4 py-3 text-right tabular-nums">{formatCurrency(row.totalPayment)}</td>
+                      <td className="px-4 py-3 text-right text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(row.baseCommission)}</td>
+                      <td className="px-4 py-3 text-right text-violet-600 dark:text-violet-400 tabular-nums">{formatCurrency(row.reviewCommission)}</td>
+                      <td className="px-4 py-3 text-right font-bold tabular-nums">{formatCurrency(row.totalCommission)}</td>
                     </tr>
                   ))}
                   {(!stats?.byMonth || stats.byMonth.length === 0) && (
