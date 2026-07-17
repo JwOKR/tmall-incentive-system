@@ -415,7 +415,7 @@ export default function Settings() {
               <h3 className="text-lg font-semibold">用户管理</h3>
               <button
                 onClick={() => { setEditingUser(null); setUserForm({ username: '', password: '', role: 'user', permissions: {} }); setShowUserForm(true); }}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                className="btn-press inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 添加用户
@@ -491,7 +491,7 @@ export default function Settings() {
                 tabIndex={-1}
               >
                 <div
-                  className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50"
+                  className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-modal-in"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between mb-4">

@@ -503,14 +503,14 @@ export default function Tasks() {
           />
           <button
             onClick={() => setShowBatchForm(true)}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="btn-press inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Plus className="h-4 w-4" />
             批量新增
           </button>
           <button
             onClick={handleAddNewRow}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="btn-press inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Plus className="h-4 w-4" />
             新增任务
@@ -552,7 +552,7 @@ export default function Tasks() {
           ref={batchFormModalRef}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50"
+            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4">批量新增任务</h3>
@@ -562,7 +562,7 @@ export default function Tasks() {
                 <textarea
                   value={batchProductCodes}
                   onChange={(e) => setBatchProductCodes(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm premium-input"
                   rows={10}
                   placeholder="SKU-001&#10;SKU-002&#10;SKU-003"
                 />
@@ -577,14 +577,14 @@ export default function Tasks() {
                     setShowBatchForm(false);
                     setBatchProductCodes('');
                   }}
-                  className="rounded-md border px-4 py-2 text-sm hover:bg-accent"
+                  className="btn-press rounded-md border px-4 py-2 text-sm hover:bg-accent transition-colors"
                 >
                   取消
                 </button>
                 <button
                   onClick={handleBatchCreate}
                   disabled={batchCreateMutation.isPending}
-                  className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  className="btn-press rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {batchCreateMutation.isPending ? '创建中...' : '批量创建'}
                 </button>
@@ -604,7 +604,7 @@ export default function Tasks() {
           ref={quickOrderModalRef}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50"
+            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4">快速接单</h3>

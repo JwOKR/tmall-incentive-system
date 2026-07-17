@@ -168,7 +168,7 @@ export default function Takers() {
               setFormData({ wechatName: '', wechatId: '' });
               setShowForm(true);
             }}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="btn-press inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
           >
             <Plus className="h-4 w-4" />
             添加接单人
@@ -200,7 +200,7 @@ export default function Takers() {
           ref={formModalRef}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50"
+            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-modal-in"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4">

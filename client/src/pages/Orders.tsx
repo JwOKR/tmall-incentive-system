@@ -600,23 +600,23 @@ export default function Orders() {
 
       {/* Quick Stats Bar */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <div className="rounded-lg border bg-card p-3 text-center">
+        <div className="stagger-item rounded-lg border bg-card p-3 text-center">
           <p className="text-xs text-muted-foreground">当前结果</p>
           <p className="text-lg font-bold mt-0.5">{stats.count}</p>
         </div>
-        <div className="rounded-lg border bg-card p-3 text-center">
+        <div className="stagger-item rounded-lg border bg-card p-3 text-center">
           <p className="text-xs text-muted-foreground">待返款</p>
           <p className="text-lg font-bold mt-0.5 text-yellow-600 dark:text-yellow-400">{stats.refundPending}</p>
         </div>
-        <div className="rounded-lg border bg-card p-3 text-center">
+        <div className="stagger-item rounded-lg border bg-card p-3 text-center">
           <p className="text-xs text-muted-foreground">待好评</p>
           <p className="text-lg font-bold mt-0.5 text-blue-600 dark:text-blue-400">{stats.reviewPending}</p>
         </div>
-        <div className="rounded-lg border bg-card p-3 text-center">
+        <div className="stagger-item rounded-lg border bg-card p-3 text-center">
           <p className="text-xs text-muted-foreground">实付总额</p>
           <p className="text-lg font-bold mt-0.5">{formatCurrency(stats.totalAmount)}</p>
         </div>
-        <div className="rounded-lg border bg-card p-3 text-center">
+        <div className="stagger-item rounded-lg border bg-card p-3 text-center">
           <p className="text-xs text-muted-foreground">返款总额</p>
           <p className="text-lg font-bold mt-0.5 text-green-600 dark:text-green-400">{formatCurrency(stats.totalRefund)}</p>
         </div>
@@ -624,7 +624,7 @@ export default function Orders() {
 
       {/* Batch Actions */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg flex-wrap">
+        <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-lg flex-wrap animate-fade-up">
           <span className="text-sm text-muted-foreground">
             已选择 <span className="font-bold text-foreground">{selectedIds.size}</span> 项
           </span>
@@ -632,7 +632,7 @@ export default function Orders() {
           <button
             onClick={() => handleBatchStatus('isRefunded', true)}
             disabled={batchStatusMutation.isPending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+            className="btn-press inline-flex items-center gap-1.5 rounded-md bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
           >
             <CheckCircle className="h-4 w-4" />
             批量已返款
@@ -640,7 +640,7 @@ export default function Orders() {
           <button
             onClick={() => handleBatchStatus('isGoodReview', 'reviewed')}
             disabled={batchStatusMutation.isPending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="btn-press inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             <Star className="h-4 w-4" />
             批量已好评
@@ -648,14 +648,14 @@ export default function Orders() {
           <button
             onClick={handleBatchDelete}
             disabled={batchDeleteMutation.isPending}
-            className="inline-flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
+            className="btn-press inline-flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-sm font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 transition-colors"
           >
             <Trash2 className="h-4 w-4" />
             {batchDeleteMutation.isPending ? '删除中...' : '批量删除'}
           </button>
           <button
             onClick={() => setSelectedIds(new Set())}
-            className="text-sm text-muted-foreground hover:text-foreground ml-auto"
+            className="btn-press text-sm text-muted-foreground hover:text-foreground ml-auto transition-colors"
           >
             取消选择
           </button>
