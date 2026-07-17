@@ -136,6 +136,7 @@ export default function Tasks() {
     },
   });
 
+const refreshStatusMutation = useMutation({    mutationFn: tasksApi.refreshStatus,    onSuccess: (data: any) => {      queryClient.invalidateQueries({ queryKey: ['tasks'] });      queryClient.invalidateQueries({ queryKey: ['dashboard'] });      toastSuccess(data?.message || '任务状态已更新');    },    onError: () => {      toastError('更新任务状态失败');    },  });
   const quickOrderMutation = useMutation({
     mutationFn: tasksApi.quickOrder,
     onSuccess: (data: any) => {
