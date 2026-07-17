@@ -219,7 +219,7 @@ export default function Settings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight gradient-text">系统设置</h2>
+        <h2 className="text-3xl font-bold tracking-tight apple-text-title-1">系统设置</h2>
         <p className="text-muted-foreground mt-1">管理账户、备份数据和系统配置</p>
       </div>
 
@@ -242,7 +242,7 @@ export default function Settings() {
       </div>
 
       {/* Tab content */}
-      <div className="premium-card p-6">
+      <div className="apple-card p-6">
         {activeTab === 'account' && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">账户信息</h3>
@@ -280,7 +280,7 @@ export default function Settings() {
                   value={oldPassword}
                   onChange={(e) => setOldPassword(e.target.value)}
                   placeholder="请输入旧密码"
-                  className="premium-input rounded-lg mt-1"
+                  className="apple-input rounded-lg mt-1"
                 />
               </div>
               <div>
@@ -290,7 +290,7 @@ export default function Settings() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="至少6位"
-                  className="premium-input rounded-lg mt-1"
+                  className="apple-input rounded-lg mt-1"
                 />
               </div>
               <div>
@@ -300,13 +300,13 @@ export default function Settings() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="再次输入新密码"
-                  className="premium-input rounded-lg mt-1"
+                  className="apple-input rounded-lg mt-1"
                 />
               </div>
               <button
                 onClick={handleChangePassword}
                 disabled={changing}
-                className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
+                className="apple-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
               >
                 {changing && <Loader2 className="h-4 w-4 animate-spin" />}
                 {changing ? '修改中...' : '确认修改'}
@@ -331,7 +331,7 @@ export default function Settings() {
                 <button
                   onClick={handleExportBackup}
                   disabled={backingUp}
-                  className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
+                  className="apple-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
                 >
                   {backingUp ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -415,7 +415,7 @@ export default function Settings() {
               <h3 className="text-lg font-semibold">用户管理</h3>
               <button
                 onClick={() => { setEditingUser(null); setUserForm({ username: '', password: '', role: 'user', permissions: {} }); setShowUserForm(true); }}
-                className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 transition-colors"
+                className="apple-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 transition-colors"
               >
                 <Plus className="h-4 w-4" />
                 添加用户
@@ -491,7 +491,7 @@ export default function Settings() {
                 tabIndex={-1}
               >
                 <div
-                  className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 animate-modal-in"
+                  className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 apple-modal-in"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between mb-4">
@@ -508,7 +508,7 @@ export default function Settings() {
                         value={userForm.username}
                         onChange={(e) => setUserForm({ ...userForm, username: e.target.value })}
                         placeholder="请输入用户名"
-                        className="premium-input rounded-lg mt-1"
+                        className="apple-input rounded-lg mt-1"
                       />
                     </div>
                     <div>
@@ -518,7 +518,7 @@ export default function Settings() {
                         value={userForm.password}
                         onChange={(e) => setUserForm({ ...userForm, password: e.target.value })}
                         placeholder={editingUser ? '留空则不修改' : '至少6位'}
-                        className="premium-input rounded-lg mt-1"
+                        className="apple-input rounded-lg mt-1"
                       />
                     </div>
                     <div>
@@ -526,7 +526,7 @@ export default function Settings() {
                       <select
                         value={userForm.role}
                         onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}
-                        className="premium-input rounded-lg mt-1"
+                        className="apple-input rounded-lg mt-1"
                       >
                         <option value="user">普通用户</option>
                         <option value="admin">管理员</option>
@@ -599,7 +599,7 @@ export default function Settings() {
                       </button>
                       <button
                         onClick={handleSaveUser}
-                        className="magnetic-btn rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 transition-colors"
+                        className="apple-btn rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 transition-colors"
                       >
                         {editingUser ? '保存修改' : '创建用户'}
                       </button>
@@ -621,7 +621,7 @@ export default function Settings() {
               <button
                 onClick={handleSaveAiSettings}
                 disabled={savingAi}
-                className="magnetic-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
+                className="apple-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
               >
                 {savingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {savingAi ? '保存中...' : '保存配置'}
@@ -658,7 +658,7 @@ export default function Settings() {
                       value={aiSettings[field.key] || ''}
                       onChange={e => setAiSettings(prev => ({ ...prev, [field.key]: e.target.value }))}
                       placeholder={field.placeholder}
-                      className="premium-input rounded-lg mt-1"
+                      className="apple-input rounded-lg mt-1"
                     />
                   </div>
                 ))}
