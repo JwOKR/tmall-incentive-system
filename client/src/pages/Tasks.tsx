@@ -432,23 +432,24 @@ export default function Tasks() {
     const modalWidth = 320; // w-80 = 320px
     const modalHeight = 500; // 估计高度（含标题、商品信息、接单人选择、3个输入框、按钮）
     const padding = 16; // 边距
+    const maxLeft = window.innerWidth - modalWidth - padding;
+    const maxTop = window.innerHeight - modalHeight - padding;
 
     // 右边界检查：如果右侧空间不足，弹窗右边缘与按钮右边缘对齐
-    // 这样弹窗始终与按钮保持视觉关联，不会贴到视口右边缘
     if (left + modalWidth > window.innerWidth - padding) {
       left = rect.right - modalWidth;
     }
 
-    // 确保不超出左边界
-    left = Math.max(padding, left);
+    // 确保不超出左右边界
+    left = Math.max(padding, Math.min(maxLeft, left));
 
     // 下边界检查：如果下方空间不够，弹窗显示在按钮上方
     if (top + modalHeight > window.innerHeight - padding) {
       top = rect.top - modalHeight - 8;
     }
 
-    // 确保不超出上边界
-    top = Math.max(padding, top);
+    // 确保不超出上下边界
+    top = Math.max(padding, Math.min(maxTop, top));
 
     setQuickOrderPosition({ top, left });
     setSelectedTask(task);
