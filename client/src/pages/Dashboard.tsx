@@ -219,22 +219,29 @@ export default function AppleDashboard() {
             <pre className="bg-slate-50 dark:bg-slate-900/50 p-5 rounded-2xl text-sm whitespace-pre-wrap font-mono max-h-[60vh] overflow-y-auto apple-text-body">
               {summaryText}
             </pre>
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(summaryText);
-                  toastSuccess('已复制到剪贴板');
-                }}
-                className="apple-btn apple-btn-primary px-6 py-2.5"
-              >
-                <Copy className="h-4 w-4" />
-                复制
-              </button>
-              <button
-                onClick={() => setShowSummary(false)}
-                className="apple-btn apple-btn-ghost px-6 py-2.5"
-              >
-                关闭
+            <div className="flex items-center justify-between mt-6 pt-5 border-t border-slate-200/80 dark:border-slate-700/80">
+              <p className="text-xs text-muted-foreground">
+                {selectedDate} 的激励数据
+              </p>
+              <div className="flex gap-2.5">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(summaryText);
+                    toastSuccess('已复制到剪贴板');
+                  }}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 hover:from-indigo-600 hover:to-violet-700 transition-all duration-200 transform hover:scale-105 active:scale-95"
+                >
+                  <Copy className="h-4 w-4" />
+                  复制
+                </button>
+                <button
+                  onClick={() => setShowSummary(false)}
+                  className="inline-flex items-center px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all duration-200 hover:scale-105 active:scale-95"
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
               </button>
             </div>
           </div>
@@ -322,10 +329,10 @@ export default function AppleDashboard() {
                 共 {remindData.totalTakers} 人需要催单
               </p>
               <div className="flex gap-2">
-                <button onClick={handleCopyRemind} className="apple-btn apple-btn-primary px-5 py-2">
+                <button onClick={handleCopyRemind} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white text-sm font-medium shadow-lg shadow-amber-500/25 hover:shadow-xl hover:shadow-amber-500/30 hover:from-amber-600 hover:to-orange-700 transition-all duration-200 transform hover:scale-105 active:scale-95">
                   <Copy className="h-4 w-4" /> 复制催单文本
                 </button>
-                <button onClick={() => setShowRemind(false)} className="apple-btn apple-btn-ghost px-5 py-2">关闭</button>
+                <button onClick={() => setShowRemind(false)} className="inline-flex items-center px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all duration-200 hover:scale-105 active:scale-95">关闭</button>
               </div>
             </div>
           </div>
