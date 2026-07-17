@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import DatePicker from "@/components/DatePicker";
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi, remindApi } from '@/lib/api';
 import { formatCurrency, formatNumber } from '@/lib/utils';
@@ -157,15 +158,11 @@ export default function AppleDashboard() {
         </div>
         <div className="flex items-center gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className="apple-search">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
-                className="apple-search-input"
-              />
-            </div>
+            <DatePicker
+              value={selectedDate}
+              onChange={setSelectedDate}
+              className="apple-search"
+            />
             <button
               onClick={handleCopySummary}
               className="apple-btn apple-btn-primary px-5 py-2.5"
