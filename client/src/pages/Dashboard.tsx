@@ -242,9 +242,6 @@ export default function AppleDashboard() {
                 </button>
               </div>
             </div>
-              </button>
-            </div>
-          </div>
         </div>
       )}
 
