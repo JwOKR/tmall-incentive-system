@@ -29,7 +29,7 @@ export default function TakerDetail() {
         <div className="h-8 w-48 animate-pulse rounded bg-muted" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="rounded-2xl premium-card p-5">
+            <div key={i} className="rounded-2xl apple-card p-5">
               <div className="space-y-2">
                 <div className="h-4 w-20 animate-pulse rounded bg-muted" />
                 <div className="h-8 w-24 animate-pulse rounded bg-muted" />
@@ -68,7 +68,7 @@ export default function TakerDetail() {
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div>
-          <h2 className="text-3xl font-bold tracking-tight gradient-text">{taker.wechatName}</h2>
+          <h2 className="text-3xl font-bold tracking-tight apple-text-title-1">{taker.wechatName}</h2>
           <p className="text-muted-foreground mt-1">{taker.wechatId} · {taker.status === 'active' ? '活跃' : '停用'}</p>
         </div>
       </div>
@@ -76,7 +76,7 @@ export default function TakerDetail() {
       {/* Stat Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statCards.map(card => (
-          <div key={card.title} className="rounded-2xl premium-card p-5 card-hover">
+          <div key={card.title} className="rounded-2xl apple-card p-5 card-hover">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">{card.title}</p>
@@ -92,7 +92,7 @@ export default function TakerDetail() {
 
       {/* Commission Breakdown */}
       <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl premium-card p-6">
+        <div className="rounded-2xl apple-card p-6">
           <h3 className="text-lg font-semibold mb-4">佣金明细</h3>
           <div className="space-y-3">
             {[
@@ -108,7 +108,7 @@ export default function TakerDetail() {
             ))}
           </div>
         </div>
-        <div className="rounded-2xl premium-card p-6">
+        <div className="rounded-2xl apple-card p-6">
           <h3 className="text-lg font-semibold mb-4">状态统计</h3>
           <div className="space-y-3">
             {[
@@ -136,7 +136,7 @@ export default function TakerDetail() {
 
       {/* Monthly Stats */}
       {monthlyStats.length > 0 && (
-        <div className="rounded-2xl premium-card p-6">
+        <div className="rounded-2xl apple-card p-6">
           <h3 className="text-lg font-semibold mb-4">月度统计</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -162,7 +162,7 @@ export default function TakerDetail() {
       )}
 
       {/* Order History */}
-      <div className="rounded-2xl premium-card p-6">
+      <div className="rounded-2xl apple-card p-6">
         <h3 className="text-lg font-semibold mb-4">历史订单 ({orders.total})</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
