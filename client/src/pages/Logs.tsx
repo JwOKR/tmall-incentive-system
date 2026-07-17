@@ -100,7 +100,7 @@ export default function Logs() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight gradient-text">操作日志</h2>
+        <h2 className="text-3xl font-bold tracking-tight apple-text-title-1">操作日志</h2>
         <p className="text-muted-foreground mt-1">系统操作记录，支持筛选和详情查看</p>
       </div>
 
@@ -111,7 +111,7 @@ export default function Logs() {
           <select
             value={actionFilter}
             onChange={(e) => { setActionFilter(e.target.value); setPage(1); }}
-            className="premium-input rounded-lg pl-10"
+            className="apple-input rounded-lg pl-10"
           >
             <option value="">全部操作</option>
             <option value="create">创建</option>
@@ -130,7 +130,7 @@ export default function Logs() {
             placeholder="搜索详情内容..."
             value={detailSearch}
             onChange={(e) => setDetailSearch(e.target.value)}
-            className="premium-input rounded-lg pl-10"
+            className="apple-input rounded-lg pl-10"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -138,14 +138,14 @@ export default function Logs() {
             type="date"
             value={startDate}
             onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
-            className="premium-input rounded-lg"
+            className="apple-input rounded-lg"
           />
           <span className="text-muted-foreground text-sm">至</span>
           <input
             type="date"
             value={endDate}
             onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
-            className="premium-input rounded-lg"
+            className="apple-input rounded-lg"
           />
         </div>
         {(actionFilter || startDate || endDate || detailSearch) && (
@@ -159,7 +159,7 @@ export default function Logs() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl premium-card overflow-x-auto">
+      <div className="rounded-2xl apple-card overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="table-header">
