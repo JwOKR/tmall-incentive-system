@@ -442,9 +442,8 @@
      ═══════════════════════════════════════════════════ */
 
   /* ── Lock body scroll when any modal/drawer is open ── */
-  body:has(.modal-overlay),
-  body:has(.drawer-overlay) {
-    overflow: hidden;
+  /* 使用 useBodyScrollLock hook 实现，此处仅保留 scrollbar-gutter */
+  body.modal-open {
     scrollbar-gutter: stable;
   }
 
