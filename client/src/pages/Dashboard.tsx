@@ -250,7 +250,6 @@ export default function AppleDashboard() {
       {showRemind && remindData && (
         <div
           className="modal-overlay"
-          style={{ alignItems: 'flex-start', paddingTop: '5vh' }}
           onClick={() => setShowRemind(false)}
           onKeyDown={(e) => e.key === 'Escape' && setShowRemind(false)}
           tabIndex={-1}
