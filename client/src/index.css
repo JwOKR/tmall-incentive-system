@@ -445,6 +445,7 @@
   body:has(.modal-overlay),
   body:has(.drawer-overlay) {
     overflow: hidden;
+    scrollbar-gutter: stable;
   }
 
   /* ── Modal Overlay ── */
@@ -458,6 +459,7 @@
     background-color: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
+    overscroll-behavior: contain;
     animation: modalOverlayIn 200ms var(--ease-out) both;
   }
   @keyframes modalOverlayIn {
@@ -517,6 +519,7 @@
     inset: 0;
     z-index: 40;
     background-color: rgba(0, 0, 0, 0.3);
+    overscroll-behavior: contain;
     animation: modalOverlayIn 200ms var(--ease-out) both;
   }
 
