@@ -523,10 +523,10 @@ export const quickOrder = async (req: AuthRequest, res: Response) => {
 // 一键手动更新所有任务状态
 export const refreshAllTaskStatus = async (req: AuthRequest, res: Response) => {
   try {
-    // 获取所有活跃状态的任务
+    // 获取所有非取消状态的任务
     const tasks = await prisma.task.findMany({
       where: {
-        status: { in: ['active', 'refunded'] },
+        status: { not: 'cancelled' },
       },
       include: {
         orders: {
@@ -543,19 +543,21 @@ export const refreshAllTaskStatus = async (req: AuthRequest, res: Response) => {
 
     for (const task of tasks) {
       const totalOrders = task.orders.length;
-      const refundedOrders = task.orders.filter(o => o.isRefunded).length;
-      const reviewedOrders = task.orders.filter(o => o.isGoodReview === 'reviewed').length;
+      const hasReviewedOrder = task.orders.some(o => o.isGoodReview === 'reviewed');
+      const hasRefundedOrder = task.orders.some(o => o.isRefunded);
 
-      // 计算新状态
-      const allOrdersCompleted = totalOrders > 0 && refundedOrders === totalOrders && reviewedOrders === totalOrders;
-      const allOrdersRefunded = totalOrders > 0 && refundedOrders === totalOrders;
-      const reachedMaxOrders = totalOrders >= task.maxOrders;
-
+      // 计算新状态（按优先级）：
+      // 1. 任何订单已好评 → 已完成
+      // 2. 任何订单已返款 → 已返款
+      // 3. 有订单但未返款 → 进行中
+      // 4. 无订单 → 保持原状态
       let newStatus = task.status;
-      if (allOrdersCompleted) {
+      if (hasReviewedOrder) {
         newStatus = 'completed';
-      } else if (allOrdersRefunded || reachedMaxOrders) {
+      } else if (hasRefundedOrder) {
         newStatus = 'refunded';
+      } else if (totalOrders > 0) {
+        newStatus = 'active';
       }
 
       // 更新任务状态和已接人数
