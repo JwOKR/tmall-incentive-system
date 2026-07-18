@@ -102,8 +102,8 @@ export default function ExportButton({ filename, columns, data, label = '导出'
       )}
       
       {showColumnSelect && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg max-h-[80vh] overflow-y-auto">
+        <div className="modal-overlay">
+          <div className="modal-content modal-md p-6">
             <h3 className="text-lg font-semibold mb-4">选择导出列</h3>
             
             <div className="flex gap-2 mb-4">
