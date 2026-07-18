@@ -33,6 +33,8 @@ export default function Tasks() {
   const [takerSearch, setTakerSearch] = useState('');
   const [showTakerDropdown, setShowTakerDropdown] = useState(false);
   const [quickOrderForm, setQuickOrderForm] = useState({ orderNo: '', orderNo19: '', actualPayment: '' });
+  const [quickOrderButtonRect, setQuickOrderButtonRect] = useState<DOMRect | null>(null);
+  const quickOrderContentRef = useRef<HTMLDivElement>(null);
   const takerDropdownRef = useRef<HTMLDivElement>(null);
   const quickOrderModalRef = useRef<HTMLDivElement>(null);
   const batchFormModalRef = useRef<HTMLDivElement>(null);
@@ -198,11 +200,29 @@ export default function Tasks() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  // 弹窗显示后：聚焦 + 用真实DOM尺寸计算位置 + 监听resize
   useEffect(() => {
-    if (showQuickOrder && quickOrderModalRef.current) {
-      quickOrderModalRef.current.focus();
-    }
-  }, [showQuickOrder]);
+    if (!showQuickOrder || !quickOrderModalRef.current) return;
+    quickOrderModalRef.current.focus();
+
+    // 用 rAF 确保 DOM 已渲染，获取真实尺寸
+    const raf = requestAnimationFrame(() => {
+      if (quickOrderButtonRect) {
+        calcQuickOrderPosition(quickOrderButtonRect);
+      }
+    });
+
+    const handleResize = () => {
+      if (quickOrderButtonRect) {
+        calcQuickOrderPosition(quickOrderButtonRect);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [showQuickOrder, quickOrderButtonRect]);
 
   useEffect(() => {
     if (showBatchForm && batchFormModalRef.current) {
@@ -417,37 +437,44 @@ export default function Tasks() {
     batchCreateMutation.mutate(tasks);
   };
 
-  const handleQuickOrder = (task: any, event: React.MouseEvent) => {
-    const button = event.currentTarget as HTMLElement;
-    const rect = button.getBoundingClientRect();
-
-    // 弹窗尺寸（w-80 = 320px，内容约500px高）
-    const modalWidth = 320;
-    const modalHeight = 500;
+  const calcQuickOrderPosition = (btnRect: DOMRect) => {
+    if (!quickOrderContentRef.current) return;
+    const modalWidth = quickOrderContentRef.current.offsetWidth;
+    const modalHeight = quickOrderContentRef.current.offsetHeight;
     const padding = 12;
+    const gap = 8;
 
-    // 水平定位：弹窗整体在按钮左侧（右边缘紧贴按钮左边缘）
-    let left = rect.left - modalWidth - 8;
-    // 左侧空间不够：弹窗居中显示在视口
+    // 水平：默认弹窗在按钮左侧（右边缘紧贴按钮左边缘）
+    let left = btnRect.left - modalWidth - gap;
+    // 左侧空间不够 → 弹窗在按钮右侧
     if (left < padding) {
+      left = btnRect.right + gap;
+    }
+    // 右侧空间也不够 → 居中
+    if (left + modalWidth > window.innerWidth - padding) {
       left = (window.innerWidth - modalWidth) / 2;
     }
-    // 最终钳制：确保不超出视口
     left = Math.max(padding, Math.min(window.innerWidth - modalWidth - padding, left));
 
-    // 垂直定位：按钮下方够放弹窗则显示在下方，否则显示在上方
-    let top: number;
-    if (rect.bottom + modalHeight <= window.innerHeight - padding) {
-      // 下方空间足够
-      top = rect.bottom + 8;
-    } else {
-      // 下方空间不足，显示在按钮上方
-      top = rect.top - modalHeight - 8;
+    // 垂直：默认弹窗在按钮下方
+    let top = btnRect.bottom + gap;
+    // 下方空间不够 → 弹窗在按钮上方
+    if (top + modalHeight > window.innerHeight - padding) {
+      top = btnRect.top - modalHeight - gap;
     }
-    // 最终钳制：确保不超出视口
+    // 上方空间也不够 → 居中
+    if (top < padding) {
+      top = (window.innerHeight - modalHeight) / 2;
+    }
     top = Math.max(padding, Math.min(window.innerHeight - modalHeight - padding, top));
 
     setQuickOrderPosition({ top, left });
+  };
+
+  const handleQuickOrder = (task: any, event: React.MouseEvent) => {
+    const button = event.currentTarget as HTMLElement;
+    const rect = button.getBoundingClientRect();
+    setQuickOrderButtonRect(rect);
     setSelectedTask(task);
     setTakerSearch('');
     setSelectedTaker('');
@@ -657,7 +684,8 @@ export default function Tasks() {
           ref={quickOrderModalRef}
         >
           <div
-            className="absolute w-80 bg-card rounded-xl shadow-2xl border border-border/50 overflow-hidden animate-fade-in"
+            ref={quickOrderContentRef}
+            className="absolute w-80 max-w-[calc(100vw-24px)] bg-card rounded-xl shadow-2xl border border-border/50 overflow-hidden animate-fade-in"
             style={{ top: quickOrderPosition.top, left: quickOrderPosition.left }}
             onClick={(e) => e.stopPropagation()}
           >
