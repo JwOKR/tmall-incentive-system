@@ -32,7 +32,6 @@ export default function Tasks() {
   const [takerSearch, setTakerSearch] = useState('');
   const [showTakerDropdown, setShowTakerDropdown] = useState(false);
   const [quickOrderForm, setQuickOrderForm] = useState({ orderNo: '', orderNo19: '', actualPayment: '' });
-  const [quickOrderBtnRect, setQuickOrderBtnRect] = useState<DOMRect | null>(null);
   const takerDropdownRef = useRef<HTMLDivElement>(null);
   const batchFormModalRef = useRef<HTMLDivElement>(null);
   const [showBatchForm, setShowBatchForm] = useState(false);
@@ -413,8 +412,6 @@ export default function Tasks() {
   };
 
   const handleQuickOrder = (task: any, event: React.MouseEvent) => {
-    const btn = event.currentTarget as HTMLElement;
-    setQuickOrderBtnRect(btn.getBoundingClientRect());
     setSelectedTask(task);
     setTakerSearch('');
     setSelectedTaker('');
@@ -624,14 +621,7 @@ export default function Tasks() {
             tabIndex={-1}
           />
           <div
-            className="fixed z-[60] w-80 max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] bg-card rounded-xl shadow-2xl border border-border/50 overflow-y-auto animate-fade-in"
-            style={(() => {
-              if (!quickOrderBtnRect) return { top: 100, left: 100 };
-              const w = 320, gap = 8, pad = 8;
-              const left = Math.max(pad, Math.min(quickOrderBtnRect.left - w - gap, window.innerWidth - w - pad));
-              const top = Math.max(pad, Math.min(quickOrderBtnRect.bottom + gap, window.innerHeight - 400));
-              return { top, left };
-            })()}
+            className="fixed z-[60] inset-0 m-auto w-80 max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] h-fit bg-card rounded-xl shadow-2xl border border-border/50 overflow-y-auto animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4">
