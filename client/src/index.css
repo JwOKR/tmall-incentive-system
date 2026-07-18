@@ -437,6 +437,115 @@
   }
 
   /* ═══════════════════════════════════════════════════
+     UNIFIED MODAL SYSTEM — Design Engineering
+     Based on Emil Kowalski's philosophy
+     ═══════════════════════════════════════════════════ */
+
+  /* ── Modal Overlay ── */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: modalOverlayIn 200ms var(--ease-out) both;
+  }
+  @keyframes modalOverlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  /* ── Modal Content — Enter ── */
+  .modal-content {
+    position: relative;
+    z-index: 51;
+    width: 100%;
+    max-height: calc(100vh - 64px);
+    overflow-y: auto;
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border) / 0.5);
+    border-radius: 1rem;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    animation: modalContentIn 250ms var(--ease-out) both;
+  }
+  @keyframes modalContentIn {
+    from {
+      opacity: 0;
+      transform: scale(0.96) translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  /* ── Modal Content — Exit ── */
+  .modal-exit .modal-overlay {
+    animation: modalOverlayOut 150ms var(--ease-out) both;
+  }
+  .modal-exit .modal-content {
+    animation: modalContentOut 150ms var(--ease-out) both;
+  }
+  @keyframes modalOverlayOut {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+  }
+  @keyframes modalContentOut {
+    from {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.96) translateY(8px);
+    }
+  }
+
+  /* ── Drawer Overlay (right-side panel) ── */
+  .drawer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background-color: rgba(0, 0, 0, 0.3);
+    animation: modalOverlayIn 200ms var(--ease-out) both;
+  }
+
+  /* ── Drawer Content — slide from right ── */
+  .drawer-content {
+    position: fixed;
+    inset-y: 0;
+    right: 0;
+    z-index: 50;
+    width: 100%;
+    max-width: 28rem;
+    background-color: hsl(var(--card));
+    border-left: 1px solid hsl(var(--border) / 0.5);
+    box-shadow: -25px 0 50px -12px rgb(0 0 0 / 0.15);
+    animation: drawerIn 300ms var(--ease-drawer) both;
+  }
+  @keyframes drawerIn {
+    from { transform: translateX(100%); }
+    to   { transform: translateX(0); }
+  }
+  .modal-exit .drawer-content {
+    animation: drawerOut 200ms var(--ease-out) both;
+  }
+  @keyframes drawerOut {
+    from { transform: translateX(0); }
+    to   { transform: translateX(100%); }
+  }
+
+  /* ── Modal Size Variants ── */
+  .modal-sm  { max-width: 24rem; }   /* 384px */
+  .modal-md  { max-width: 28rem; }   /* 448px */
+  .modal-lg  { max-width: 32rem; }   /* 512px */
+  .modal-xl  { max-width: 48rem; }   /* 768px */
+
+  /* ═══════════════════════════════════════════════════
      PREMIUM UTILITIES
      ═══════════════════════════════════════════════════ */
 
