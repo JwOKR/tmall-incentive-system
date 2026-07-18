@@ -215,6 +215,18 @@ export default function Tasks() {
     const { field } = editingCell;
     let value = editValue;
     
+    // 检查商品ID和淘口令重复
+    if (field === 'productId' || field === 'taoToken') {
+      const trimmed = String(value).trim();
+      if (trimmed) {
+        const duplicate = tasks.find((t: any) => t.id !== taskId && t[field] === trimmed);
+        if (duplicate) {
+          toastError(`${field === 'productId' ? '商品ID' : '淘口令'} "${trimmed}" 已存在于其他任务中`);
+          return;
+        }
+      }
+    }
+    
     if (['price', 'baseCommission', 'reviewReward'].includes(field)) {
       value = Number(value) || 0;
     } else if (field === 'maxOrders') {
@@ -395,6 +407,34 @@ export default function Tasks() {
     const codes = batchProductCodes.split('\n').filter(code => code.trim());
     if (codes.length === 0) {
       toastError('请输入商品编号');
+      return;
+    }
+    
+    // 检查批量输入中的重复
+    const uniqueCodes = new Set<string>();
+    const duplicateCodes: string[] = [];
+    for (const code of codes) {
+      const trimmed = code.trim();
+      if (uniqueCodes.has(trimmed)) {
+        duplicateCodes.push(trimmed);
+      } else {
+        uniqueCodes.add(trimmed);
+      }
+    }
+    if (duplicateCodes.length > 0) {
+      toastError(`输入中有重复的商品编号: ${duplicateCodes.join(', ')}`);
+      return;
+    }
+    
+    // 检查与已有任务的重复
+    const existingIds = new Set(tasks.map((t: any) => t.productId).filter(Boolean));
+    const existingCodes = new Set(tasks.map((t: any) => t.productCode).filter(Boolean));
+    const duplicates = codes.filter(code => {
+      const trimmed = code.trim();
+      return existingIds.has(trimmed) || existingCodes.has(trimmed);
+    });
+    if (duplicates.length > 0) {
+      toastError(`以下商品编号已存在: ${duplicates.join(', ')}`);
       return;
     }
     
