@@ -426,14 +426,11 @@ export default function Tasks() {
     const modalHeight = 500;
     const padding = 12;
 
-    // 水平定位：按钮右侧够放弹窗则左对齐，否则弹窗右边缘对齐按钮左边缘
-    let left: number;
-    if (rect.left + modalWidth <= window.innerWidth - padding) {
-      // 右侧空间足够，弹窗从按钮左边缘开始
-      left = rect.left;
-    } else {
-      // 右侧空间不足，弹窗右边缘对齐按钮左边缘
-      left = rect.left - modalWidth;
+    // 水平定位：弹窗默认显示在按钮左侧（右边缘对齐按钮左边缘）
+    let left = rect.left - modalWidth;
+    // 如果左侧空间不够，才显示在按钮右侧
+    if (left < padding) {
+      left = rect.right;
     }
     // 最终钳制：确保不超出视口
     left = Math.max(padding, Math.min(window.innerWidth - modalWidth - padding, left));
