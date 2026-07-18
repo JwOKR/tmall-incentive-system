@@ -461,6 +461,7 @@
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
     overscroll-behavior: contain;
+    will-change: transform;
     animation: modalOverlayIn 200ms var(--ease-out) both;
   }
   @keyframes modalOverlayIn {
@@ -522,6 +523,7 @@
     z-index: 40;
     background-color: rgba(0, 0, 0, 0.3);
     overscroll-behavior: contain;
+    will-change: transform;
     animation: modalOverlayIn 200ms var(--ease-out) both;
   }
 
