@@ -218,11 +218,13 @@ export default function Tasks() {
 
         const btn = quickOrderBtnRect;
 
-        // 水平：优先在按钮左侧，不够则右侧，再不够居中
+        // 水平：弹窗右边缘永远不超过按钮左边缘
         let left = btn.left - mw - gap;
-        if (left < pad) left = btn.right + gap;
-        if (left + mw > window.innerWidth - pad) left = (window.innerWidth - mw) / 2;
-        left = Math.max(pad, Math.min(window.innerWidth - mw - pad, left));
+        // 左侧空间不够 → 居中
+        if (left < pad) {
+          left = (window.innerWidth - mw) / 2;
+        }
+        left = Math.max(pad, left);
 
         // 垂直：优先在按钮下方，不够则上方，再不够居中
         let top = btn.bottom + gap;
@@ -240,10 +242,12 @@ export default function Tasks() {
       const mh = quickOrderContentRef.current.offsetHeight;
       const gap = 8, pad = 8;
       const btn = quickOrderBtnRect;
+      // 水平：弹窗右边缘永远不超过按钮左边缘
       let left = btn.left - mw - gap;
-      if (left < pad) left = btn.right + gap;
-      if (left + mw > window.innerWidth - pad) left = (window.innerWidth - mw) / 2;
-      left = Math.max(pad, Math.min(window.innerWidth - mw - pad, left));
+      if (left < pad) {
+        left = (window.innerWidth - mw) / 2;
+      }
+      left = Math.max(pad, left);
       let top = btn.bottom + gap;
       if (top + mh > window.innerHeight - pad) top = btn.top - mh - gap;
       if (top < pad) top = (window.innerHeight - mh) / 2;
