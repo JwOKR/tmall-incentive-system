@@ -27,14 +27,11 @@ export default function Tasks() {
   const [statusFilter, setStatusFilter] = useState('');
   const debouncedSearch = useDebouncedValue(search, 300);
   const [showQuickOrder, setShowQuickOrder] = useState(false);
-  const [quickOrderPosition, setQuickOrderPosition] = useState({ top: 0, left: 0 });
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedTaker, setSelectedTaker] = useState('');
   const [takerSearch, setTakerSearch] = useState('');
   const [showTakerDropdown, setShowTakerDropdown] = useState(false);
   const [quickOrderForm, setQuickOrderForm] = useState({ orderNo: '', orderNo19: '', actualPayment: '' });
-  const [quickOrderButtonRect, setQuickOrderButtonRect] = useState<DOMRect | null>(null);
-  const quickOrderContentRef = useRef<HTMLDivElement>(null);
   const takerDropdownRef = useRef<HTMLDivElement>(null);
   const quickOrderModalRef = useRef<HTMLDivElement>(null);
   const batchFormModalRef = useRef<HTMLDivElement>(null);
@@ -199,35 +196,6 @@ export default function Tasks() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-
-  // 弹窗显示后：聚焦 + 用真实DOM尺寸计算位置 + 监听resize
-  useEffect(() => {
-    if (!showQuickOrder || !quickOrderModalRef.current) return;
-    quickOrderModalRef.current.focus();
-
-    // 双 rAF 确保浏览器完成布局计算后再读尺寸
-    let raf1: number;
-    let raf2: number;
-    raf1 = requestAnimationFrame(() => {
-      raf2 = requestAnimationFrame(() => {
-        if (quickOrderButtonRect) {
-          calcQuickOrderPosition(quickOrderButtonRect);
-        }
-      });
-    });
-
-    const handleResize = () => {
-      if (quickOrderButtonRect) {
-        calcQuickOrderPosition(quickOrderButtonRect);
-      }
-    };
-    window.addEventListener('resize', handleResize);
-    return () => {
-      cancelAnimationFrame(raf1);
-      cancelAnimationFrame(raf2);
-      window.removeEventListener('resize', handleResize);
-    };
-  }, [showQuickOrder, quickOrderButtonRect]);
 
   useEffect(() => {
     if (showBatchForm && batchFormModalRef.current) {
@@ -442,40 +410,7 @@ export default function Tasks() {
     batchCreateMutation.mutate(tasks);
   };
 
-  const calcQuickOrderPosition = (btnRect: DOMRect) => {
-    if (!quickOrderContentRef.current) return;
-    const modalWidth = quickOrderContentRef.current.offsetWidth;
-    const modalHeight = quickOrderContentRef.current.offsetHeight;
-    const padding = 12;
-    const gap = 8;
-
-    // 水平：弹窗始终在按钮左侧（右边缘紧贴按钮左边缘）
-    let left = btnRect.left - modalWidth - gap;
-    // 左侧空间不够 → 居中显示
-    if (left < padding) {
-      left = (window.innerWidth - modalWidth) / 2;
-    }
-    left = Math.max(padding, Math.min(window.innerWidth - modalWidth - padding, left));
-
-    // 垂直：默认弹窗在按钮下方
-    let top = btnRect.bottom + gap;
-    // 下方空间不够 → 弹窗在按钮上方
-    if (top + modalHeight > window.innerHeight - padding) {
-      top = btnRect.top - modalHeight - gap;
-    }
-    // 上方空间也不够 → 居中
-    if (top < padding) {
-      top = (window.innerHeight - modalHeight) / 2;
-    }
-    top = Math.max(padding, Math.min(window.innerHeight - modalHeight - padding, top));
-
-    setQuickOrderPosition({ top, left });
-  };
-
   const handleQuickOrder = (task: any, event: React.MouseEvent) => {
-    const button = event.currentTarget as HTMLElement;
-    const rect = button.getBoundingClientRect();
-    setQuickOrderButtonRect(rect);
     setSelectedTask(task);
     setTakerSearch('');
     setSelectedTaker('');
@@ -678,16 +613,14 @@ export default function Tasks() {
       {/* Quick Order Modal */}
       {showQuickOrder && selectedTask && (
         <div
-          className="fixed inset-0 z-50 bg-black/20"
+          className="fixed inset-0 z-50 bg-black/20 flex items-start justify-center pt-20 overflow-y-auto"
           onClick={() => { setShowQuickOrder(false); setSelectedTask(null); setSelectedTaker(''); setTakerSearch(''); setShowTakerDropdown(false); setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }); }}
           onKeyDown={(e) => e.key === 'Escape' && (setShowQuickOrder(false), setSelectedTask(null), setSelectedTaker(''), setTakerSearch(''), setShowTakerDropdown(false), setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }))}
           tabIndex={-1}
           ref={quickOrderModalRef}
         >
           <div
-            ref={quickOrderContentRef}
-            className="absolute w-80 max-w-[calc(100vw-24px)] bg-card rounded-xl shadow-2xl border border-border/50 overflow-visible animate-fade-in"
-            style={{ top: quickOrderPosition.top, left: quickOrderPosition.left }}
+            className="w-[320px] max-w-[calc(100vw-48px)] bg-card rounded-xl shadow-2xl border border-border/50 animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4">
