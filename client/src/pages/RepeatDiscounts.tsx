@@ -1016,8 +1016,8 @@ export default function RepeatDiscounts() {
 
         {/* Edit Modal */}
         {showEditModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-up" onClick={() => setShowEditModal(false)}>
-            <div className="glass-card rounded-2xl shadow-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+          <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+            <div className="modal-content modal-xl p-6" onClick={e => e.stopPropagation()}>
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2.5">
                   <div className="icon-badge bg-red-500/15 text-red-600 dark:text-red-400"><Pencil className="h-4 w-4" /></div>
