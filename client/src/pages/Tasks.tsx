@@ -688,8 +688,8 @@ export default function Tasks() {
         >
           <div
             ref={quickOrderContentRef}
-            className="absolute w-[320px] max-w-[calc(100vw-48px)] bg-card rounded-xl shadow-2xl border border-border/50 overflow-visible animate-fade-in"
-            style={{ top: quickOrderPos.top, left: quickOrderPos.left }}
+            className="absolute w-[320px] bg-card rounded-xl shadow-2xl border border-border/50 overflow-visible animate-fade-in"
+            style={{ top: quickOrderPos.top, left: quickOrderPos.left, maxWidth: 'min(320px, calc(100vw - 32px))' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4">
