@@ -89,14 +89,14 @@ export default function ExportDialog({ title, filename, columns, data, buttonLab
       
       {showDialog && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          className="modal-overlay"
           onClick={() => setShowDialog(false)}
           onKeyDown={(e) => e.key === 'Escape' && setShowDialog(false)}
           tabIndex={-1}
           ref={dialogRef}
         >
           <div
-            className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl border border-border/50 max-h-[80vh] overflow-y-auto"
+            className="modal-content modal-md p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
