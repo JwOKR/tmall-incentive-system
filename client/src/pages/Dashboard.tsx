@@ -276,7 +276,7 @@ export default function AppleDashboard() {
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto space-y-4">
+            <div className="flex-1 overflow-y-auto space-y-4 max-h-[60vh] pr-1">
               {remindData.list?.map((taker: any) => (
                 <div key={taker.takerId} className="group relative overflow-hidden rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-4 hover:shadow-md transition-all duration-200">
                   {/* Accent bar */}
