@@ -104,6 +104,20 @@ export const createTask = async (req: AuthRequest, res: Response) => {
       maxOrders,
     } = req.body;
 
+    // 验证商品ID唯一性（仅在提供了非空商品ID时）
+    const cleanProductId = productId && String(productId).trim() ? String(productId).trim() : null;
+    if (cleanProductId) {
+      const existingProduct = await prisma.task.findFirst({
+        where: { productId: cleanProductId },
+      });
+      if (existingProduct) {
+        return res.status(400).json({
+          success: false,
+          message: `商品ID "${cleanProductId}" 已存在，不能重复`,
+        });
+      }
+    }
+
     // 验证淘口令唯一性（仅在提供了非空淘口令时）
     const cleanTaoToken = taoToken && String(taoToken).trim() ? String(taoToken).trim() : null;
     if (cleanTaoToken) {
@@ -220,6 +234,20 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
         success: false,
         message: '任务不存在',
       });
+    }
+
+    // 验证商品ID唯一性（仅在提供了非空商品ID且有变更时）
+    const cleanProductId = productId !== undefined ? (productId && String(productId).trim() ? String(productId).trim() : null) : undefined;
+    if (cleanProductId && cleanProductId !== existingTask.productId) {
+      const duplicateProduct = await prisma.task.findFirst({
+        where: { productId: cleanProductId },
+      });
+      if (duplicateProduct) {
+        return res.status(400).json({
+          success: false,
+          message: `商品ID "${cleanProductId}" 已存在，不能重复`,
+        });
+      }
     }
 
     // 验证淘口令唯一性（仅在提供了非空淘口令且有变更时）
