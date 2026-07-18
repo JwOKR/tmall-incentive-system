@@ -615,13 +615,14 @@ export default function Tasks() {
       {showQuickOrder && selectedTask && (
         <>
           <div
-            className="modal-overlay"
+            className="drawer-overlay"
             onClick={() => { setShowQuickOrder(false); setSelectedTask(null); setSelectedTaker(''); setTakerSearch(''); setShowTakerDropdown(false); setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }); }}
             onKeyDown={(e) => e.key === 'Escape' && (setShowQuickOrder(false), setSelectedTask(null), setSelectedTaker(''), setTakerSearch(''), setShowTakerDropdown(false), setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }))}
             tabIndex={-1}
           />
           <div
-            className="modal-content modal-sm p-4 w-80"
+            className="drawer-content flex flex-col"
+            style={{ maxWidth: '20rem' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4">
