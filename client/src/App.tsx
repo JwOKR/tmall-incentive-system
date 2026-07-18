@@ -6,6 +6,7 @@ import { ToastProvider } from './components/Toast';
 import { ConfirmProvider } from './components/ConfirmDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useBodyScrollLock } from './hooks/useBodyScrollLock';
 import Layout from './components/Layout';
 import { Loader2 } from 'lucide-react';
 
@@ -65,6 +66,7 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
 function AppRoutes() {
   const { isAuthenticated } = useAuth();
   useKeyboardShortcuts();
+  useBodyScrollLock();
 
   return (
     <Suspense fallback={<PageLoading />}>
