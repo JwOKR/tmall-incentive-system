@@ -32,6 +32,9 @@ export default function Tasks() {
   const [takerSearch, setTakerSearch] = useState('');
   const [showTakerDropdown, setShowTakerDropdown] = useState(false);
   const [quickOrderForm, setQuickOrderForm] = useState({ orderNo: '', orderNo19: '', actualPayment: '' });
+  const [quickOrderBtnRect, setQuickOrderBtnRect] = useState<DOMRect | null>(null);
+  const [quickOrderPos, setQuickOrderPos] = useState({ top: 0, left: 0 });
+  const quickOrderContentRef = useRef<HTMLDivElement>(null);
   const takerDropdownRef = useRef<HTMLDivElement>(null);
   const quickOrderModalRef = useRef<HTMLDivElement>(null);
   const batchFormModalRef = useRef<HTMLDivElement>(null);
@@ -196,6 +199,64 @@ export default function Tasks() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // 快速接单弹窗：从按钮处弹出
+  useEffect(() => {
+    if (!showQuickOrder || !quickOrderBtnRect || !quickOrderContentRef.current) return;
+    quickOrderModalRef.current?.focus();
+
+    // 等渲染完成后用真实尺寸定位
+    let raf1: number, raf2: number;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const el = quickOrderContentRef.current;
+        if (!el) return;
+        const mw = el.offsetWidth;
+        const mh = el.offsetHeight;
+        const gap = 8;
+        const pad = 8;
+
+        const btn = quickOrderBtnRect;
+
+        // 水平：优先在按钮左侧，不够则右侧，再不够居中
+        let left = btn.left - mw - gap;
+        if (left < pad) left = btn.right + gap;
+        if (left + mw > window.innerWidth - pad) left = (window.innerWidth - mw) / 2;
+        left = Math.max(pad, Math.min(window.innerWidth - mw - pad, left));
+
+        // 垂直：优先在按钮下方，不够则上方，再不够居中
+        let top = btn.bottom + gap;
+        if (top + mh > window.innerHeight - pad) top = btn.top - mh - gap;
+        if (top < pad) top = (window.innerHeight - mh) / 2;
+        top = Math.max(pad, Math.min(window.innerHeight - mh - pad, top));
+
+        setQuickOrderPos({ top, left });
+      });
+    });
+
+    const onResize = () => {
+      if (!quickOrderContentRef.current || !quickOrderBtnRect) return;
+      const mw = quickOrderContentRef.current.offsetWidth;
+      const mh = quickOrderContentRef.current.offsetHeight;
+      const gap = 8, pad = 8;
+      const btn = quickOrderBtnRect;
+      let left = btn.left - mw - gap;
+      if (left < pad) left = btn.right + gap;
+      if (left + mw > window.innerWidth - pad) left = (window.innerWidth - mw) / 2;
+      left = Math.max(pad, Math.min(window.innerWidth - mw - pad, left));
+      let top = btn.bottom + gap;
+      if (top + mh > window.innerHeight - pad) top = btn.top - mh - gap;
+      if (top < pad) top = (window.innerHeight - mh) / 2;
+      top = Math.max(pad, Math.min(window.innerHeight - mh - pad, top));
+      setQuickOrderPos({ top, left });
+    };
+    window.addEventListener('resize', onResize);
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [showQuickOrder, quickOrderBtnRect]);
 
   useEffect(() => {
     if (showBatchForm && batchFormModalRef.current) {
@@ -411,6 +472,8 @@ export default function Tasks() {
   };
 
   const handleQuickOrder = (task: any, event: React.MouseEvent) => {
+    const btn = event.currentTarget as HTMLElement;
+    setQuickOrderBtnRect(btn.getBoundingClientRect());
     setSelectedTask(task);
     setTakerSearch('');
     setSelectedTaker('');
@@ -613,14 +676,16 @@ export default function Tasks() {
       {/* Quick Order Modal */}
       {showQuickOrder && selectedTask && (
         <div
-          className="fixed inset-0 z-50 bg-black/20 flex items-start justify-center pt-20 overflow-y-auto"
+          className="fixed inset-0 z-50 bg-black/20"
           onClick={() => { setShowQuickOrder(false); setSelectedTask(null); setSelectedTaker(''); setTakerSearch(''); setShowTakerDropdown(false); setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }); }}
           onKeyDown={(e) => e.key === 'Escape' && (setShowQuickOrder(false), setSelectedTask(null), setSelectedTaker(''), setTakerSearch(''), setShowTakerDropdown(false), setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }))}
           tabIndex={-1}
           ref={quickOrderModalRef}
         >
           <div
-            className="w-[320px] max-w-[calc(100vw-48px)] bg-card rounded-xl shadow-2xl border border-border/50 animate-fade-in"
+            ref={quickOrderContentRef}
+            className="absolute w-[320px] max-w-[calc(100vw-48px)] bg-card rounded-xl shadow-2xl border border-border/50 overflow-visible animate-fade-in"
+            style={{ top: quickOrderPos.top, left: quickOrderPos.left }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4">
