@@ -65,14 +65,15 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       {children}
       {state.show && (
         <div
-          className="fixed inset-0 z-[9998] flex items-center justify-center bg-black/50 backdrop-blur-sm"
+          className="modal-overlay"
+          style={{ zIndex: 9998 }}
           onClick={() => handleClose(false)}
           onKeyDown={(e) => e.key === 'Escape' && handleClose(false)}
           tabIndex={-1}
           ref={modalRef}
         >
           <div
-            className="w-full max-w-sm rounded-xl bg-card p-6 shadow-xl border border-border/50 animate-in"
+            className="modal-content modal-sm p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start gap-4">
