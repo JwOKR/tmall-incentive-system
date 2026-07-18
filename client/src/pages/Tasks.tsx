@@ -562,14 +562,14 @@ export default function Tasks() {
       {/* Batch Form Modal */}
       {showBatchForm && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm"
+          className="modal-overlay"
           onClick={() => { setShowBatchForm(false); setBatchProductCodes(''); }}
           onKeyDown={(e) => e.key === 'Escape' && (setShowBatchForm(false), setBatchProductCodes(''))}
           tabIndex={-1}
           ref={batchFormModalRef}
         >
           <div
-            className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 apple-modal-in"
+            className="modal-content modal-md p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold mb-4">批量新增任务</h3>
@@ -615,13 +615,13 @@ export default function Tasks() {
       {showQuickOrder && selectedTask && (
         <>
           <div
-            className="fixed inset-0 z-50 bg-black/20"
+            className="modal-overlay"
             onClick={() => { setShowQuickOrder(false); setSelectedTask(null); setSelectedTaker(''); setTakerSearch(''); setShowTakerDropdown(false); setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }); }}
             onKeyDown={(e) => e.key === 'Escape' && (setShowQuickOrder(false), setSelectedTask(null), setSelectedTaker(''), setTakerSearch(''), setShowTakerDropdown(false), setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }))}
             tabIndex={-1}
           />
           <div
-            className="fixed z-[60] inset-0 m-auto w-80 max-w-[calc(100vw-32px)] max-h-[calc(100vh-32px)] h-fit bg-card rounded-xl shadow-2xl border border-border/50 overflow-y-auto animate-fade-in"
+            className="modal-content modal-sm p-4 w-80"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4">
