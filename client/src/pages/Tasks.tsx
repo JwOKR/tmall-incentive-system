@@ -33,7 +33,7 @@ export default function Tasks() {
   const [showTakerDropdown, setShowTakerDropdown] = useState(false);
   const [quickOrderForm, setQuickOrderForm] = useState({ orderNo: '', orderNo19: '', actualPayment: '' });
   const [quickOrderBtnRect, setQuickOrderBtnRect] = useState<DOMRect | null>(null);
-  const [quickOrderPos, setQuickOrderPos] = useState({ top: 0, left: 0 });
+  const [quickOrderPos, setQuickOrderPos] = useState({ top: -9999, left: -9999 });
   const quickOrderContentRef = useRef<HTMLDivElement>(null);
   const takerDropdownRef = useRef<HTMLDivElement>(null);
   const quickOrderModalRef = useRef<HTMLDivElement>(null);
@@ -689,7 +689,7 @@ export default function Tasks() {
           <div
             ref={quickOrderContentRef}
             className="absolute w-[320px] bg-card rounded-xl shadow-2xl border border-border/50 overflow-visible animate-fade-in"
-            style={{ top: quickOrderPos.top, left: quickOrderPos.left, maxWidth: 'min(320px, calc(100vw - 32px))' }}
+            style={{ top: quickOrderPos.top, left: quickOrderPos.left, visibility: quickOrderPos.top === -9999 ? 'hidden' : 'visible' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-4">
