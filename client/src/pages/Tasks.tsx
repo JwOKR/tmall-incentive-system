@@ -426,20 +426,28 @@ export default function Tasks() {
     const modalHeight = 500;
     const padding = 12;
 
-    // 默认位置：按钮正下方居中对齐（与按钮左对齐）
-    let left = rect.left;
-    let top = rect.bottom + 8;
+    // 水平定位：按钮右侧够放弹窗则左对齐，否则弹窗右边缘对齐按钮左边缘
+    let left: number;
+    if (rect.left + modalWidth <= window.innerWidth - padding) {
+      // 右侧空间足够，弹窗从按钮左边缘开始
+      left = rect.left;
+    } else {
+      // 右侧空间不足，弹窗右边缘对齐按钮左边缘
+      left = rect.left - modalWidth;
+    }
+    // 最终钳制：确保不超出视口
+    left = Math.max(padding, Math.min(window.innerWidth - modalWidth - padding, left));
 
-    // 右边界强制钳制：弹窗右边缘绝不超过视口
-    left = Math.min(left, window.innerWidth - modalWidth - padding);
-    // 左边界强制钳制：弹窗左边缘绝不超过视口
-    left = Math.max(padding, left);
-
-    // 下边界：空间不够则显示在按钮上方
-    if (top + modalHeight > window.innerHeight - padding) {
+    // 垂直定位：按钮下方够放弹窗则显示在下方，否则显示在上方
+    let top: number;
+    if (rect.bottom + modalHeight <= window.innerHeight - padding) {
+      // 下方空间足够
+      top = rect.bottom + 8;
+    } else {
+      // 下方空间不足，显示在按钮上方
       top = rect.top - modalHeight - 8;
     }
-    // 上下边界强制钳制
+    // 最终钳制：确保不超出视口
     top = Math.max(padding, Math.min(window.innerHeight - modalHeight - padding, top));
 
     setQuickOrderPosition({ top, left });
