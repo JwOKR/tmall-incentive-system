@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { Plus, Pencil, Trash2, Search, Eye } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Eye, X, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
@@ -200,51 +200,79 @@ export default function Takers() {
           ref={formModalRef}
         >
           <div
-            className="modal-content modal-md p-6"
+            className="modal-content modal-md overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold mb-4">
-              {editingTaker ? '编辑接单人' : '添加接单人'}
-            </h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-sm">
+                  <Users className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">
+                    {editingTaker ? '编辑接单人' : '添加接单人'}
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {editingTaker ? '修改接单人信息' : '添加新的接单人到系统'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => { setShowForm(false); setEditingTaker(null); }}
+                className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 hover:scale-105 active:scale-95"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <form onSubmit={handleSubmit} className="p-6 space-y-5">
               <div>
-                <label className="text-sm font-medium">微信昵称 *</label>
+                <label className="flex items-center gap-2 text-sm font-medium mb-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  微信昵称
+                  <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={formData.wechatName}
                   onChange={(e) => setFormData({ ...formData, wechatName: e.target.value })}
-                  className="apple-input rounded-lg mt-1"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200"
                   placeholder="请输入微信昵称"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium">微信号 *</label>
+                <label className="flex items-center gap-2 text-sm font-medium mb-2">
+                  <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                  微信号
+                  <span className="text-rose-500">*</span>
+                </label>
                 <input
                   type="text"
                   required
                   value={formData.wechatId}
                   onChange={(e) => setFormData({ ...formData, wechatId: e.target.value })}
-                  className="apple-input rounded-lg mt-1"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200"
                   placeholder="请输入微信号"
                 />
               </div>
-              <div className="flex justify-end gap-2">
+
+              {/* Footer */}
+              <div className="flex justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingTaker(null);
-                  }}
-                  className="rounded-xl border px-4 py-2 text-sm hover:bg-accent transition-colors"
+                  onClick={() => { setShowForm(false); setEditingTaker(null); }}
+                  className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                 >
                   取消
                 </button>
                 <button
                   type="submit"
-                  className="apple-btn rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 transition-colors"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 hover:from-indigo-600 hover:to-violet-700 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                 >
-                  {editingTaker ? '更新' : '创建'}
+                  {editingTaker ? '更新信息' : '添加接单人'}
                 </button>
               </div>
             </form>
