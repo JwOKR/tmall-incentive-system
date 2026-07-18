@@ -430,7 +430,7 @@
 
   /* ── Quick Order Popup Safety ── */
   /* 确保快速接单弹窗永远不溢出视口 */
-  .fixed.inset-0 > .animate-fade-in {
+  .fixed.inset-0 .animate-fade-in {
     max-width: calc(100vw - 16px) !important;
     max-height: calc(100vh - 16px) !important;
     overflow-y: auto !important;
