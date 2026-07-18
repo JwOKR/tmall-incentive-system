@@ -485,13 +485,13 @@ export default function Settings() {
             {/* 用户表单弹窗 */}
             {showUserForm && (
               <div
-                className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+                className="modal-overlay"
                 onClick={() => { setShowUserForm(false); setEditingUser(null); }}
                 onKeyDown={(e) => e.key === 'Escape' && (setShowUserForm(false), setEditingUser(null))}
                 tabIndex={-1}
               >
                 <div
-                  className="w-full max-w-md rounded-2xl bg-card p-6 shadow-2xl border border-border/50 apple-modal-in"
+                  className="modal-content modal-md p-6"
                   onClick={(e) => e.stopPropagation()}
                 >
                   <div className="flex items-center justify-between mb-4">
