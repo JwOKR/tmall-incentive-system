@@ -115,8 +115,8 @@ export default function CombinedExportButton({ sheets, defaultFilename = '数据
       )}
       
       {showSheetSelect && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-lg">
+        <div className="modal-overlay">
+          <div className="modal-content modal-md p-6">
             <h3 className="text-lg font-semibold mb-4">合并导出设置</h3>
             
             <div className="mb-4">
