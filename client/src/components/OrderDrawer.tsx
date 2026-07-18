@@ -43,12 +43,12 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
     <>
       {/* Overlay */}
       <div
-        className="fixed inset-0 z-40 bg-black/30 transition-opacity"
+        className="drawer-overlay"
         onClick={onClose}
       />
 
       {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 z-50 w-full max-w-md bg-card border-l shadow-2xl flex flex-col animate-in slide-in-from-right">
+      <div className="drawer-content flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
           <h3 className="text-lg font-semibold flex items-center gap-2">
