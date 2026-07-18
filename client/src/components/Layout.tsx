@@ -116,7 +116,7 @@ export default function AppleLayout({ children }: LayoutProps) {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-slate-900/40 backdrop-blur-sm lg:hidden"
+          className="drawer-overlay lg:hidden"
           onClick={closeSidebar}
         />
       )}
