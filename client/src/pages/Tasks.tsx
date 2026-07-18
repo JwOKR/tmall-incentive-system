@@ -444,14 +444,10 @@ export default function Tasks() {
     const padding = 12;
     const gap = 8;
 
-    // 水平：默认弹窗在按钮左侧（右边缘紧贴按钮左边缘）
+    // 水平：弹窗始终在按钮左侧（右边缘紧贴按钮左边缘）
     let left = btnRect.left - modalWidth - gap;
-    // 左侧空间不够 → 弹窗在按钮右侧
+    // 左侧空间不够 → 居中显示
     if (left < padding) {
-      left = btnRect.right + gap;
-    }
-    // 右侧空间也不够 → 居中
-    if (left + modalWidth > window.innerWidth - padding) {
       left = (window.innerWidth - modalWidth) / 2;
     }
     left = Math.max(padding, Math.min(window.innerWidth - modalWidth - padding, left));
