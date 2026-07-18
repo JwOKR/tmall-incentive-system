@@ -441,6 +441,12 @@
      Based on Emil Kowalski's philosophy
      ═══════════════════════════════════════════════════ */
 
+  /* ── Lock body scroll when any modal/drawer is open ── */
+  body:has(.modal-overlay),
+  body:has(.drawer-overlay) {
+    overflow: hidden;
+  }
+
   /* ── Modal Overlay ── */
   .modal-overlay {
     position: fixed;
