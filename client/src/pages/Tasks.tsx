@@ -205,11 +205,15 @@ export default function Tasks() {
     if (!showQuickOrder || !quickOrderModalRef.current) return;
     quickOrderModalRef.current.focus();
 
-    // 用 rAF 确保 DOM 已渲染，获取真实尺寸
-    const raf = requestAnimationFrame(() => {
-      if (quickOrderButtonRect) {
-        calcQuickOrderPosition(quickOrderButtonRect);
-      }
+    // 双 rAF 确保浏览器完成布局计算后再读尺寸
+    let raf1: number;
+    let raf2: number;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        if (quickOrderButtonRect) {
+          calcQuickOrderPosition(quickOrderButtonRect);
+        }
+      });
     });
 
     const handleResize = () => {
@@ -219,7 +223,8 @@ export default function Tasks() {
     };
     window.addEventListener('resize', handleResize);
     return () => {
-      cancelAnimationFrame(raf);
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
       window.removeEventListener('resize', handleResize);
     };
   }, [showQuickOrder, quickOrderButtonRect]);
@@ -681,7 +686,7 @@ export default function Tasks() {
         >
           <div
             ref={quickOrderContentRef}
-            className="absolute w-80 max-w-[calc(100vw-24px)] bg-card rounded-xl shadow-2xl border border-border/50 overflow-hidden animate-fade-in"
+            className="absolute w-80 max-w-[calc(100vw-24px)] bg-card rounded-xl shadow-2xl border border-border/50 overflow-visible animate-fade-in"
             style={{ top: quickOrderPosition.top, left: quickOrderPosition.left }}
             onClick={(e) => e.stopPropagation()}
           >
