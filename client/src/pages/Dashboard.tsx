@@ -188,14 +188,14 @@ export default function AppleDashboard() {
       {/* Apple-style Summary Modal */}
       {showSummary && (
         <div
-          className="apple-modal-overlay"
+          className="modal-overlay"
           onClick={() => setShowSummary(false)}
           onKeyDown={(e) => e.key === 'Escape' && setShowSummary(false)}
           tabIndex={-1}
           ref={summaryModalRef}
         >
           <div
-            className="apple-modal-content max-w-2xl shadow-2xl shadow-indigo-500/10 border border-slate-200/50 dark:border-slate-700/50"
+            className="modal-content modal-lg shadow-2xl shadow-indigo-500/10"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -249,14 +249,14 @@ export default function AppleDashboard() {
       {/* Apple-style Remind Modal */}
       {showRemind && remindData && (
         <div
-          className="apple-modal-overlay"
+          className="modal-overlay"
           onClick={() => setShowRemind(false)}
           onKeyDown={(e) => e.key === 'Escape' && setShowRemind(false)}
           tabIndex={-1}
           ref={remindModalRef}
         >
           <div
-            className="apple-modal-content max-w-2xl max-h-[80vh] flex flex-col"
+            className="modal-content modal-lg flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
