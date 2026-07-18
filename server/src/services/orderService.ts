@@ -465,24 +465,23 @@ async function autoUpdateTaskStatus(taskId: string) {
     data: { currentOrders: totalOrders },
   });
   
-  // 自动更新任务状态逻辑：
-  // 1. 如果所有订单都已返款且已好评，任务完成
-  // 2. 如果所有订单都已返款（但未全部好评），任务已返款
-  // 3. 如果已接人数达到上限，任务已返款
-  // 4. 否则保持活跃状态
-  const allOrdersCompleted = totalOrders > 0 && refundedOrders === totalOrders && reviewedOrders === totalOrders;
-  const allOrdersRefunded = totalOrders > 0 && refundedOrders === totalOrders;
-  const reachedMaxOrders = totalOrders >= task.maxOrders;
+  // 自动更新任务状态逻辑（按优先级）：
+  // 1. 任何订单已好评 → 已完成
+  // 2. 任何订单已返款（但未好评）→ 已返款
+  // 3. 否则保持进行中
+  const hasReviewedOrder = task.orders.some(o => o.isGoodReview === 'reviewed');
+  const hasRefundedOrder = task.orders.some(o => o.isRefunded);
   
-  if (allOrdersCompleted) {
+  if (hasReviewedOrder) {
     await prisma.task.update({
       where: { id: taskId },
       data: { status: 'completed' },
     });
-  } else if (allOrdersRefunded || reachedMaxOrders) {
+  } else if (hasRefundedOrder) {
     await prisma.task.update({
       where: { id: taskId },
       data: { status: 'refunded' },
     });
   }
+  // 否则保持当前状态（进行中）
 }
