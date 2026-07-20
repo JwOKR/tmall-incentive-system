@@ -442,7 +442,7 @@ export default function Tasks() {
       return;
     }
     
-    const tasks = codes.map(code => ({
+    const newTasks = codes.map(code => ({
       productId: code.trim(),
       productCode: code.trim(),
       taoToken: '',
@@ -452,7 +452,7 @@ export default function Tasks() {
       maxOrders: 1,
     }));
     
-    batchCreateMutation.mutate(tasks);
+    batchCreateMutation.mutate(newTasks);
   };
 
   const handleQuickOrder = (task: any, event: React.MouseEvent) => {
