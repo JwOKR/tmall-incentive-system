@@ -204,6 +204,10 @@ export default function Tasks() {
     }
   }, [showBatchForm]);
 
+  const tasks = (data as any)?.data?.list || [];
+  const total = (data as any)?.data?.total || 0;
+  const takers = (takersData as any)?.data?.list || [];
+
   const handleCellClick = (taskId: string, field: string, currentValue: any) => {
     if (editingCell?.taskId === taskId && editingCell?.field === field) return;
     setEditingCell({ taskId, field });
@@ -480,10 +484,6 @@ export default function Tasks() {
       toastSuccess('淘口令已复制');
     });
   };
-
-  const tasks = (data as any)?.data?.list || [];
-  const total = (data as any)?.data?.total || 0;
-  const takers = (takersData as any)?.data?.list || [];
 
   const filteredTasks = useMemo(() => {
     return filterData(tasks, columnFilters, (item: any, key: string) => {
