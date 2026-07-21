@@ -116,7 +116,8 @@ export const getIntervalStats = async (req: Request, res: Response) => {
 
       const lastDate = sorted.length > 0 ? sorted[sorted.length - 1].orderDate : null;
       const daysSinceLast = lastDate ? Math.round((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24)) : null;
-      const expectedNext = (lastDate && avg) ? new Date(lastDate.getTime() + avg * 24 * 60 * 60 * 1000) : null;
+      // 按7天间隔计算下次接单时间
+      const expectedNext = lastDate ? new Date(lastDate.getTime() + 7 * 24 * 60 * 60 * 1000) : null;
       const daysUntil = expectedNext ? Math.round((expectedNext.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
 
       takerIntervals.push({
