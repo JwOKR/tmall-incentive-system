@@ -198,7 +198,7 @@ export default function IntervalStats() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight apple-text-title-1">接单间隔分析</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            分析每个接单人的接单频率、间隔天数及预计下次接单时间
+            分析每个接单人的接单频率、间隔天数
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -301,7 +301,6 @@ export default function IntervalStats() {
                 <th className="px-4 py-3 text-left font-medium">接单人</th>
                 <th className="px-4 py-3 text-center font-medium">接单数</th>
                 <th className="px-4 py-3 text-left font-medium">最近接单</th>
-                <th className="px-4 py-3 text-left font-medium">预计下次</th>
                 <th className="px-4 py-3 text-center font-medium min-w-[140px]">距下次接单</th>
                 <th className="px-4 py-3 text-center font-medium">平均间隔</th>
                 <th className="px-4 py-3 text-center font-medium">最短</th>
@@ -311,7 +310,7 @@ export default function IntervalStats() {
             <tbody>
               {filteredTakers.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
                     {searchTerm ? '未找到匹配的接单人' : '暂无接单数据'}
                   </td>
                 </tr>
@@ -365,11 +364,6 @@ export default function IntervalStats() {
                               {taker.daysSinceLastOrder === 0 ? '今天' : `${taker.daysSinceLastOrder}天前`}
                             </div>
                           )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className={isOverdue ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-muted-foreground'}>
-                            {formatDate(taker.expectedNextDate)}
-                          </div>
                         </td>
                         {/* Countdown cell - the star of the show */}
                         <td className="px-4 py-3">
