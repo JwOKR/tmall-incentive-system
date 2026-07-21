@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api, { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Star, Calendar, Eye } from 'lucide-react';
+import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Star, Calendar, Eye, ExternalLink } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
@@ -796,7 +796,20 @@ export default function Orders() {
                   <td className="px-3 py-2">
                     <div>
                       <p className="font-medium">{order.task?.productName}</p>
-                      <p className="text-xs text-muted-foreground">{order.productId}</p>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground">{order.productId}</span>
+                        {order.productId && (
+                          <a
+                            href={`https://detail.tmall.com/item.htm?id=${order.productId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
+                            title="在天猫查看"
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-3 py-2">
