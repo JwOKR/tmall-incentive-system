@@ -87,10 +87,10 @@ function getCountdownState(days: number | null): {
   return { label: `${days}天`, badgeClass: 'badge-success', icon: CheckCircle };
 }
 
-// 计算倒计时进度条百分比（基于平均间隔）
-function getProgressPercent(daysSinceLast: number | null, avgInterval: number | null): number {
-  if (daysSinceLast === null || avgInterval === null || avgInterval === 0) return 0;
-  const percent = (daysSinceLast / avgInterval) * 100;
+// 计算倒计时进度条百分比（基于7天间隔）
+function getProgressPercent(daysSinceLast: number | null): number {
+  if (daysSinceLast === null) return 0;
+  const percent = (daysSinceLast / 7) * 100;
   return Math.min(100, Math.max(0, percent));
 }
 
@@ -318,7 +318,7 @@ export default function IntervalStats() {
                 filteredTakers.map((taker) => {
                   const isExpanded = expandedId === taker.takerId;
                   const countdown = getCountdownState(taker.daysUntilNext);
-                  const progress = getProgressPercent(taker.daysSinceLastOrder, taker.avgInterval);
+                  const progress = getProgressPercent(taker.daysSinceLastOrder);
                   const isOverdue = taker.daysUntilNext !== null && taker.daysUntilNext < 0;
                   const CountdownIcon = countdown.icon;
 
@@ -374,8 +374,8 @@ export default function IntervalStats() {
                               <CountdownIcon className="h-3 w-3" />
                               {countdown.label}
                             </span>
-                            {/* Progress bar */}
-                            {taker.avgInterval !== null && taker.avgInterval > 0 && (
+                            {/* Progress bar (基于7天间隔) */}
+                            {taker.daysSinceLastOrder !== null && (
                               <div className="w-full max-w-[100px] h-1.5 rounded-full bg-muted overflow-hidden">
                                 <div
                                   className={`h-full rounded-full transition-all ${
