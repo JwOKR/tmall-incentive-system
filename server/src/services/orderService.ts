@@ -225,7 +225,7 @@ export async function batchCreateOrders(rawOrders: any[]): Promise<BatchImportRe
                 ...(productIdStr ? [{ productId: productIdStr }] : []),
                 ...(productCodeStr ? [{ productCode: productCodeStr }] : []),
               ],
-              status: 'active',
+              status: { in: ['active', 'pending'] },
             },
             orderBy: { createdAt: 'desc' },
           });
@@ -468,7 +468,8 @@ async function autoUpdateTaskStatus(taskId: string) {
   // 自动更新任务状态逻辑（按优先级）：
   // 1. 任何订单已好评 → 已完成
   // 2. 任何订单已返款（但未好评）→ 已返款
-  // 3. 否则保持进行中
+  // 3. 有订单 → 进行中
+  // 4. 无订单 → 待接单
   const hasReviewedOrder = task.orders.some(o => o.isGoodReview === 'reviewed');
   const hasRefundedOrder = task.orders.some(o => o.isRefunded);
   
@@ -482,6 +483,15 @@ async function autoUpdateTaskStatus(taskId: string) {
       where: { id: taskId },
       data: { status: 'refunded' },
     });
+  } else if (totalOrders > 0) {
+    await prisma.task.update({
+      where: { id: taskId },
+      data: { status: 'active' },
+    });
+  } else {
+    await prisma.task.update({
+      where: { id: taskId },
+      data: { status: 'pending' },
+    });
   }
-  // 否则保持当前状态（进行中）
 }
