@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
 
-// 生成催单列表
+// 生成催单列表（限制最近30天，避免加载全量订单）
 export const getRemindList = async (req: Request, res: Response) => {
   try {
-    const { type = 'refund' } = req.query; // refund | review | both
+    const { type = 'refund', days = '30' } = req.query; // refund | review | both
 
     // 获取所有接单人
     const takers = await prisma.orderTaker.findMany({
@@ -12,9 +12,14 @@ export const getRemindList = async (req: Request, res: Response) => {
       select: { id: true, wechatName: true, wechatId: true },
     });
 
+    // 默认只加载最近N天的订单，避免全量加载
+    const daysNum = parseInt(days as string, 10) || 30;
+    const dateLimit = new Date();
+    dateLimit.setDate(dateLimit.getDate() - daysNum);
+
     // 获取未返款/未好评订单
     // isGoodReview 是字符串类型: "pending"(未好评), "reviewed"(已好评), "creating"(作图中), "returned"(已返图)
-    const where: any = {};
+    const where: any = { orderDate: { gte: dateLimit } };
     if (type === 'refund') {
       where.isRefunded = false;
     } else if (type === 'review') {
