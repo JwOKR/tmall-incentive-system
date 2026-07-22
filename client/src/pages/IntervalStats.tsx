@@ -1,4 +1,4 @@
-import { useState, Fragment } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { intervalApi } from '@/lib/api';
 import {
@@ -7,22 +7,10 @@ import {
   Users,
   Timer,
   ShoppingCart,
-  ChevronDown,
-  ChevronRight,
   AlertCircle,
   Search,
-  Clock,
-  Zap,
-  Hourglass,
-  CheckCircle,
 } from 'lucide-react';
 import { usePermissions, NoPermission } from '@/lib/permissions';
-
-interface IntervalEntry {
-  fromDate: string;
-  toDate: string;
-  intervalDays: number;
-}
 
 interface TakerInterval {
   takerId: string;
@@ -39,7 +27,7 @@ interface TakerInterval {
   daysSinceLastOrder: number | null;
   expectedNextDate: string | null;
   daysUntilNext: number | null;
-  intervals: IntervalEntry[];
+  intervals: any[];
 }
 
 interface GlobalStats {
@@ -57,47 +45,25 @@ function formatDate(dateStr: string | null): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-function getIntervalBadge(days: number): string {
-  if (days <= 1) return 'badge-success';
-  if (days <= 3) return 'badge-info';
-  if (days <= 7) return 'badge-warning';
-  if (days <= 14) return 'badge-orange';
-  return 'badge-danger';
+function getIntervalColor(days: number | null): string {
+  if (days === null) return 'text-muted-foreground';
+  if (days <= 1) return 'text-emerald-600 dark:text-emerald-400';
+  if (days <= 3) return 'text-sky-600 dark:text-sky-400';
+  if (days <= 7) return 'text-amber-600 dark:text-amber-400';
+  if (days <= 14) return 'text-orange-600 dark:text-orange-400';
+  return 'text-rose-600 dark:text-rose-400';
 }
 
-function getIntervalLabel(days: number): string {
+function getIntervalLabel(days: number | null): string {
+  if (days === null) return '-';
   if (days === 0) return '当天';
   if (days === 1) return '1天';
   return `${days}天`;
 }
 
-// 距下次接单的状态判定
-function getCountdownState(days: number | null): {
-  label: string;
-  badgeClass: string;
-  icon: typeof Clock;
-  pulse?: boolean;
-} {
-  if (days === null) return { label: '待计算', badgeClass: 'badge-neutral', icon: Clock };
-  if (days < 0) return { label: `逾期${Math.abs(days)}天`, badgeClass: 'badge-danger', icon: AlertCircle, pulse: true };
-  if (days === 0) return { label: '今天', badgeClass: 'badge-danger', icon: Zap, pulse: true };
-  if (days === 1) return { label: '明天', badgeClass: 'badge-orange', icon: Zap };
-  if (days <= 3) return { label: `${days}天`, badgeClass: 'badge-warning', icon: Hourglass };
-  if (days <= 7) return { label: `${days}天`, badgeClass: 'badge-info', icon: Clock };
-  return { label: `${days}天`, badgeClass: 'badge-success', icon: CheckCircle };
-}
-
-// 计算倒计时进度条百分比（基于7天间隔）
-function getProgressPercent(daysSinceLast: number | null): number {
-  if (daysSinceLast === null) return 0;
-  const percent = (daysSinceLast / 7) * 100;
-  return Math.min(100, Math.max(0, percent));
-}
-
 export default function IntervalStats() {
   const { canView } = usePermissions();
   const [searchTerm, setSearchTerm] = useState('');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -126,11 +92,6 @@ export default function IntervalStats() {
       t.wechatName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.wechatId.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // 统计待接单和逾期人数
-  const overdueCount = allTakers.filter((t) => t.daysUntilNext !== null && t.daysUntilNext < 0).length;
-  const dueTodayCount = allTakers.filter((t) => t.daysUntilNext === 0).length;
-  const dueSoonCount = allTakers.filter((t) => t.daysUntilNext !== null && t.daysUntilNext > 0 && t.daysUntilNext <= 3).length;
 
   if (isLoading) {
     return (
@@ -251,29 +212,6 @@ export default function IntervalStats() {
         ))}
       </div>
 
-      {/* Countdown alert banner */}
-      {(overdueCount > 0 || dueTodayCount > 0) && (
-        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-rose-500/30 bg-rose-500/5 p-3">
-          <AlertCircle className="h-5 w-5 text-rose-500 shrink-0" />
-          <span className="text-sm font-medium text-rose-500">接单提醒</span>
-          {overdueCount > 0 && (
-            <span className="badge-danger px-2.5 py-0.5 rounded-full text-xs font-medium">
-              {overdueCount}人已逾期
-            </span>
-          )}
-          {dueTodayCount > 0 && (
-            <span className="badge-orange px-2.5 py-0.5 rounded-full text-xs font-medium">
-              {dueTodayCount}人今天该接单
-            </span>
-          )}
-          {dueSoonCount > 0 && (
-            <span className="badge-warning px-2.5 py-0.5 rounded-full text-xs font-medium">
-              {dueSoonCount}人3天内待接单
-            </span>
-          )}
-        </div>
-      )}
-
       {/* Search bar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1 max-w-xs">
@@ -297,203 +235,71 @@ export default function IntervalStats() {
           <table className="w-full text-sm">
             <thead>
               <tr className="table-header">
-                <th className="w-10 px-4 py-3"></th>
                 <th className="px-4 py-3 text-left font-medium">接单人</th>
                 <th className="px-4 py-3 text-center font-medium">接单数</th>
                 <th className="px-4 py-3 text-left font-medium">最近接单</th>
-                <th className="px-4 py-3 text-center font-medium min-w-[140px]">距下次接单</th>
                 <th className="px-4 py-3 text-center font-medium">平均间隔</th>
-                <th className="px-4 py-3 text-center font-medium">最短</th>
-                <th className="px-4 py-3 text-center font-medium">最长</th>
+                <th className="px-4 py-3 text-center font-medium">最短间隔</th>
+                <th className="px-4 py-3 text-center font-medium">最长间隔</th>
               </tr>
             </thead>
             <tbody>
               {filteredTakers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                     {searchTerm ? '未找到匹配的接单人' : '暂无接单数据'}
                   </td>
                 </tr>
               ) : (
-                filteredTakers.map((taker) => {
-                  const isExpanded = expandedId === taker.takerId;
-                  const countdown = getCountdownState(taker.daysUntilNext);
-                  const progress = getProgressPercent(taker.daysSinceLastOrder);
-                  const isOverdue = taker.daysUntilNext !== null && taker.daysUntilNext < 0;
-                  const CountdownIcon = countdown.icon;
-
-                  return (
-                    <Fragment key={taker.takerId}>
-                      <tr
-                        className={`table-row-hover table-row-zebra cursor-pointer ${isOverdue ? 'bg-rose-50/50 dark:bg-rose-950/10' : ''}`}
-                        onClick={() => setExpandedId(isExpanded ? null : taker.takerId)}
-                      >
-                        <td className="px-4 py-3 text-center">
-                          {taker.intervals.length > 0 ? (
-                            isExpanded ? (
-                              <ChevronDown className="h-4 w-4 text-muted-foreground mx-auto" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 text-muted-foreground mx-auto" />
-                            )
-                          ) : (
-                            <span className="text-muted-foreground text-xs">—</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 shrink-0">
-                              <span className="text-xs font-medium text-white">
-                                {taker.wechatName.charAt(0)}
-                              </span>
-                            </div>
-                            <div>
-                              <p className="font-medium">{taker.wechatName}</p>
-                              <p className="text-xs text-muted-foreground">{taker.wechatId}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
-                            {taker.orderCount}
+                filteredTakers.map((taker) => (
+                  <tr key={taker.takerId} className="table-row-hover table-row-zebra">
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 shrink-0">
+                          <span className="text-xs font-medium text-white">
+                            {taker.wechatName.charAt(0)}
                           </span>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="text-muted-foreground">{formatDate(taker.lastOrderDate)}</div>
-                          {taker.daysSinceLastOrder !== null && (
-                            <div className="text-xs text-muted-foreground/70 mt-0.5">
-                              {taker.daysSinceLastOrder === 0 ? '今天' : `${taker.daysSinceLastOrder}天前`}
-                            </div>
-                          )}
-                        </td>
-                        {/* Countdown cell - the star of the show */}
-                        <td className="px-4 py-3">
-                          <div className="flex flex-col items-center gap-1.5">
-                            <span
-                              className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-bold ${countdown.badgeClass} ${countdown.pulse ? 'animate-pulse' : ''}`}
-                            >
-                              <CountdownIcon className="h-3 w-3" />
-                              {countdown.label}
-                            </span>
-                            {/* Progress bar (基于7天间隔) */}
-                            {taker.daysSinceLastOrder !== null && (
-                              <div className="w-full max-w-[100px] h-1.5 rounded-full bg-muted overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full transition-all ${
-                                    isOverdue
-                                      ? 'bg-rose-500'
-                                      : progress > 80
-                                      ? 'bg-orange-500'
-                                      : progress > 50
-                                      ? 'bg-amber-500'
-                                      : 'bg-emerald-500'
-                                  }`}
-                                  style={{ width: `${progress}%` }}
-                                />
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {taker.avgInterval !== null ? (
-                            <span
-                              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${getIntervalBadge(
-                                taker.avgInterval
-                              )}`}
-                            >
-                              {getIntervalLabel(taker.avgInterval)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">仅1单</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {taker.minInterval !== null ? (
-                            <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                              {getIntervalLabel(taker.minInterval)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {taker.maxInterval !== null ? (
-                            <span
-                              className={`text-xs font-medium ${
-                                taker.maxInterval > 14
-                                  ? 'text-rose-600 dark:text-rose-400'
-                                  : taker.maxInterval > 7
-                                  ? 'text-orange-600 dark:text-orange-400'
-                                  : 'text-amber-600 dark:text-amber-400'
-                              }`}
-                            >
-                              {getIntervalLabel(taker.maxInterval)}
-                            </span>
-                          ) : (
-                            <span className="text-muted-foreground text-xs">-</span>
-                          )}
-                        </td>
-                      </tr>
-                      {/* Expanded detail rows */}
-                      {isExpanded && taker.intervals.length > 0 && (
-                        <tr>
-                          <td colSpan={9} className="px-4 pb-4 bg-muted/20">
-                            <div className="rounded-xl border bg-card overflow-hidden">
-                              <table className="w-full text-xs">
-                                <thead>
-                                  <tr className="border-b bg-muted/30">
-                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">序号</th>
-                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">上次接单日期</th>
-                                    <th className="px-3 py-2 text-left font-medium text-muted-foreground">本次接单日期</th>
-                                    <th className="px-3 py-2 text-center font-medium text-muted-foreground">间隔天数</th>
-                                  </tr>
-                                </thead>
-                                <tbody>
-                                  {taker.intervals.map((interval, idx) => (
-                                    <tr key={idx} className="border-b last:border-0 hover:bg-muted/20">
-                                      <td className="px-3 py-2 text-muted-foreground">#{idx + 1}</td>
-                                      <td className="px-3 py-2">{formatDate(interval.fromDate)}</td>
-                                      <td className="px-3 py-2">{formatDate(interval.toDate)}</td>
-                                      <td className="px-3 py-2 text-center">
-                                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${getIntervalBadge(interval.intervalDays)}`}>
-                                          {getIntervalLabel(interval.intervalDays)}
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </td>
-                        </tr>
+                        </div>
+                        <div>
+                          <p className="font-medium">{taker.wechatName}</p>
+                          <p className="text-xs text-muted-foreground">{taker.wechatId}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="inline-flex items-center rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium">
+                        {taker.orderCount}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="text-muted-foreground">{formatDate(taker.lastOrderDate)}</div>
+                      {taker.daysSinceLastOrder !== null && (
+                        <div className="text-xs text-muted-foreground/70 mt-0.5">
+                          {taker.daysSinceLastOrder === 0 ? '今天' : `${taker.daysSinceLastOrder}天前`}
+                        </div>
                       )}
-                    </Fragment>
-                  );
-                })
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-xs font-medium ${getIntervalColor(taker.avgInterval)}`}>
+                        {getIntervalLabel(taker.avgInterval)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                        {getIntervalLabel(taker.minInterval)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <span className={`text-xs font-medium ${getIntervalColor(taker.maxInterval)}`}>
+                        {getIntervalLabel(taker.maxInterval)}
+                      </span>
+                    </td>
+                  </tr>
+                ))
               )}
             </tbody>
           </table>
         </div>
-      </div>
-
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-        <span>距下次接单：</span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-rose-500" />
-          逾期/今天
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-orange-400" />
-          1-3天
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-sky-400" />
-          4-7天
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="w-3 h-3 rounded-full bg-emerald-400" />
-          7天+
-        </span>
       </div>
     </div>
   );
