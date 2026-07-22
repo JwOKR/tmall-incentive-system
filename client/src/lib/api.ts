@@ -45,7 +45,8 @@ api.interceptors.response.use(
 
 // Dashboard API
 export const dashboardApi = {
-  getStats: () => api.get('/dashboard/stats'),
+  getStats: (startDate?: string, endDate?: string) => 
+    api.get('/dashboard/stats', { params: { startDate, endDate } }),
   getIncentiveSummary: (date?: string) => api.get('/dashboard/incentive-summary', { params: { date } }),
 };
 
