@@ -51,8 +51,9 @@ router.post('/login', async (req, res) => {
       });
     }
 
+    const permissions = user.permissions ? JSON.parse(user.permissions) : {};
     const token = jwt.sign(
-      { userId: user.id, username: user.username, role: user.role },
+      { userId: user.id, username: user.username, role: user.role, permissions },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
