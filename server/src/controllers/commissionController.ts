@@ -1,108 +1,125 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
 
-// 佣金成本分析
+// 佣金成本分析（使用数据库聚合，避免加载全量订单到内存）
 export const getCommissionStats = async (req: Request, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const where: any = {};
-    if (startDate || endDate) {
-      where.orderDate = {};
-      if (startDate) where.orderDate.gte = new Date(startDate as string);
-      if (endDate) {
-        const end = new Date(endDate as string);
-        end.setHours(23, 59, 59, 999);
-        where.orderDate.lte = end;
-      }
+    // 构建日期过滤条件
+    let dateFilter = '';
+    const params: any[] = [];
+    if (startDate) {
+      params.push(new Date(startDate as string));
+      dateFilter += ` AND o."orderDate" >= $${params.length}`;
+    }
+    if (endDate) {
+      const end = new Date(endDate as string);
+      end.setHours(23, 59, 59, 999);
+      params.push(end);
+      dateFilter += ` AND o."orderDate" <= $${params.length}`;
     }
 
-    const orders = await prisma.order.findMany({
-      where,
-      include: {
-        taker: { select: { id: true, wechatName: true, wechatId: true } },
-        task: { select: { productId: true, productCode: true } },
-      },
-    });
+    // 全局统计：使用 SQL 聚合
+    const summaryParams = [...params];
+    const [summary] = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT
+        COUNT(*)::int AS "totalOrders",
+        COALESCE(SUM(o."actualPayment"), 0)::float AS "totalPayment",
+        COALESCE(SUM(o."baseCommission"), 0)::float AS "totalBaseCommission",
+        COALESCE(SUM(o."reviewCommission"), 0)::float AS "totalReviewCommission"
+      FROM "Order" o
+      WHERE 1=1${dateFilter}`,
+      ...summaryParams,
+    );
 
-    // 按接单人分组
-    const takerMap = new Map<string, { name: string; wechatId: string; orders: number; totalPayment: number; baseCommission: number; reviewCommission: number; totalRefund: number }>();
-    // 按商品分组
-    const productMap = new Map<string, { code: string; orders: number; totalPayment: number; baseCommission: number; reviewCommission: number }>();
-    // 按月分组
-    const monthMap = new Map<string, { orders: number; totalPayment: number; baseCommission: number; reviewCommission: number }>();
-
-    for (const order of orders) {
-      // 接单人
-      const takerId = order.takerId || 'unknown';
-      const takerKey = takerId;
-      if (!takerMap.has(takerKey)) {
-        takerMap.set(takerKey, {
-          name: order.taker?.wechatName || '未匹配',
-          wechatId: order.taker?.wechatId || '',
-          orders: 0, totalPayment: 0, baseCommission: 0, reviewCommission: 0, totalRefund: 0,
-        });
-      }
-      const t = takerMap.get(takerKey)!;
-      t.orders++;
-      t.totalPayment += order.actualPayment;
-      t.baseCommission += order.baseCommission;
-      t.reviewCommission += order.reviewCommission;
-      t.totalRefund += order.totalRefund;
-
-      // 商品
-      const productKey = order.productCode || order.productId;
-      if (!productMap.has(productKey)) {
-        productMap.set(productKey, {
-          code: order.productCode || order.productId, orders: 0,
-          totalPayment: 0, baseCommission: 0, reviewCommission: 0,
-        });
-      }
-      const p = productMap.get(productKey)!;
-      p.orders++;
-      p.totalPayment += order.actualPayment;
-      p.baseCommission += order.baseCommission;
-      p.reviewCommission += order.reviewCommission;
-
-      // 月份
-      const monthKey = order.orderDate.toISOString().slice(0, 7); // YYYY-MM
-      if (!monthMap.has(monthKey)) {
-        monthMap.set(monthKey, { orders: 0, totalPayment: 0, baseCommission: 0, reviewCommission: 0 });
-      }
-      const m = monthMap.get(monthKey)!;
-      m.orders++;
-      m.totalPayment += order.actualPayment;
-      m.baseCommission += order.baseCommission;
-      m.reviewCommission += order.reviewCommission;
-    }
-
-    // 全局统计
-    const totalOrders = orders.length;
-    const totalPayment = orders.reduce((s, o) => s + o.actualPayment, 0);
-    const totalBaseCommission = orders.reduce((s, o) => s + o.baseCommission, 0);
-    const totalReviewCommission = orders.reduce((s, o) => s + o.reviewCommission, 0);
+    const totalOrders = summary.totalOrders;
+    const totalPayment = summary.totalPayment;
+    const totalBaseCommission = summary.totalBaseCommission;
+    const totalReviewCommission = summary.totalReviewCommission;
     const totalCommission = totalBaseCommission + totalReviewCommission;
     const avgCommissionPerOrder = totalOrders > 0 ? totalCommission / totalOrders : 0;
 
-    // 排序
-    const byTaker = Array.from(takerMap.entries())
-      .map(([id, d]) => ({ id, ...d, avgCommission: d.orders > 0 ? (d.baseCommission + d.reviewCommission) / d.orders : 0 }))
-      .sort((a, b) => (b.baseCommission + b.reviewCommission) - (a.baseCommission + a.reviewCommission));
+    // 按接单人分组聚合
+    const takerParams = [...params];
+    const byTakerRaw = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT
+        o."takerId",
+        COALESCE(t."wechatName", '未匹配') AS name,
+        COALESCE(t."wechatId", '') AS "wechatId",
+        COUNT(*)::int AS orders,
+        COALESCE(SUM(o."actualPayment"), 0)::float AS "totalPayment",
+        COALESCE(SUM(o."baseCommission"), 0)::float AS "baseCommission",
+        COALESCE(SUM(o."reviewCommission"), 0)::float AS "reviewCommission",
+        COALESCE(SUM(o."totalRefund"), 0)::float AS "totalRefund"
+      FROM "Order" o
+      LEFT JOIN "OrderTaker" t ON t.id = o."takerId"
+      WHERE 1=1${dateFilter}
+      GROUP BY o."takerId", t."wechatName", t."wechatId"
+      ORDER BY COALESCE(SUM(o."baseCommission"), 0) + COALESCE(SUM(o."reviewCommission"), 0) DESC
+      LIMIT 50`,
+      ...takerParams,
+    );
 
-    const byProduct = Array.from(productMap.entries())
-      .map(([id, d]) => ({ id, ...d }))
-      .sort((a, b) => (b.baseCommission + b.reviewCommission) - (a.baseCommission + a.reviewCommission));
+    const byTaker = byTakerRaw.map((d) => ({
+      id: d.takerId || 'unknown',
+      name: d.name,
+      wechatId: d.wechatId,
+      orders: d.orders,
+      totalPayment: d.totalPayment,
+      baseCommission: d.baseCommission,
+      reviewCommission: d.reviewCommission,
+      totalRefund: d.totalRefund,
+      avgCommission: d.orders > 0 ? (d.baseCommission + d.reviewCommission) / d.orders : 0,
+    }));
 
-    const byMonth = Array.from(monthMap.entries())
-      .map(([month, d]) => ({ month, ...d, totalCommission: d.baseCommission + d.reviewCommission }))
-      .sort((a, b) => b.month.localeCompare(a.month));
+    // 按商品分组聚合
+    const productParams = [...params];
+    const byProductRaw = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT
+        COALESCE(o."productCode", o."productId") AS id,
+        COALESCE(o."productCode", o."productId") AS code,
+        COUNT(*)::int AS orders,
+        COALESCE(SUM(o."actualPayment"), 0)::float AS "totalPayment",
+        COALESCE(SUM(o."baseCommission"), 0)::float AS "baseCommission",
+        COALESCE(SUM(o."reviewCommission"), 0)::float AS "reviewCommission"
+      FROM "Order" o
+      WHERE 1=1${dateFilter}
+      GROUP BY COALESCE(o."productCode", o."productId")
+      ORDER BY COALESCE(SUM(o."baseCommission"), 0) + COALESCE(SUM(o."reviewCommission"), 0) DESC
+      LIMIT 30`,
+      ...productParams,
+    );
+
+    const byProduct = byProductRaw;
+
+    // 按月分组聚合
+    const monthParams = [...params];
+    const byMonthRaw = await prisma.$queryRawUnsafe<any[]>(
+      `SELECT
+        TO_CHAR(o."orderDate", 'YYYY-MM') AS month,
+        COUNT(*)::int AS orders,
+        COALESCE(SUM(o."actualPayment"), 0)::float AS "totalPayment",
+        COALESCE(SUM(o."baseCommission"), 0)::float AS "baseCommission",
+        COALESCE(SUM(o."reviewCommission"), 0)::float AS "reviewCommission"
+      FROM "Order" o
+      WHERE 1=1${dateFilter}
+      GROUP BY TO_CHAR(o."orderDate", 'YYYY-MM')
+      ORDER BY month DESC`,
+      ...monthParams,
+    );
+
+    const byMonth = byMonthRaw.map((d) => ({
+      ...d,
+      totalCommission: d.baseCommission + d.reviewCommission,
+    }));
 
     res.json({
       success: true,
       data: {
         summary: { totalOrders, totalPayment, totalBaseCommission, totalReviewCommission, totalCommission, avgCommissionPerOrder },
-        byTaker: byTaker.slice(0, 50),
-        byProduct: byProduct.slice(0, 30),
+        byTaker,
+        byProduct,
         byMonth,
       },
     });
