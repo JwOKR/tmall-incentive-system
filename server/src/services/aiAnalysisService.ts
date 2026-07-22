@@ -190,30 +190,19 @@ async function callAIApi(prompt: string): Promise<string> {
 }
 
 // ──────────────────────────────────────
-// 解析AI返回的结构化分析
+// 通用AI分析解析函数
 // ──────────────────────────────────────
-function parseAnalysis(rawText: string) {
-  console.log('[AI-Parse] Daily raw text:', rawText);
-  
-  const sectionTitleMap = [
-    { keys: ['综合评估', '整体评估'], display: '综合评估' },
-    { keys: ['人群效率分析', '人群效率'], display: '人群效率分析' },
-    { keys: ['趋势分析', '趋势'], display: '趋势分析' },
-    { keys: ['成本效率', '成本分析'], display: '成本效率' },
-    { keys: ['策略建议', '策略优化'], display: '策略建议' },
-    { keys: ['风险提示', '风险预警'], display: '风险提示' },
-    { keys: ['关键洞察', '核心洞察', '核心发现'], display: '关键洞察' },
-  ];
+function parseAnalysisBySection(rawText: string, sectionTitleMap: { keys: string[]; display: string }[], label: string) {
+  console.log(`[AI-Parse] ${label} raw text:`, rawText);
 
   // 预处理：去掉粗体标记
   const cleaned = rawText.replace(/\*\*/g, '').trim();
-  
+
   // 按行分割
   const lines = cleaned.split('\n').map(l => l.trim());
-  
+
   // 识别每行是否是标题行，返回匹配的 section index
   const findSectionForLine = (line: string): number => {
-    // 去掉行首的数字编号、星号、空格
     const stripped = line.replace(/^\d+[.、)\s]+/, '').replace(/^\*+\s*/, '').trim();
     for (let i = 0; i < sectionTitleMap.length; i++) {
       if (sectionTitleMap[i].keys.some(key => stripped.startsWith(key))) {
@@ -222,18 +211,16 @@ function parseAnalysis(rawText: string) {
     }
     return -1;
   };
-  
+
   // 按标题行切分 sections
   const sections: { sectionIdx: number; contentLines: string[] }[] = [];
   let currentSection: { sectionIdx: number; contentLines: string[] } | null = null;
-  
+
   for (const line of lines) {
-    if (!line) continue; // 跳过空行
+    if (!line) continue;
     const sectionIdx = findSectionForLine(line);
     if (sectionIdx >= 0) {
-      // 找到新标题，保存当前 section
       if (currentSection) sections.push(currentSection);
-      // 提取标题行中冒号后面的内容（副标题）
       const section = sectionTitleMap[sectionIdx];
       const key = section.keys.find(k => {
         const stripped = line.replace(/^\d+[.、)\s]+/, '').replace(/^\*+\s*/, '').trim();
@@ -246,12 +233,11 @@ function parseAnalysis(rawText: string) {
       }
       currentSection = { sectionIdx, contentLines: subtitle ? [subtitle] : [] };
     } else if (currentSection) {
-      // 非标题行，追加到当前 section
       currentSection.contentLines.push(line);
     }
   }
   if (currentSection) sections.push(currentSection);
-  
+
   // 按 sectionTitleMap 顺序组装结果
   const result: { title: string; content: string }[] = [];
   for (let i = 0; i < sectionTitleMap.length; i++) {
@@ -260,8 +246,24 @@ function parseAnalysis(rawText: string) {
     result.push({ title: sectionTitleMap[i].display, content: content || `${sectionTitleMap[i].display}分析数据暂不可用` });
   }
 
-  console.log('[AI-Parse] Daily parsed result:', result.map(r => `${r.title}: ${r.content.substring(0, 40)}...`));
+  console.log(`[AI-Parse] ${label} parsed result:`, result.map(r => `${r.title}: ${r.content.substring(0, 40)}...`));
   return result;
+}
+
+// ──────────────────────────────────────
+// 解析AI返回的结构化分析（单日）
+// ──────────────────────────────────────
+function parseAnalysis(rawText: string) {
+  const sectionTitleMap = [
+    { keys: ['综合评估', '整体评估'], display: '综合评估' },
+    { keys: ['人群效率分析', '人群效率'], display: '人群效率分析' },
+    { keys: ['趋势分析', '趋势'], display: '趋势分析' },
+    { keys: ['成本效率', '成本分析'], display: '成本效率' },
+    { keys: ['策略建议', '策略优化'], display: '策略建议' },
+    { keys: ['风险提示', '风险预警'], display: '风险提示' },
+    { keys: ['关键洞察', '核心洞察', '核心发现'], display: '关键洞察' },
+  ];
+  return parseAnalysisBySection(rawText, sectionTitleMap, 'Daily');
 }
 
 // ──────────────────────────────────────
@@ -354,8 +356,6 @@ ${dailyLines}
 // 解析总体分析（与单日相同的section结构）
 // ──────────────────────────────────────
 function parseOverallAnalysis(rawText: string) {
-  console.log('[AI-Parse] Overall raw text:', rawText);
-  
   const sectionTitleMap = [
     { keys: ['整体概况', '综合评估'], display: '整体概况' },
     { keys: ['趋势分析', '趋势'], display: '趋势分析' },
@@ -365,54 +365,7 @@ function parseOverallAnalysis(rawText: string) {
     { keys: ['风险预警', '风险提示', '风险'], display: '风险预警' },
     { keys: ['关键洞察', '核心洞察', '核心发现'], display: '关键洞察' },
   ];
-
-  const cleaned = rawText.replace(/\*\*/g, '').trim();
-  const lines = cleaned.split('\n').map(l => l.trim());
-  
-  const findSectionForLine = (line: string): number => {
-    const stripped = line.replace(/^\d+[.、)\s]+/, '').replace(/^\*+\s*/, '').trim();
-    for (let i = 0; i < sectionTitleMap.length; i++) {
-      if (sectionTitleMap[i].keys.some(key => stripped.startsWith(key))) {
-        return i;
-      }
-    }
-    return -1;
-  };
-  
-  const sections: { sectionIdx: number; contentLines: string[] }[] = [];
-  let currentSection: { sectionIdx: number; contentLines: string[] } | null = null;
-  
-  for (const line of lines) {
-    if (!line) continue;
-    const sectionIdx = findSectionForLine(line);
-    if (sectionIdx >= 0) {
-      if (currentSection) sections.push(currentSection);
-      const section = sectionTitleMap[sectionIdx];
-      const key = section.keys.find(k => {
-        const stripped = line.replace(/^\d+[.、)\s]+/, '').replace(/^\*+\s*/, '').trim();
-        return stripped.startsWith(k);
-      }) || '';
-      const keyIdx = line.indexOf(key);
-      let subtitle = '';
-      if (keyIdx >= 0) {
-        subtitle = line.substring(keyIdx + key.length).replace(/^[:：\s]+/, '').trim();
-      }
-      currentSection = { sectionIdx, contentLines: subtitle ? [subtitle] : [] };
-    } else if (currentSection) {
-      currentSection.contentLines.push(line);
-    }
-  }
-  if (currentSection) sections.push(currentSection);
-  
-  const result: { title: string; content: string }[] = [];
-  for (let i = 0; i < sectionTitleMap.length; i++) {
-    const found = sections.find(s => s.sectionIdx === i);
-    const content = found ? found.contentLines.join('\n').trim() : '';
-    result.push({ title: sectionTitleMap[i].display, content: content || `${sectionTitleMap[i].display}分析数据暂不可用` });
-  }
-
-  console.log('[AI-Parse] Overall parsed result:', result.map(r => `${r.title}: ${r.content.substring(0, 40)}...`));
-  return result;
+  return parseAnalysisBySection(rawText, sectionTitleMap, 'Overall');
 }
 
 // ──────────────────────────────────────
