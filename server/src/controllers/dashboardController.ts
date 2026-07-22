@@ -109,7 +109,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    let dateFilter: Record<string, Date> = {};
+    let dateFilter: any = {};
     let rangeLabel = '全部';
     
     if (startDate && endDate) {
