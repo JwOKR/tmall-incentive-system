@@ -154,7 +154,7 @@ export const importBackup = async (req: Request, res: Response) => {
               totalRefund: order.totalRefund ?? 0,
               isRefunded: order.isRefunded ?? false,
               refundDate: order.refundDate ? new Date(order.refundDate) : null,
-              isGoodReview: order.isGoodReview ?? false,
+              isGoodReview: order.isGoodReview ?? 'pending',
               baseCommission: order.baseCommission ?? 5,
               reviewCommission: order.reviewCommission ?? 0,
               reviewCommissionDate: order.reviewCommissionDate ? new Date(order.reviewCommissionDate) : null,
