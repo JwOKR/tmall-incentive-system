@@ -141,6 +141,7 @@ export const createTask = async (req: AuthRequest, res: Response) => {
         baseCommission: baseCommission ? Number(baseCommission) : 5,
         reviewReward: reviewReward ? Number(reviewReward) : 0,
         maxOrders: maxOrders ? Number(maxOrders) : 1,
+        status: 'pending',
       },
     });
 
@@ -393,7 +394,7 @@ export const quickOrder = async (req: AuthRequest, res: Response) => {
     }
 
     // 检查任务状态
-    if (task.status !== 'active') {
+    if (task.status !== 'active' && task.status !== 'pending') {
       return res.status(400).json({
         success: false,
         message: '该任务已结束或已取消',
@@ -483,7 +484,10 @@ export const quickOrder = async (req: AuthRequest, res: Response) => {
       // 更新任务已接人数
       await tx.task.update({
         where: { id: taskId },
-        data: { currentOrders: { increment: 1 } },
+        data: { 
+          currentOrders: { increment: 1 },
+          ...(task.status === 'pending' ? { status: 'active' } : {}),
+        },
       });
 
       // 更新接单人统计
@@ -550,7 +554,7 @@ export const refreshAllTaskStatus = async (req: AuthRequest, res: Response) => {
       // 1. 任何订单已好评 → 已完成
       // 2. 任何订单已返款 → 已返款
       // 3. 有订单但未返款 → 进行中
-      // 4. 无订单 → 保持原状态
+      // 4. 无订单 → 待接单
       let newStatus = task.status;
       if (hasReviewedOrder) {
         newStatus = 'completed';
@@ -558,6 +562,8 @@ export const refreshAllTaskStatus = async (req: AuthRequest, res: Response) => {
         newStatus = 'refunded';
       } else if (totalOrders > 0) {
         newStatus = 'active';
+      } else {
+        newStatus = 'pending';
       }
 
       // 更新任务状态和已接人数
