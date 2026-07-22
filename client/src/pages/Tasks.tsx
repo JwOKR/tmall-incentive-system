@@ -936,7 +936,7 @@ export default function Tasks() {
                 {inlineOrderId === task.id && (
                   <tr className="border-b bg-indigo-50/50 dark:bg-indigo-950/20">
                     <td colSpan={12} className="px-6 py-4">
-                      <div className="flex items-center gap-4 flex-wrap">
+                      <div className="flex items-center justify-end gap-4 flex-wrap">
                         <div className="rounded-lg border p-3 bg-white dark:bg-slate-900/40">
                           <p className="text-sm font-medium">商品: {task.productId || task.productCode || '未填写'}</p>
                           <p className="text-xs text-muted-foreground mt-1">
