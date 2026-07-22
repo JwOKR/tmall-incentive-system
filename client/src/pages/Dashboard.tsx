@@ -23,10 +23,39 @@ import {
   ListTodo,
   Sparkles,
 } from 'lucide-react';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler,
+} from 'chart.js';
+import { Line, Doughnut, Bar } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 export default function AppleDashboard() {
   const { success: toastSuccess, error: toastError } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [showRemind, setShowRemind] = useState(false);
   const [summaryText, setSummaryText] = useState('');
   const [showSummary, setShowSummary] = useState(false);
@@ -41,8 +70,8 @@ export default function AppleDashboard() {
   }, [showRemind]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['dashboard'],
-    queryFn: () => dashboardApi.getStats(),
+    queryKey: ['dashboard', startDate, endDate],
+    queryFn: () => dashboardApi.getStats(startDate || undefined, endDate || undefined),
   });
 
   const handleCopySummary = async () => {
@@ -157,6 +186,34 @@ export default function AppleDashboard() {
           </div>
         </div>
         <div className="flex items-center gap-4 flex-wrap">
+          {/* 日期范围筛选 */}
+          <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">筛选：</span>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="text-sm bg-transparent border-none focus:outline-none focus:ring-0"
+              placeholder="开始日期"
+            />
+            <span className="text-muted-foreground">至</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="text-sm bg-transparent border-none focus:outline-none focus:ring-0"
+              placeholder="结束日期"
+            />
+            {(startDate || endDate) && (
+              <button
+                onClick={() => { setStartDate(''); setEndDate(''); }}
+                className="ml-2 text-xs text-rose-500 hover:text-rose-700"
+              >
+                清除
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <DatePicker
               value={selectedDate}
@@ -533,7 +590,85 @@ export default function AppleDashboard() {
         </div>
       </div>
 
-      {/* Apple-style Daily Summary */}
+      {/* Apple-style Charts Row: Line + Doughnut */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* 接单趋势折线图 */}
+        <div className="apple-card p-6 lg:col-span-2">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-indigo-100 dark:bg-indigo-950/40 rounded-2xl">
+              <TrendingUp className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h3 className="apple-text-title-3">接单趋势</h3>
+              <p className="apple-text-footnote text-muted-foreground">最近7天订单数量变化</p>
+            </div>
+          </div>
+          {stats?.dailySummary && stats.dailySummary.length > 0 ? (
+            <div className="h-[240px]">
+              <OrderTrendChart data={[...stats.dailySummary].reverse()} />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-[240px] text-muted-foreground">
+              <p>暂无趋势数据</p>
+            </div>
+          )}
+        </div>
+
+        {/* 返款状态环形图 */}
+        <div className="apple-card p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-3 bg-emerald-100 dark:bg-emerald-950/40 rounded-2xl">
+              <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="apple-text-title-3">返款状态</h3>
+              <p className="apple-text-footnote text-muted-foreground">已返款/待返款比例</p>
+            </div>
+          </div>
+          {stats?.dailySummary && stats.dailySummary.length > 0 ? (
+            <div className="h-[240px] flex items-center justify-center">
+              <RefundStatusChart data={stats.dailySummary} />
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-[240px] text-muted-foreground">
+              <p>暂无返款数据</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 接单人TOP5柱状图 */}
+      <div className="apple-card p-6">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-violet-100 dark:bg-violet-950/40 rounded-2xl">
+              <Star className="h-6 w-6 text-violet-600 dark:text-violet-400" />
+            </div>
+            <div>
+              <h3 className="apple-text-title-3">接单人 TOP5</h3>
+              <p className="apple-text-footnote text-muted-foreground">按接单量排名</p>
+            </div>
+          </div>
+          <Link
+            to="/takers"
+            className="apple-text-footnote text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium"
+          >
+            查看全部
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        {stats?.topTakers && stats.topTakers.length > 0 ? (
+          <div className="h-[220px]">
+            <TopTakersChart data={stats.topTakers.slice(0, 5)} />
+          </div>
+        ) : (
+          <div className="flex items-center justify-center h-[220px] text-muted-foreground">
+            <p>暂无排行数据</p>
+          </div>
+        )}
+      </div>
+
+      {/* Apple-style Daily Summary Table */}
       <div className="apple-card p-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -541,17 +676,11 @@ export default function AppleDashboard() {
               <BarChart3 className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <h3 className="apple-text-title-3">近7天趋势</h3>
-              <p className="apple-text-footnote text-muted-foreground">订单数量趋势图</p>
+              <h3 className="apple-text-title-3">近7天明细</h3>
+              <p className="apple-text-footnote text-muted-foreground">每日订单数据详情</p>
             </div>
           </div>
         </div>
-        {/* SVG Trend Chart */}
-        {stats?.dailySummary && stats.dailySummary.length > 0 && (
-          <div className="mb-6 p-4 bg-slate-50/50 dark:bg-slate-900/30 rounded-xl">
-            <TrendChart data={[...stats.dailySummary].reverse()} />
-          </div>
-        )}
         <div className="overflow-x-auto">
           <table className="w-full border-collapse">
             <thead>
@@ -602,79 +731,196 @@ export default function AppleDashboard() {
   );
 }
 
-// Apple-style Trend Chart Component
-function TrendChart({ data }: { data: any[] }) {
-  if (!data || data.length === 0) return null;
+// 接单趋势折线图组件
+function OrderTrendChart({ data }: { data: any[] }) {
+  const isDark = document.documentElement.classList.contains('dark');
+  const gridColor = isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(100, 116, 139, 0.1)';
+  const textColor = isDark ? 'rgba(203, 213, 225, 0.7)' : 'rgba(100, 116, 139, 0.7)';
 
-  const maxOrders = Math.max(...data.map(d => d.orderCount), 1);
-  const chartWidth = 600;
-  const chartHeight = 140;
-  const barWidth = chartWidth / data.length;
-  const gap = barWidth * 0.3;
-  const actualBarWidth = barWidth - gap;
+  const chartData = {
+    labels: data.map((d) => d.date.slice(5)),
+    datasets: [
+      {
+        label: '接单数',
+        data: data.map((d) => d.orderCount),
+        borderColor: '#6366f1',
+        backgroundColor: 'rgba(99, 102, 241, 0.08)',
+        borderWidth: 2.5,
+        pointBackgroundColor: '#6366f1',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        tension: 0.35,
+        fill: true,
+      },
+    ],
+  };
 
-  return (
-    <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${chartWidth} ${chartHeight + 40}`} className="w-full min-w-[400px]" preserveAspectRatio="xMidYMid meet">
-        {/* Grid lines */}
-        {[0, 0.25, 0.5, 0.75, 1].map(ratio => (
-          <line
-            key={ratio}
-            x1={0}
-            y1={chartHeight - chartHeight * ratio}
-            x2={chartWidth}
-            y2={chartHeight - chartHeight * ratio}
-            stroke="currentColor"
-            strokeOpacity={0.06}
-            strokeWidth={1}
-          />
-        ))}
-        {/* Bars */}
-        {data.map((item, i) => {
-          const barHeight = (item.orderCount / maxOrders) * (chartHeight - 30);
-          const x = i * barWidth + gap / 2;
-          const y = chartHeight - barHeight;
-          const dateLabel = item.date.slice(5);
-          return (
-            <g key={item.date}>
-              <rect
-                x={x}
-                y={y}
-                width={actualBarWidth}
-                height={barHeight}
-                rx={8}
-                fill="url(#appleBarGradient)"
-                className="transition-opacity hover:opacity-80 cursor-pointer"
-              />
-              <text
-                x={x + actualBarWidth / 2}
-                y={y - 8}
-                textAnchor="middle"
-                className="text-xs fill-current opacity-60 font-semibold"
-                style={{ fontSize: '11px' }}
-              >
-                {item.orderCount}
-              </text>
-              <text
-                x={x + actualBarWidth / 2}
-                y={chartHeight + 20}
-                textAnchor="middle"
-                className="fill-current opacity-40"
-                style={{ fontSize: '10px' }}
-              >
-                {dateLabel}
-              </text>
-            </g>
-          );
-        })}
-        {/* Gradient definition */}
-        <defs>
-          <linearGradient id="appleBarGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#007AFF" stopOpacity="0.9" />
-            <stop offset="100%" stopColor="#5856D6" stopOpacity="0.6" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
-  );
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        titleColor: isDark ? '#e2e8f0' : '#1e293b',
+        bodyColor: isDark ? '#cbd5e1' : '#475569',
+        borderColor: isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(203, 213, 225, 0.5)',
+        borderWidth: 1,
+        cornerRadius: 12,
+        padding: 12,
+        displayColors: false,
+        callbacks: {
+          label: (ctx: any) => `${ctx.parsed.y} 单`,
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        ticks: { color: textColor, font: { size: 11 } },
+      },
+      y: {
+        grid: { color: gridColor },
+        ticks: {
+          color: textColor,
+          font: { size: 11 },
+          stepSize: 1,
+        },
+        beginAtZero: true,
+      },
+    },
+  };
+
+  return <Line data={chartData} options={options} />;
+}
+
+// 返款状态环形图组件
+function RefundStatusChart({ data }: { data: any[] }) {
+  const isDark = document.documentElement.classList.contains('dark');
+
+  const totalRefunded = data.reduce((sum, d) => sum + (d.refundedCount || 0), 0);
+  const totalPending = data.reduce((sum, d) => sum + (d.pendingCount || 0), 0);
+
+  const chartData = {
+    labels: ['已返款', '待返款'],
+    datasets: [
+      {
+        data: [totalRefunded, totalPending],
+        backgroundColor: ['#10b981', '#f59e0b'],
+        borderColor: isDark ? ['#0d9669', '#d97706'] : ['#059669', '#d97706'],
+        borderWidth: 2,
+        hoverOffset: 6,
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '65%',
+    plugins: {
+      legend: {
+        position: 'bottom' as const,
+        labels: {
+          padding: 16,
+          usePointStyle: true,
+          pointStyle: 'circle',
+          color: isDark ? '#cbd5e1' : '#475569',
+          font: { size: 12 },
+        },
+      },
+      tooltip: {
+        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        titleColor: isDark ? '#e2e8f0' : '#1e293b',
+        bodyColor: isDark ? '#cbd5e1' : '#475569',
+        borderColor: isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(203, 213, 225, 0.5)',
+        borderWidth: 1,
+        cornerRadius: 12,
+        padding: 12,
+        callbacks: {
+          label: (ctx: any) => {
+            const total = totalRefunded + totalPending;
+            const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : '0';
+            return `${ctx.label}: ${ctx.parsed} 单 (${pct}%)`;
+          },
+        },
+      },
+    },
+  };
+
+  return <Doughnut data={chartData} options={options} />;
+}
+
+// 接单人TOP5横向柱状图组件
+function TopTakersChart({ data }: { data: any[] }) {
+  const isDark = document.documentElement.classList.contains('dark');
+  const gridColor = isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(100, 116, 139, 0.1)';
+  const textColor = isDark ? 'rgba(203, 213, 225, 0.7)' : 'rgba(100, 116, 139, 0.7)';
+
+  const barColors = [
+    'rgba(99, 102, 241, 0.85)',
+    'rgba(139, 92, 246, 0.8)',
+    'rgba(168, 85, 247, 0.75)',
+    'rgba(192, 132, 252, 0.7)',
+    'rgba(216, 180, 254, 0.65)',
+  ];
+
+  const chartData = {
+    labels: data.map((t) => t.wechatName),
+    datasets: [
+      {
+        label: '接单数',
+        data: data.map((t) => t.totalOrders),
+        backgroundColor: barColors,
+        borderColor: barColors.map((c) => c.replace(/[\d.]+\)$/, '1)')),
+        borderWidth: 1,
+        borderRadius: 8,
+        borderSkipped: false,
+      },
+    ],
+  };
+
+  const options = {
+    indexAxis: 'y' as const,
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        titleColor: isDark ? '#e2e8f0' : '#1e293b',
+        bodyColor: isDark ? '#cbd5e1' : '#475569',
+        borderColor: isDark ? 'rgba(71, 85, 105, 0.3)' : 'rgba(203, 213, 225, 0.5)',
+        borderWidth: 1,
+        cornerRadius: 12,
+        padding: 12,
+        displayColors: false,
+        callbacks: {
+          label: (ctx: any) => `${ctx.parsed.x} 单`,
+        },
+      },
+    },
+    scales: {
+      x: {
+        grid: { color: gridColor },
+        ticks: {
+          color: textColor,
+          font: { size: 11 },
+          stepSize: 1,
+        },
+        beginAtZero: true,
+      },
+      y: {
+        grid: { display: false },
+        ticks: {
+          color: textColor,
+          font: { size: 12, weight: 500 as any },
+        },
+      },
+    },
+  };
+
+  return <Bar data={chartData} options={options} />;
 }
