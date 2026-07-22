@@ -195,17 +195,26 @@ async function callAIApi(prompt: string): Promise<string> {
 function parseAnalysisBySection(rawText: string, sectionTitleMap: { keys: string[]; display: string }[], label: string) {
   console.log(`[AI-Parse] ${label} raw text:`, rawText);
 
-  // 预处理：去掉粗体标记
-  const cleaned = rawText.replace(/\*\*/g, '').trim();
+  // 预处理：去掉粗体标记和Markdown标题标记
+  const cleaned = rawText.replace(/\*\*/g, '').replace(/^#{1,3}\s+/gm, '').trim();
 
   // 按行分割
   const lines = cleaned.split('\n').map(l => l.trim());
 
   // 识别每行是否是标题行，返回匹配的 section index
   const findSectionForLine = (line: string): number => {
+    // 去掉行首的数字、星号、空格等
     const stripped = line.replace(/^\d+[.、)\s]+/, '').replace(/^\*+\s*/, '').trim();
+    
+    // 尝试多种匹配方式
     for (let i = 0; i < sectionTitleMap.length; i++) {
-      if (sectionTitleMap[i].keys.some(key => stripped.startsWith(key))) {
+      const section = sectionTitleMap[i];
+      // 1. 精确前缀匹配
+      if (section.keys.some(key => stripped.startsWith(key))) {
+        return i;
+      }
+      // 2. 包含匹配（处理"综合评估：xxx"这种格式）
+      if (section.keys.some(key => stripped.includes(key) && stripped.indexOf(key) < 10)) {
         return i;
       }
     }
@@ -222,16 +231,17 @@ function parseAnalysisBySection(rawText: string, sectionTitleMap: { keys: string
     if (sectionIdx >= 0) {
       if (currentSection) sections.push(currentSection);
       const section = sectionTitleMap[sectionIdx];
-      const key = section.keys.find(k => {
-        const stripped = line.replace(/^\d+[.、)\s]+/, '').replace(/^\*+\s*/, '').trim();
-        return stripped.startsWith(k);
-      }) || '';
-      const keyIdx = line.indexOf(key);
-      let subtitle = '';
-      if (keyIdx >= 0) {
-        subtitle = line.substring(keyIdx + key.length).replace(/^[:：\s]+/, '').trim();
+      // 提取标题后的内容（去掉标题本身）
+      let content = line;
+      for (const key of section.keys) {
+        const keyIdx = content.indexOf(key);
+        if (keyIdx >= 0) {
+          content = content.substring(keyIdx + key.length);
+          break;
+        }
       }
-      currentSection = { sectionIdx, contentLines: subtitle ? [subtitle] : [] };
+      content = content.replace(/^[:：\s]+/, '').trim();
+      currentSection = { sectionIdx, contentLines: content ? [content] : [] };
     } else if (currentSection) {
       currentSection.contentLines.push(line);
     }
