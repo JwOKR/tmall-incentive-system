@@ -1,6 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import prisma from '../utils/db';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'tmall-incentive-secret-key-2026';
 
@@ -14,7 +13,7 @@ export interface AuthRequest extends Request {
 // 验证JWT token的中间件
 export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
       success: false,
@@ -30,10 +29,12 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
       userId: string;
       username: string;
       role: string;
+      permissions?: Record<string, { view: boolean; edit: boolean }>;
     };
     req.userId = decoded.userId;
     req.username = decoded.username;
     req.userRole = decoded.role;
+    req.userPermissions = decoded.permissions || {};
     next();
   } catch (error) {
     return res.status(401).json({
@@ -44,89 +45,47 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   }
 }
 
-// 检查模块编辑权限的中间件
+// 检查模块编辑权限的中间件（从JWT token中读取权限，无需查询数据库）
 export function requireEditPermission(module: string) {
-  return async (req: AuthRequest, res: Response, next: NextFunction) => {
-    // 管理员拥有所有权限
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (req.userRole === 'admin') {
       return next();
     }
 
-    try {
-      const user = await prisma.user.findUnique({
-        where: { id: req.userId },
-        select: { permissions: true },
-      });
+    const permissions = req.userPermissions || {};
+    const modulePermission = permissions[module];
 
-      if (!user || !user.permissions) {
-        return res.status(403).json({
-          success: false,
-          message: '权限不足',
-          code: 'FORBIDDEN',
-        });
-      }
-
-      const permissions = JSON.parse(user.permissions);
-      const modulePermission = permissions[module];
-
-      if (!modulePermission || !modulePermission.edit) {
-        return res.status(403).json({
-          success: false,
-          message: `您没有${module}模块的编辑权限`,
-          code: 'FORBIDDEN',
-        });
-      }
-
-      next();
-    } catch (error) {
-      return res.status(500).json({
+    if (!modulePermission || !modulePermission.edit) {
+      return res.status(403).json({
         success: false,
-        message: '权限检查失败',
+        message: `您没有${module}模块的编辑权限`,
+        code: 'FORBIDDEN',
       });
     }
+
+    next();
   };
 }
 
-// 检查模块查看权限的中间件
+// 检查模块查看权限的中间件（从JWT token中读取权限，无需查询数据库）
 export function requireViewPermission(module: string) {
-  return async (req: AuthRequest, res: Response, next: NextFunction) => {
-    // 管理员拥有所有权限
+  return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (req.userRole === 'admin') {
       return next();
     }
 
-    try {
-      const user = await prisma.user.findUnique({
-        where: { id: req.userId },
-        select: { permissions: true },
-      });
+    const permissions = req.userPermissions || {};
+    const modulePermission = permissions[module];
 
-      if (!user || !user.permissions) {
-        return res.status(403).json({
-          success: false,
-          message: '权限不足',
-          code: 'FORBIDDEN',
-        });
-      }
-
-      const permissions = JSON.parse(user.permissions);
-      const modulePermission = permissions[module];
-
-      if (!modulePermission || !modulePermission.view) {
-        return res.status(403).json({
-          success: false,
-          message: `您没有${module}模块的查看权限`,
-          code: 'FORBIDDEN',
-        });
-      }
-
-      next();
-    } catch (error) {
-      return res.status(500).json({
+    if (!modulePermission || !modulePermission.view) {
+      return res.status(403).json({
         success: false,
-        message: '权限检查失败',
+        message: `您没有${module}模块的查看权限`,
+        code: 'FORBIDDEN',
       });
     }
+
+    next();
   };
 }
 
