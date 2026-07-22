@@ -936,129 +936,91 @@ export default function Tasks() {
                 {inlineOrderId === task.id && (
                   <tr className="border-b bg-indigo-50/50 dark:bg-indigo-950/20">
                     <td colSpan={12} className="px-6 py-4">
-                      <div className="flex items-start gap-6 flex-wrap">
-                        <div className="rounded-lg border p-3 bg-white dark:bg-slate-900/40 min-w-[200px]">
+                      <div className="flex items-center gap-4 flex-wrap">
+                        <div className="rounded-lg border p-3 bg-white dark:bg-slate-900/40">
                           <p className="text-sm font-medium">商品: {task.productId || task.productCode || '未填写'}</p>
-                          <p className="text-xs text-muted-foreground mt-1">价格: {formatCurrency(task.price)}</p>
-                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
-                            总返款: {formatCurrency(task.price + task.baseCommission + task.reviewReward)}
-                          </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             剩余名额: <span className="font-bold text-indigo-600 dark:text-indigo-400">{task.maxOrders - task.currentOrders}人</span>
                           </p>
                         </div>
-                        <div className="flex-1 flex flex-wrap gap-4 items-end">
-                          <div className="relative" ref={takerDropdownRef}>
-                            <label className="text-xs font-medium text-muted-foreground">接单人 *</label>
-                            <div className="relative mt-1">
-                              <input
-                                type="text"
-                                value={takerSearch}
-                                onChange={(e) => {
-                                  setTakerSearch(e.target.value);
-                                  setSelectedTaker('');
-                                  setShowTakerDropdown(true);
-                                }}
-                                onFocus={() => setShowTakerDropdown(true)}
-                                placeholder="搜索接单人..."
-                                className={`w-48 rounded-lg border bg-card px-3 py-1.5 text-sm pr-8 apple-input ${
-                                  selectedTaker ? 'border-emerald-500' : 'border-input'
-                                }`}
-                              />
-                              <button
-                                type="button"
-                                onClick={() => setShowTakerDropdown(v => !v)}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                              >
-                                <svg className={`h-3 w-3 transition-transform ${showTakerDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                              </button>
-                            </div>
-                            {showTakerDropdown && (
-                              <div className="absolute z-10 mt-1 w-full max-h-40 overflow-y-auto rounded-md border bg-card shadow-lg">
-                                {takers
-                                  .filter((t: any) => {
-                                    if (!takerSearch) return true;
-                                    const keyword = takerSearch.toLowerCase();
-                                    return (
-                                      (t.wechatName && t.wechatName.toLowerCase().includes(keyword)) ||
-                                      (t.wechatId && t.wechatId.toLowerCase().includes(keyword))
-                                    );
-                                  })
-                                  .slice(0, 30)
-                                  .map((taker: any) => (
-                                    <div
-                                      key={taker.id}
-                                      onMouseDown={(e) => {
-                                        e.preventDefault();
-                                        setSelectedTaker(taker.id);
-                                        setTakerSearch(`${taker.wechatName}（${taker.wechatId}）`);
-                                        setShowTakerDropdown(false);
-                                      }}
-                                      className={`cursor-pointer px-3 py-1.5 text-sm hover:bg-accent ${
-                                        selectedTaker === taker.id ? 'bg-accent font-medium' : ''
-                                      }`}
-                                    >
-                                      {taker.wechatName} <span className="text-xs text-muted-foreground">{taker.wechatId}</span>
-                                    </div>
-                                  ))
-                                }
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <label className="text-xs font-medium text-muted-foreground">订单号</label>
+                        <div className="relative" ref={takerDropdownRef}>
+                          <label className="text-xs font-medium text-muted-foreground">接单人 *</label>
+                          <div className="relative mt-1">
                             <input
                               type="text"
-                              value={quickOrderForm.orderNo}
-                              onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo: e.target.value })}
-                              placeholder="选填"
-                              className="mt-1 w-36 rounded-lg border bg-card px-3 py-1.5 text-sm apple-input"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs font-medium text-muted-foreground">19位订单号</label>
-                            <input
-                              type="text"
-                              value={quickOrderForm.orderNo19}
-                              onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo19: e.target.value })}
-                              placeholder="选填"
-                              className="mt-1 w-36 rounded-lg border bg-card px-3 py-1.5 text-sm apple-input"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-xs font-medium text-muted-foreground">实付款（元）</label>
-                            <input
-                              type="number"
-                              step="0.01"
-                              min="0"
-                              value={quickOrderForm.actualPayment}
-                              onChange={(e) => setQuickOrderForm({ ...quickOrderForm, actualPayment: e.target.value })}
-                              placeholder="0"
-                              className="mt-1 w-24 rounded-lg border bg-card px-3 py-1.5 text-sm apple-input"
-                            />
-                          </div>
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handleConfirmQuickOrder()}
-                              disabled={quickOrderMutation.isPending || !selectedTaker}
-                              className="apple-btn rounded-lg bg-indigo-500 px-4 py-1.5 text-sm text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
-                            >
-                              {quickOrderMutation.isPending ? '接单中...' : '确认接单'}
-                            </button>
-                            <button
-                              onClick={() => {
-                                setInlineOrderId(null);
-                                setSelectedTask(null);
+                              value={takerSearch}
+                              onChange={(e) => {
+                                setTakerSearch(e.target.value);
                                 setSelectedTaker('');
-                                setTakerSearch('');
-                                setShowTakerDropdown(false);
-                                setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
+                                setShowTakerDropdown(true);
                               }}
-                              className="apple-btn rounded-lg border px-4 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              onFocus={() => setShowTakerDropdown(true)}
+                              placeholder="搜索接单人..."
+                              className={`w-56 rounded-lg border bg-card px-3 py-2 text-sm pr-8 apple-input ${
+                                selectedTaker ? 'border-emerald-500' : 'border-input'
+                              }`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowTakerDropdown(v => !v)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                             >
-                              取消
+                              <svg className={`h-3 w-3 transition-transform ${showTakerDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                             </button>
                           </div>
+                          {showTakerDropdown && (
+                            <div className="absolute z-10 mt-1 w-full max-h-40 overflow-y-auto rounded-md border bg-card shadow-lg">
+                              {takers
+                                .filter((t: any) => {
+                                  if (!takerSearch) return true;
+                                  const keyword = takerSearch.toLowerCase();
+                                  return (
+                                    (t.wechatName && t.wechatName.toLowerCase().includes(keyword)) ||
+                                    (t.wechatId && t.wechatId.toLowerCase().includes(keyword))
+                                  );
+                                })
+                                .slice(0, 30)
+                                .map((taker: any) => (
+                                  <div
+                                    key={taker.id}
+                                    onMouseDown={(e) => {
+                                      e.preventDefault();
+                                      setSelectedTaker(taker.id);
+                                      setTakerSearch(`${taker.wechatName}（${taker.wechatId}）`);
+                                      setShowTakerDropdown(false);
+                                    }}
+                                    className={`cursor-pointer px-3 py-1.5 text-sm hover:bg-accent ${
+                                      selectedTaker === taker.id ? 'bg-accent font-medium' : ''
+                                    }`}
+                                  >
+                                    {taker.wechatName} <span className="text-xs text-muted-foreground">{taker.wechatId}</span>
+                                  </div>
+                                ))
+                              }
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleConfirmQuickOrder()}
+                            disabled={quickOrderMutation.isPending || !selectedTaker}
+                            className="apple-btn rounded-lg bg-indigo-500 px-5 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
+                          >
+                            {quickOrderMutation.isPending ? '接单中...' : '确认接单'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setInlineOrderId(null);
+                              setSelectedTask(null);
+                              setSelectedTaker('');
+                              setTakerSearch('');
+                              setShowTakerDropdown(false);
+                              setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
+                            }}
+                            className="apple-btn rounded-lg border px-5 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                          >
+                            取消
+                          </button>
                         </div>
                       </div>
                     </td>
