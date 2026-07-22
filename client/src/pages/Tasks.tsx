@@ -374,7 +374,7 @@ export default function Tasks() {
   };
 
   const handleDelete = async (taskId: string) => {
-    if (await confirm({ message: '确定要删除这个任务吗？删除后关联的订单也会被删除。', variant: 'danger', confirmText: '删除' })) {
+    if (await confirm({ message: '确定要删除这个任务吗？注意：如果任务有关联订单，将无法删除。', variant: 'danger', confirmText: '删除' })) {
       deleteMutation.mutate(taskId);
     }
   };
