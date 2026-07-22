@@ -162,7 +162,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       existing.orderCount++;
       existing.totalRefund += order.totalRefund;
       if (order.isRefunded) existing.refundedCount++;
-      if (order.isGoodReview) existing.goodReviewCount++;
+      if (order.isGoodReview === 'reviewed') existing.goodReviewCount++;
       dailyMap.set(dateStr, existing);
     });
 
