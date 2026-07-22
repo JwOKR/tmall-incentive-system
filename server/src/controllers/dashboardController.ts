@@ -95,15 +95,43 @@ export const getIncentiveSummary = async (req: Request, res: Response) => {
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
-    // 检查缓存
-    const cached = getCached<Record<string, unknown>>('dashboard:stats');
+    // 支持日期范围筛选
+    const { startDate, endDate } = req.query;
+    
+    // 构建缓存key
+    const cacheKey = `dashboard:stats:${startDate || 'all'}:${endDate || 'all'}`;
+    const cached = getCached<Record<string, unknown>>(cacheKey);
     if (cached) {
       return res.json({ success: true, data: cached });
     }
 
-    // 并行执行所有独立查询，减少响应延迟
+    // 计算日期范围
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    
+    let dateFilter: Record<string, Date> = {};
+    let rangeLabel = '全部';
+    
+    if (startDate && endDate) {
+      // 自定义日期范围
+      const start = new Date(startDate as string);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(endDate as string);
+      end.setHours(23, 59, 59, 999);
+      dateFilter = { orderDate: { gte: start, lte: end } };
+      rangeLabel = `${startDate} 至 ${endDate}`;
+    } else if (startDate) {
+      // 从开始日期到今天
+      const start = new Date(startDate as string);
+      start.setHours(0, 0, 0, 0);
+      dateFilter = { orderDate: { gte: start } };
+      rangeLabel = `${startDate} 至今`;
+    } else {
+      // 默认：今日数据
+      dateFilter = { orderDate: { gte: today } };
+      rangeLabel = '今日';
+    }
+
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
@@ -114,20 +142,30 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       activeTaskCount,
       todayOrders,
       todayStats,
+      rangeOrders,
+      rangeStats,
       pendingRefundCount,
       pendingReviewCount,
       topTakers,
       recentOrders,
     ] = await Promise.all([
+      // 总数据（不受日期筛选影响）
       prisma.order.aggregate({
         _count: true,
         _sum: { actualPayment: true, totalRefund: true },
       }),
       prisma.orderTaker.count({ where: { status: 'active' } }),
       prisma.task.count({ where: { status: 'active' } }),
+      // 今日数据（始终显示）
       prisma.order.count({ where: { orderDate: { gte: today } } }),
       prisma.order.aggregate({
         where: { orderDate: { gte: today } },
+        _sum: { actualPayment: true, totalRefund: true },
+      }),
+      // 筛选范围数据
+      prisma.order.count({ where: dateFilter }),
+      prisma.order.aggregate({
+        where: dateFilter,
         _sum: { actualPayment: true, totalRefund: true },
       }),
       prisma.order.count({ where: { isRefunded: false } }),
@@ -178,14 +216,22 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       .sort((a, b) => b.date.localeCompare(a.date));
 
     const result = {
+      // 总数据
       totalOrders: orderStats._count,
       totalAmount: orderStats._sum.actualPayment || 0,
       totalRefund: orderStats._sum.totalRefund || 0,
       activeTakers: takerCount,
       activeTasks: activeTaskCount,
+      // 今日数据（始终显示）
       todayOrders,
       todayAmount: todayStats._sum.actualPayment || 0,
       todayReward: todayStats._sum.totalRefund || 0,
+      // 筛选范围数据
+      rangeLabel,
+      rangeOrders,
+      rangeAmount: rangeStats._sum.actualPayment || 0,
+      rangeReward: rangeStats._sum.totalRefund || 0,
+      // 待处理统计
       pendingRefundCount,
       pendingReviewCount,
       topTakers,
@@ -193,7 +239,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     };
 
     // 写入缓存
-    setCache('dashboard:stats', result);
+    setCache(cacheKey, result);
 
     res.json({ success: true, data: result });
   } catch (error) {
