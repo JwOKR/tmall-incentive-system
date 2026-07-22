@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
 import DatePicker from "@/components/DatePicker";
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi, remindApi } from '@/lib/api';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { useToast } from '@/components/Toast';
 import { DashboardSkeleton } from '@/components/Skeleton';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ShoppingCart,
   Users,
@@ -22,6 +22,8 @@ import {
   X,
   ListTodo,
   Sparkles,
+  RefreshCw,
+  Download,
 } from 'lucide-react';
 import {
   Chart as ChartJS,
@@ -53,14 +55,35 @@ ChartJS.register(
 
 export default function AppleDashboard() {
   const { success: toastSuccess, error: toastError } = useToast();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showRemind, setShowRemind] = useState(false);
   const [summaryText, setSummaryText] = useState('');
   const [showSummary, setShowSummary] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const summaryModalRef = useRef<HTMLDivElement>(null);
   const remindModalRef = useRef<HTMLDivElement>(null);
+  const trendChartRef = useRef<any>(null);
+  const topTakersChartRef = useRef<any>(null);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
+
+  const handleExportChart = (chartRef: any, filename: string) => {
+    if (chartRef.current) {
+      const url = chartRef.current.toBase64Image();
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = url;
+      link.click();
+    }
+  };
 
   useEffect(() => {
     if (showSummary && summaryModalRef.current) summaryModalRef.current.focus();
@@ -235,6 +258,14 @@ export default function AppleDashboard() {
               催单列表
             </button>
           </div>
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-all duration-200 hover:scale-105 active:scale-95 disabled:opacity-60"
+          >
+            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+            刷新数据
+          </button>
           <div className="flex items-center gap-2 text-sm text-muted-foreground apple-text-footnote">
             <Calendar className="h-4 w-4" />
             <span>{new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' })}</span>
@@ -596,18 +627,31 @@ export default function AppleDashboard() {
       <div className="grid gap-6 lg:grid-cols-3">
         {/* 接单趋势折线图 */}
         <div className="apple-card p-6 lg:col-span-2">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 bg-indigo-100 dark:bg-indigo-950/40 rounded-2xl">
-              <TrendingUp className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-indigo-100 dark:bg-indigo-950/40 rounded-2xl">
+                <TrendingUp className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <div>
+                <h3 className="apple-text-title-3">接单趋势</h3>
+                <p className="apple-text-footnote text-muted-foreground">点击数据点查看当日订单</p>
+              </div>
             </div>
-            <div>
-              <h3 className="apple-text-title-3">接单趋势</h3>
-              <p className="apple-text-footnote text-muted-foreground">最近7天订单数量变化</p>
-            </div>
+            <button
+              onClick={() => handleExportChart(trendChartRef, '接单趋势')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              导出图片
+            </button>
           </div>
           {stats?.dailySummary && stats.dailySummary.length > 0 ? (
-            <div className="h-[240px]">
-              <OrderTrendChart data={[...stats.dailySummary].reverse()} />
+            <div className="h-[240px] sm:h-[280px]">
+              <OrderTrendChart
+                data={[...stats.dailySummary].reverse()}
+                chartRef={trendChartRef}
+                onPointClick={(date) => navigate(`/orders?date=${date}`)}
+              />
             </div>
           ) : (
             <div className="flex items-center justify-center h-[240px] text-muted-foreground">
@@ -648,20 +692,33 @@ export default function AppleDashboard() {
             </div>
             <div>
               <h3 className="apple-text-title-3">接单人 TOP5</h3>
-              <p className="apple-text-footnote text-muted-foreground">按接单量排名</p>
+              <p className="apple-text-footnote text-muted-foreground">点击柱状条查看详情</p>
             </div>
           </div>
-          <Link
-            to="/takers"
-            className="apple-text-footnote text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium"
-          >
-            查看全部
-            <ArrowRight className="h-3 w-3" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => handleExportChart(topTakersChartRef, '接单人TOP5')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/80 transition-colors"
+            >
+              <Download className="h-3.5 w-3.5" />
+              导出图片
+            </button>
+            <Link
+              to="/takers"
+              className="apple-text-footnote text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium"
+            >
+              查看全部
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         </div>
         {stats?.topTakers && stats.topTakers.length > 0 ? (
-          <div className="h-[220px]">
-            <TopTakersChart data={stats.topTakers.slice(0, 5)} />
+          <div className="h-[220px] sm:h-[260px]">
+            <TopTakersChart
+              data={stats.topTakers.slice(0, 5)}
+              chartRef={topTakersChartRef}
+              onBarClick={(takerId) => navigate(`/takers/${takerId}`)}
+            />
           </div>
         ) : (
           <div className="flex items-center justify-center h-[220px] text-muted-foreground">
@@ -734,7 +791,7 @@ export default function AppleDashboard() {
 }
 
 // 接单趋势折线图组件
-function OrderTrendChart({ data }: { data: any[] }) {
+const OrderTrendChart = ({ data, chartRef, onPointClick }: { data: any[]; chartRef?: any; onPointClick?: (date: string) => void }) => {
   const isDark = document.documentElement.classList.contains('dark');
   const gridColor = isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(100, 116, 139, 0.1)';
   const textColor = isDark ? 'rgba(203, 213, 225, 0.7)' : 'rgba(100, 116, 139, 0.7)';
@@ -762,6 +819,12 @@ function OrderTrendChart({ data }: { data: any[] }) {
   const options = {
     responsive: true,
     maintainAspectRatio: false,
+    onClick: (_event: any, elements: any[]) => {
+      if (elements.length > 0 && onPointClick) {
+        const index = elements[0].index;
+        onPointClick(data[index].date);
+      }
+    },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -795,8 +858,8 @@ function OrderTrendChart({ data }: { data: any[] }) {
     },
   };
 
-  return <Line data={chartData} options={options} />;
-}
+  return <Line ref={chartRef} data={chartData} options={options} />;
+};
 
 // 返款状态环形图组件
 function RefundStatusChart({ data }: { data: any[] }) {
@@ -856,7 +919,7 @@ function RefundStatusChart({ data }: { data: any[] }) {
 }
 
 // 接单人TOP5横向柱状图组件
-function TopTakersChart({ data }: { data: any[] }) {
+const TopTakersChart = ({ data, chartRef, onBarClick }: { data: any[]; chartRef?: any; onBarClick?: (takerId: string) => void }) => {
   const isDark = document.documentElement.classList.contains('dark');
   const gridColor = isDark ? 'rgba(148, 163, 184, 0.1)' : 'rgba(100, 116, 139, 0.1)';
   const textColor = isDark ? 'rgba(203, 213, 225, 0.7)' : 'rgba(100, 116, 139, 0.7)';
@@ -888,6 +951,12 @@ function TopTakersChart({ data }: { data: any[] }) {
     indexAxis: 'y' as const,
     responsive: true,
     maintainAspectRatio: false,
+    onClick: (_event: any, elements: any[]) => {
+      if (elements.length > 0 && onBarClick) {
+        const index = elements[0].index;
+        onBarClick(data[index].id);
+      }
+    },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -924,5 +993,5 @@ function TopTakersChart({ data }: { data: any[] }) {
     },
   };
 
-  return <Bar data={chartData} options={options} />;
-}
+  return <Bar ref={chartRef} data={chartData} options={options} />;
+};
