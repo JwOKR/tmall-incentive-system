@@ -425,8 +425,10 @@ export default function AppleDashboard() {
               <Calendar className="h-6 w-6 text-sky-600 dark:text-sky-400" />
             </div>
             <div>
-              <h3 className="apple-text-title-3">今日数据</h3>
-              <p className="apple-text-footnote text-muted-foreground">今日订单统计</p>
+              <h3 className="apple-text-title-3">{stats?.rangeLabel || '今日'}数据</h3>
+              <p className="apple-text-footnote text-muted-foreground">
+                {stats?.rangeLabel === '今日' ? '今日订单统计' : `${stats?.rangeLabel || ''}订单统计`}
+              </p>
             </div>
           </div>
           <div className="space-y-4">
@@ -435,27 +437,27 @@ export default function AppleDashboard() {
                 <div className="w-8 h-8 rounded-xl bg-sky-100 dark:bg-sky-950/40 flex items-center justify-center">
                   <ShoppingCart className="h-4 w-4 text-sky-600 dark:text-sky-400" />
                 </div>
-                <span className="apple-text-body">今日接单</span>
+                <span className="apple-text-body">{stats?.rangeLabel || '今日'}接单</span>
               </div>
-              <span className="apple-text-title-3 tabular-nums">{stats?.todayOrders || 0}</span>
+              <span className="apple-text-title-3 tabular-nums">{stats?.rangeOrders || stats?.todayOrders || 0}</span>
             </div>
             <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/40 rounded-2xl">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
                   <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <span className="apple-text-body">今日金额</span>
+                <span className="apple-text-body">{stats?.rangeLabel || '今日'}金额</span>
               </div>
-              <span className="apple-text-title-3 tabular-nums">{formatCurrency(stats?.todayAmount || 0)}</span>
+              <span className="apple-text-title-3 tabular-nums">{formatCurrency(stats?.rangeAmount || stats?.todayAmount || 0)}</span>
             </div>
             <div className="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
                   <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
-                <span className="apple-text-body">今日返款</span>
+                <span className="apple-text-body">{stats?.rangeLabel || '今日'}返款</span>
               </div>
-              <span className="apple-text-title-3 text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(stats?.todayReward || 0)}</span>
+              <span className="apple-text-title-3 text-emerald-600 dark:text-emerald-400 tabular-nums">{formatCurrency(stats?.rangeReward || stats?.todayReward || 0)}</span>
             </div>
           </div>
         </div>
