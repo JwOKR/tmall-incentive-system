@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi, takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -26,7 +26,7 @@ export default function Tasks() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const debouncedSearch = useDebouncedValue(search, 300);
-  const [showQuickOrder, setShowQuickOrder] = useState(false);
+  const [inlineOrderId, setInlineOrderId] = useState<string | null>(null);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedTaker, setSelectedTaker] = useState('');
   const [takerSearch, setTakerSearch] = useState('');
@@ -141,7 +141,7 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-      setShowQuickOrder(false);
+      setInlineOrderId(null);
       setSelectedTask(null);
       setSelectedTaker('');
       setTakerSearch('');
@@ -312,10 +312,11 @@ export default function Tasks() {
   const renderStatusSelect = (task: any) => {
     const editing = isEditing(task.id, 'status');
     const statusOptions = [
-      { value: 'refunded', label: '已返款', color: 'badge-warning' },
-      { value: 'active', label: '进行中', color: 'badge-success' },
-      { value: 'completed', label: '已完成', color: 'badge-info' },
-      { value: 'cancelled', label: '已取消', color: 'badge-danger' },
+      { value: 'pending', label: '待接单', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' },
+      { value: 'active', label: '进行中', color: 'bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400' },
+      { value: 'refunded', label: '已返款', color: 'bg-amber-100 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400' },
+      { value: 'completed', label: '已完成', color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400' },
+      { value: 'cancelled', label: '已取消', color: 'bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400' },
     ];
     const currentOption = statusOptions.find(opt => opt.value === task.status);
     
@@ -457,11 +458,11 @@ export default function Tasks() {
 
   const handleQuickOrder = (task: any, event: React.MouseEvent) => {
     setSelectedTask(task);
+    setInlineOrderId(task.id);
     setTakerSearch('');
     setSelectedTaker('');
     setShowTakerDropdown(false);
     setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
-    setShowQuickOrder(true);
   };
 
   const handleConfirmQuickOrder = (force = false) => {
@@ -592,6 +593,7 @@ export default function Tasks() {
           className="apple-input rounded-xl border bg-card px-3 py-2 text-sm"
         >
           <option value="">全部状态</option>
+          <option value="pending">待接单</option>
           <option value="active">进行中</option>
           <option value="refunded">已返款</option>
           <option value="completed">已完成</option>
@@ -649,175 +651,6 @@ export default function Tasks() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Quick Order Modal */}
-      {showQuickOrder && selectedTask && (
-        <>
-          <div
-            className="drawer-overlay"
-            onClick={() => { setShowQuickOrder(false); setSelectedTask(null); setSelectedTaker(''); setTakerSearch(''); setShowTakerDropdown(false); setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }); }}
-            onKeyDown={(e) => e.key === 'Escape' && (setShowQuickOrder(false), setSelectedTask(null), setSelectedTaker(''), setTakerSearch(''), setShowTakerDropdown(false), setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' }))}
-            tabIndex={-1}
-          />
-          <div
-            className="drawer-content flex flex-col"
-            style={{ maxWidth: '20rem' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="p-4">
-            <h3 className="text-lg font-semibold mb-3">快速接单</h3>
-            <div className="space-y-4">
-              <div className="rounded-xl border p-4 bg-slate-50 dark:bg-slate-900/40">
-                <p className="font-medium">商品ID: {selectedTask.productId || '未填写'}</p>
-                <p className="text-sm text-muted-foreground">产品编号: {selectedTask.productCode || '未填写'}</p>
-                <p className="text-sm text-muted-foreground">商品价格: {formatCurrency(selectedTask.price)}</p>
-                <div className="border-t mt-2 pt-2">
-                  <p className="text-sm text-muted-foreground">基础返佣: {formatCurrency(selectedTask.baseCommission)}</p>
-                  <p className="text-sm text-muted-foreground">好评返佣: {formatCurrency(selectedTask.reviewReward)}</p>
-                  <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                    总返款: {formatCurrency(selectedTask.price + selectedTask.baseCommission + selectedTask.reviewReward)}
-                  </p>
-                </div>
-                <p className="text-sm mt-2">
-                  剩余名额: <span className="font-bold text-indigo-600 dark:text-indigo-400">{selectedTask.maxOrders - selectedTask.currentOrders}人</span>
-                </p>
-              </div>
-              <div>
-                <label className="text-sm font-medium">选择接单人 *</label>
-                <div className="relative mt-1" ref={takerDropdownRef}>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      value={takerSearch}
-                      onChange={(e) => {
-                        setTakerSearch(e.target.value);
-                        setSelectedTaker('');
-                        setShowTakerDropdown(true);
-                      }}
-                      onFocus={() => setShowTakerDropdown(true)}
-                      placeholder="点击展开或输入搜索..."
-                      className={`w-full rounded-lg border bg-card px-3 py-2 text-sm pr-8 apple-input ${
-                        selectedTaker ? 'border-emerald-500' : 'border-input'
-                      }`}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowTakerDropdown(v => !v)}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <svg className={`h-4 w-4 transition-transform ${showTakerDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                  </div>
-                  {showTakerDropdown && (
-                    <div className="absolute z-10 mt-1 w-full max-h-52 overflow-y-auto rounded-md border bg-card shadow-lg">
-                      {takers
-                        .filter((t: any) => {
-                          if (!takerSearch) return true;
-                          const keyword = takerSearch.toLowerCase();
-                          return (
-                            (t.wechatName && t.wechatName.toLowerCase().includes(keyword)) ||
-                            (t.wechatId && t.wechatId.toLowerCase().includes(keyword))
-                          );
-                        })
-                        .slice(0, 50)
-                        .map((taker: any) => (
-                          <div
-                            key={taker.id}
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              setSelectedTaker(taker.id);
-                              setTakerSearch(`${taker.wechatName}（${taker.wechatId}）`);
-                              setShowTakerDropdown(false);
-                            }}
-                            className={`cursor-pointer px-3 py-2 text-sm hover:bg-accent flex items-center justify-between ${
-                              selectedTaker === taker.id ? 'bg-accent font-medium' : ''
-                            }`}
-                          >
-                            <span>{taker.wechatName}</span>
-                            <span className="text-xs text-muted-foreground">{taker.wechatId}</span>
-                          </div>
-                        ))
-                      }
-                      {takers.filter((t: any) => {
-                        if (!takerSearch) return true;
-                        const keyword = takerSearch.toLowerCase();
-                        return (
-                          (t.wechatName && t.wechatName.toLowerCase().includes(keyword)) ||
-                          (t.wechatId && t.wechatId.toLowerCase().includes(keyword))
-                        );
-                      }).length === 0 && (
-                        <div className="px-3 py-2 text-sm text-muted-foreground">未找到匹配的接单人</div>
-                      )}
-                    </div>
-                  )}
-                </div>
-                {selectedTaker && (
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1 flex items-center gap-1">
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                    已选择接单人
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="text-sm font-medium">订单号（淘宝）</label>
-                <input
-                  type="text"
-                  value={quickOrderForm.orderNo}
-                  onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo: e.target.value })}
-                  placeholder="选填"
-                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm apple-input"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">19位订单号</label>
-                <input
-                  type="text"
-                  value={quickOrderForm.orderNo19}
-                  onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo19: e.target.value })}
-                  placeholder="选填"
-                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm apple-input"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">实付款（元）</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={quickOrderForm.actualPayment}
-                  onChange={(e) => setQuickOrderForm({ ...quickOrderForm, actualPayment: e.target.value })}
-                  placeholder="选填，默认 0"
-                  className="mt-1 w-full rounded-lg border bg-card px-3 py-2 text-sm apple-input"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowQuickOrder(false);
-                    setSelectedTask(null);
-                    setSelectedTaker('');
-                    setTakerSearch('');
-                    setShowTakerDropdown(false);
-                    setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
-                  }}
-                  className="apple-btn rounded-xl border px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={() => handleConfirmQuickOrder()}
-                  disabled={quickOrderMutation.isPending}
-                  className="apple-btn rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50"
-                >
-                  {quickOrderMutation.isPending ? '接单中...' : '确认接单'}
-                </button>
-              </div>
-            </div>
-            </div>
-          </div>
-        </>
       )}
 
       {/* Batch Actions */}
@@ -895,7 +728,7 @@ export default function Tasks() {
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>状态</div>
-                <ColumnFilter type="select" value={columnFilters['status'] || ''} onChange={(v) => setColFilter('status', v)} options={[{ value: 'active', label: '进行中' }, { value: 'refunded', label: '已返款' }, { value: 'completed', label: '已完成' }, { value: 'cancelled', label: '已取消' }]} />
+                <ColumnFilter type="select" value={columnFilters['status'] || ''} onChange={(v) => setColFilter('status', v)} options={[{ value: 'pending', label: '待接单' }, { value: 'active', label: '进行中' }, { value: 'refunded', label: '已返款' }, { value: 'completed', label: '已完成' }, { value: 'cancelled', label: '已取消' }]} />
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>发布日期</div>
@@ -978,8 +811,8 @@ export default function Tasks() {
                 </td>
                 <td className="px-4 py-2 text-muted-foreground">0人</td>
                 <td className="px-4 py-2">
-                  <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium badge-success">
-                    进行中
+                  <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                    待接单
                   </span>
                 </td>
                 <td className="px-4 py-2 text-muted-foreground">
@@ -1020,7 +853,8 @@ export default function Tasks() {
               </tr>
             ) : (
               filteredTasks.map((task: any) => (
-                <tr key={task.id} className={`table-row-hover table-row-zebra ${selectedIds.has(task.id) ? 'table-row-selected' : ''}`}>
+                <Fragment key={task.id}>
+                <tr className={`table-row-hover table-row-zebra ${selectedIds.has(task.id) ? 'table-row-selected' : ''} ${inlineOrderId === task.id ? 'bg-indigo-50/30 dark:bg-indigo-950/10' : ''}`}>
                   <td className="px-4 py-2">
                     <button
                       onClick={() => handleSelectOne(task.id)}
@@ -1083,7 +917,7 @@ export default function Tasks() {
                     <div className="flex items-center justify-end gap-1">
                       <button
                         onClick={(e) => handleQuickOrder(task, e)}
-                        disabled={task.currentOrders >= task.maxOrders || task.status !== 'active'}
+                        disabled={task.currentOrders >= task.maxOrders || (task.status !== 'active' && task.status !== 'pending')}
                         className="apple-btn p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         title="快速接单"
                       >
@@ -1099,6 +933,138 @@ export default function Tasks() {
                     </div>
                   </td>
                 </tr>
+                {inlineOrderId === task.id && (
+                  <tr className="border-b bg-indigo-50/50 dark:bg-indigo-950/20">
+                    <td colSpan={12} className="px-6 py-4">
+                      <div className="flex items-start gap-6 flex-wrap">
+                        <div className="rounded-lg border p-3 bg-white dark:bg-slate-900/40 min-w-[200px]">
+                          <p className="text-sm font-medium">商品: {task.productId || task.productCode || '未填写'}</p>
+                          <p className="text-xs text-muted-foreground mt-1">价格: {formatCurrency(task.price)}</p>
+                          <p className="text-xs text-emerald-600 dark:text-emerald-400 mt-1">
+                            总返款: {formatCurrency(task.price + task.baseCommission + task.reviewReward)}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            剩余名额: <span className="font-bold text-indigo-600 dark:text-indigo-400">{task.maxOrders - task.currentOrders}人</span>
+                          </p>
+                        </div>
+                        <div className="flex-1 flex flex-wrap gap-4 items-end">
+                          <div className="relative" ref={takerDropdownRef}>
+                            <label className="text-xs font-medium text-muted-foreground">接单人 *</label>
+                            <div className="relative mt-1">
+                              <input
+                                type="text"
+                                value={takerSearch}
+                                onChange={(e) => {
+                                  setTakerSearch(e.target.value);
+                                  setSelectedTaker('');
+                                  setShowTakerDropdown(true);
+                                }}
+                                onFocus={() => setShowTakerDropdown(true)}
+                                placeholder="搜索接单人..."
+                                className={`w-48 rounded-lg border bg-card px-3 py-1.5 text-sm pr-8 apple-input ${
+                                  selectedTaker ? 'border-emerald-500' : 'border-input'
+                                }`}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowTakerDropdown(v => !v)}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              >
+                                <svg className={`h-3 w-3 transition-transform ${showTakerDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                              </button>
+                            </div>
+                            {showTakerDropdown && (
+                              <div className="absolute z-10 mt-1 w-full max-h-40 overflow-y-auto rounded-md border bg-card shadow-lg">
+                                {takers
+                                  .filter((t: any) => {
+                                    if (!takerSearch) return true;
+                                    const keyword = takerSearch.toLowerCase();
+                                    return (
+                                      (t.wechatName && t.wechatName.toLowerCase().includes(keyword)) ||
+                                      (t.wechatId && t.wechatId.toLowerCase().includes(keyword))
+                                    );
+                                  })
+                                  .slice(0, 30)
+                                  .map((taker: any) => (
+                                    <div
+                                      key={taker.id}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        setSelectedTaker(taker.id);
+                                        setTakerSearch(`${taker.wechatName}（${taker.wechatId}）`);
+                                        setShowTakerDropdown(false);
+                                      }}
+                                      className={`cursor-pointer px-3 py-1.5 text-sm hover:bg-accent ${
+                                        selectedTaker === taker.id ? 'bg-accent font-medium' : ''
+                                      }`}
+                                    >
+                                      {taker.wechatName} <span className="text-xs text-muted-foreground">{taker.wechatId}</span>
+                                    </div>
+                                  ))
+                                }
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">订单号</label>
+                            <input
+                              type="text"
+                              value={quickOrderForm.orderNo}
+                              onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo: e.target.value })}
+                              placeholder="选填"
+                              className="mt-1 w-36 rounded-lg border bg-card px-3 py-1.5 text-sm apple-input"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">19位订单号</label>
+                            <input
+                              type="text"
+                              value={quickOrderForm.orderNo19}
+                              onChange={(e) => setQuickOrderForm({ ...quickOrderForm, orderNo19: e.target.value })}
+                              placeholder="选填"
+                              className="mt-1 w-36 rounded-lg border bg-card px-3 py-1.5 text-sm apple-input"
+                            />
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-muted-foreground">实付款（元）</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              min="0"
+                              value={quickOrderForm.actualPayment}
+                              onChange={(e) => setQuickOrderForm({ ...quickOrderForm, actualPayment: e.target.value })}
+                              placeholder="0"
+                              className="mt-1 w-24 rounded-lg border bg-card px-3 py-1.5 text-sm apple-input"
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleConfirmQuickOrder()}
+                              disabled={quickOrderMutation.isPending || !selectedTaker}
+                              className="apple-btn rounded-lg bg-indigo-500 px-4 py-1.5 text-sm text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
+                            >
+                              {quickOrderMutation.isPending ? '接单中...' : '确认接单'}
+                            </button>
+                            <button
+                              onClick={() => {
+                                setInlineOrderId(null);
+                                setSelectedTask(null);
+                                setSelectedTaker('');
+                                setTakerSearch('');
+                                setShowTakerDropdown(false);
+                                setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
+                              }}
+                              className="apple-btn rounded-lg border px-4 py-1.5 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                            >
+                              取消
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               ))
             )}
           </tbody>
