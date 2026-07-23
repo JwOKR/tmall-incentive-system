@@ -873,13 +873,15 @@ export default function Tasks() {
                   <td className="px-4 py-2">
                     {renderEditableCell(task, 'productCode')}
                   </td>
-                  <td className="px-4 py-2">
+                  <td className="px-4 py-2 max-w-[200px]">
                     <div className="flex items-center gap-1">
-                      {renderEditableCell(task, 'taoToken')}
+                      <div className="overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0" title={task.taoToken || ''}>
+                        {renderEditableCell(task, 'taoToken')}
+                      </div>
                       {task.taoToken && (
                         <button
                           onClick={() => handleCopyTaoToken(task.taoToken)}
-                          className="p-1 hover:bg-accent rounded"
+                          className="p-1 hover:bg-accent rounded shrink-0"
                           title="复制淘口令"
                         >
                           <Copy className="h-3 w-3" />
