@@ -14,10 +14,27 @@ function HoverPreview({ content, children }: { content: string; children: React.
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const handleMouseEnter = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    setPosition({ x: rect.left, y: rect.bottom + 8 });
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    let x = rect.left;
+    let y = rect.bottom + 8;
+    
+    // 确保不超出右边框
+    if (x + 400 > viewportWidth) {
+      x = viewportWidth - 410;
+    }
+    
+    // 确保不超出下边框
+    if (y + 100 > viewportHeight) {
+      y = rect.top - 108;
+    }
+    
+    setPosition({ x: Math.max(10, x), y: Math.max(10, y) });
     setShow(true);
   };
 
@@ -28,6 +45,7 @@ function HoverPreview({ content, children }: { content: string; children: React.
       {children}
       {show && (
         <div
+          ref={previewRef}
           className="fixed z-50 max-w-[400px] p-3 bg-popover border rounded-xl shadow-lg text-sm break-all animate-in fade-in-0 zoom-in-95"
           style={{ left: position.x, top: position.y }}
         >
