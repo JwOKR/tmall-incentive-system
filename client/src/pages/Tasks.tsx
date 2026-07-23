@@ -10,7 +10,7 @@ import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { useToast } from '@/components/Toast';
 
 // 悬停预览组件
-function HoverPreview({ content, children }: { content: string; children: React.ReactNode }) {
+function HoverPreview({ content, children, className = '' }: { content: string; children: React.ReactNode; className?: string }) {
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -41,7 +41,7 @@ function HoverPreview({ content, children }: { content: string; children: React.
   if (!content) return <>{children}</>;
 
   return (
-    <div ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={() => setShow(false)} className="relative">
+    <div ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={() => setShow(false)} className={`relative ${className}`}>
       {children}
       {show && (
         <div
@@ -920,12 +920,36 @@ export default function Tasks() {
                   <td className="px-4 py-2">
                     {renderEditableCell(task, 'productCode')}
                   </td>
-                  <td className="px-4 py-2 max-w-[200px]">
-                    <div className="flex items-center gap-1">
-                      <HoverPreview content={task.taoToken || ''}>
-                        <div className="overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0 cursor-help">
-                          {renderEditableCell(task, 'taoToken')}
-                        </div>
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-1 max-w-[200px]">
+                      <HoverPreview content={task.taoToken || ''} className="flex-1 min-w-0 overflow-hidden">
+                        {isEditing(task.id, 'taoToken') ? (
+                          <div className="flex items-center gap-1">
+                            <input
+                              ref={inputRef}
+                              type="text"
+                              value={editValue}
+                              onChange={(e) => setEditValue(e.target.value)}
+                              onBlur={() => handleSave(task.id)}
+                              onKeyDown={(e) => handleKeyDown(e, task.id)}
+                              className="w-full rounded border border-primary px-2 py-1 text-sm bg-background"
+                            />
+                            <button
+                              onClick={() => handleSave(task.id)}
+                              className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded shrink-0"
+                            >
+                              <Save className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <div
+                            onClick={() => handleCellClick(task.id, 'taoToken', task.taoToken)}
+                            className="cursor-pointer hover:bg-accent px-2 py-1 rounded min-h-[28px] flex items-center overflow-hidden text-ellipsis whitespace-nowrap"
+                            title="点击编辑"
+                          >
+                            {task.taoToken || '-'}
+                          </div>
+                        )}
                       </HoverPreview>
                       {task.taoToken && (
                         <button
