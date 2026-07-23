@@ -11,7 +11,7 @@ import OrderDrawer from '@/components/OrderDrawer';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { orderColumns } from '@/lib/export';
-import { usePermissions } from '@/lib/permissions';
+import { usePermissions, NoPermission } from '@/lib/permissions';
 
 interface EditingCell {
   orderId: string;
@@ -22,12 +22,16 @@ export default function Orders() {
   const queryClient = useQueryClient();
   const { success: toastSuccess, error: toastError } = useToast();
   const { confirm } = useConfirm();
-  const { canEdit } = usePermissions();
+  const { canView, canEdit } = usePermissions();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [refundFilter, setRefundFilter] = useState('');
   const [reviewFilter, setReviewFilter] = useState('');
   const [drawerOrderId, setDrawerOrderId] = useState<string | null>(null);
+
+  if (!canView('orders')) {
+    return <NoPermission />;
+  }
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
