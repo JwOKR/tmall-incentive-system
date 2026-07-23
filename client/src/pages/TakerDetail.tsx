@@ -12,10 +12,16 @@ import {
   CheckCircle,
   Clock,
 } from 'lucide-react';
+import { usePermissions, NoPermission } from '@/lib/permissions';
 
 export default function TakerDetail() {
   const { id } = useParams<{ id: string }>();
   const [page, setPage] = useState(1);
+  const { canView } = usePermissions();
+
+  if (!canView('takers')) {
+    return <NoPermission />;
+  }
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['taker-detail', id, page],
