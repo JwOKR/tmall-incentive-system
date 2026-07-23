@@ -36,6 +36,8 @@ services:
     container_name: tmall-incentive-web
     ports:
       - "5678:80"
+    environment:
+      - TZ=Asia/Shanghai
     depends_on:
       - api
     restart: unless-stopped
