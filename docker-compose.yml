@@ -11,7 +11,7 @@ services:
       - NODE_ENV=production
       - PORT=3001
       - TZ=Asia/Shanghai
-      - DATABASE_URL=mysql://tmall:yw551129@host.docker.internal:3306/tmall_incentive?timezone=%2B08%3A00
+      - DATABASE_URL=mysql://tmall:yw551129@host.docker.internal:3306/tmall_incentive?timezone=local
       - JWT_SECRET=tmall-jwt-secret-2026-yw551129
       - ADMIN_USERNAME=JIA
       - ADMIN_PASSWORD=yw551129
