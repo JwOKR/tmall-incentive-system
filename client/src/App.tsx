@@ -25,6 +25,7 @@ const RepeatDiscounts = lazy(() => import('./pages/RepeatDiscounts'));
 const TakerDetail = lazy(() => import('./pages/TakerDetail'));
 const Settings = lazy(() => import('./pages/Settings'));
 const Login = lazy(() => import('./pages/Login'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -179,6 +180,7 @@ function AppRoutes() {
             </ProtectedLayout>
           }
         />
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </Suspense>
   );
