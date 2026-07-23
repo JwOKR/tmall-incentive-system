@@ -18,7 +18,7 @@ model User {
   role        String   @default("admin") // admin, user
   permissions String?  @db.Text // JSON格式权限: {orders:{view:true,edit:true}, takers:{view:true,edit:false}, ...}
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime @default(now())
 
   logs        Log[]
 
@@ -34,7 +34,7 @@ model OrderTaker {
   totalOrders Int      @default(0)
   totalAmount Float    @default(0)
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  updatedAt   DateTime @default(now())
   
   orders      Order[]
   
@@ -56,7 +56,7 @@ model Task {
   currentOrders   Int      @default(0) // 已接人数
   status          String   @default("pending") // pending待接单, active进行中, refunded已返款, completed已完成, cancelled已取消
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
   
   orders          Order[]
   
@@ -96,7 +96,7 @@ model Order {
   
   remark              String?   // 备注
   createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  updatedAt           DateTime  @default(now())
   
   task                Task?     @relation(fields: [taskId], references: [id])
   taker               OrderTaker? @relation(fields: [takerId], references: [id])
@@ -138,7 +138,7 @@ model SystemSetting {
   value     String   // 设置值
   group     String   @default("general") // 分组：general, ai
   label     String?  // 显示名称
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   @@index([key])
   @@index([group])
@@ -163,7 +163,7 @@ model RepeatDiscount {
   g2PaymentItems  Int      @default(0) // 支付件数（件）
 
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime @default(now())
 
   @@index([recordDate])
   @@map("repeat_discounts")
@@ -180,7 +180,7 @@ model RepeatDiscountAnalysis {
   model     String?  // AI模型名称
   rawText   String?  @db.Text // AI原始返回文本
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   @@index([type, scopeKey])
   @@map("repeat_discount_analyses")
