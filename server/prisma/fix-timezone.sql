@@ -32,4 +32,4 @@ UPDATE repeat_discounts SET recordDate = DATE_ADD(recordDate, INTERVAL 8 HOUR), 
 UPDATE repeat_discount_analyses SET createdAt = DATE_ADD(createdAt, INTERVAL 8 HOUR), updatedAt = DATE_ADD(updatedAt, INTERVAL 8 HOUR);
 
 -- 验证：检查修正后的时间是否正确（应该显示北京时间）
-SELECT NOW() AS current_time, createdat AS sample_user_time FROM users LIMIT 1;
+SELECT NOW() AS now_time, createdAt AS sample_user_time FROM users LIMIT 1;
