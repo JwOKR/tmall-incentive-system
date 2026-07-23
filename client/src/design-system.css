@@ -335,14 +335,14 @@
   color: var(--apple-text-primary);
   background-color: var(--apple-bg-primary);
   border: 1px solid var(--apple-separator-opaque);
-  border-radius: var(--apple-radius-md);
-  transition: all var(--apple-duration-fast) var(--apple-ease-out);
+  border-radius: 12px;
+  transition: all 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
   outline: none;
 }
 
 .apple-input:focus {
-  border-color: var(--apple-blue);
-  box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+  border-color: hsl(16, 80%, 70%);
+  box-shadow: 0 0 0 4px hsl(16, 80%, 70%, 0.15);
 }
 
 .apple-input::placeholder {
