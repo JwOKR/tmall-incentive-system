@@ -12,7 +12,21 @@ function getGitHash(): string {
 }
 
 function getBuildTime(): string {
-  return process.env.VITE_BUILD_TIME || new Date().toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+  if (process.env.VITE_BUILD_TIME) {
+    return process.env.VITE_BUILD_TIME;
+  }
+  const now = new Date();
+  const beijingTime = now.toLocaleString('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  }).replace(/\//g, '-');
+  return beijingTime;
 }
 
 // https://vitejs.dev/config/
