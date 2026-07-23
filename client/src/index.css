@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import './design-system.css';
+
 /* ═══════════════════════════════════════════════════════════════
    DESIGN SYSTEM v2.0 — Premium UI
    Inspired by: Linear, Stripe, Vercel, Apple
