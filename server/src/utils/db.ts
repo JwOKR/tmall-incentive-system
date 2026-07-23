@@ -5,42 +5,67 @@ const prisma = new PrismaClient({
 });
 
 // Prisma 5.10 的 @default(now()) 用 new Date() 生成 UTC 时间
-// 此 middleware 将所有 DateTime 字段从 UTC 转为北京时间（+8 小时）
+// 此 middleware 强制将 DateTime 字段设为北京时间，覆盖 Prisma 的 UTC 默认值
 const TIMEZONE_OFFSET_MS = 8 * 60 * 60 * 1000;
-const DATETIME_FIELDS = ['createdAt', 'updatedAt', 'publishDate', 'orderDate', 'refundDate', 'reviewCommissionDate', 'recordDate'];
 
-function toBeijingTime(value: any): any {
-  if (value instanceof Date) {
-    return new Date(value.getTime() + TIMEZONE_OFFSET_MS);
-  }
-  return value;
+function nowBeijing(): Date {
+  return new Date(Date.now() + TIMEZONE_OFFSET_MS);
 }
 
-function convertDataTimeFields(data: any): any {
+// create 操作时强制设置 createdAt/updatedAt 为北京时间
+const CREATE_FIELDS = ['createdAt', 'updatedAt', 'publishDate', 'orderDate', 'recordDate'];
+
+function forceBeijingOnCreate(data: any): any {
   if (!data || typeof data !== 'object') return data;
   if (Array.isArray(data)) {
-    return data.map(convertDataTimeFields);
+    return data.map(item => forceBeijingOnCreate(item));
   }
   const result = { ...data };
-  for (const field of DATETIME_FIELDS) {
-    if (field in result) {
-      result[field] = toBeijingTime(result[field]);
+  const now = nowBeijing();
+  for (const field of CREATE_FIELDS) {
+    // 如果用户没传该字段，或者传的是 Date 对象（Prisma 生成的 UTC），都强制覆盖为北京时间
+    if (!result[field] || result[field] instanceof Date) {
+      result[field] = now;
     }
   }
   return result;
 }
 
+// update 操作时将 updatedAt 设为北京时间
+function forceBeijingOnUpdate(data: any): any {
+  if (!data || typeof data !== 'object') return data;
+  const result = { ...data };
+  if ('updatedAt' in result && (!result.updatedAt || result.updatedAt instanceof Date)) {
+    result.updatedAt = nowBeijing();
+  }
+  return result;
+}
+
 prisma.$use(async (params, next) => {
-  const actions = ['create', 'createMany', 'update', 'updateMany', 'upsert'];
-  if (actions.includes(params.action) && params.args?.data) {
-    params.args.data = convertDataTimeFields(params.args.data);
+  // create / createMany：强制所有时间字段为北京时间
+  if (params.action === 'create' || params.action === 'createMany') {
+    if (params.args?.data) {
+      params.args.data = forceBeijingOnCreate(params.args.data);
+    }
   }
-  if (params.action === 'upsert' && params.args?.create) {
-    params.args.create = convertDataTimeFields(params.args.create);
+
+  // update / updateMany：updatedAt 强制北京时间
+  if (params.action === 'update' || params.action === 'updateMany') {
+    if (params.args?.data) {
+      params.args.data = forceBeijingOnUpdate(params.args.data);
+    }
   }
-  if (params.action === 'upsert' && params.args?.update) {
-    params.args.update = convertDataTimeFields(params.args.update);
+
+  // upsert：create 和 update 分别处理
+  if (params.action === 'upsert') {
+    if (params.args?.create) {
+      params.args.create = forceBeijingOnCreate(params.args.create);
+    }
+    if (params.args?.update) {
+      params.args.update = forceBeijingOnUpdate(params.args.update);
+    }
   }
+
   return next(params);
 });
 
