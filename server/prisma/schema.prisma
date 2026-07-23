@@ -17,8 +17,8 @@ model User {
   password    String   // bcrypt加密密码
   role        String   @default("admin") // admin, user
   permissions String?  @db.Text // JSON格式权限: {orders:{view:true,edit:true}, takers:{view:true,edit:false}, ...}
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now())
+  createdAt   DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updatedAt   DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   logs        Log[]
 
@@ -33,8 +33,8 @@ model OrderTaker {
   status      String   @default("active") // active, inactive, suspended
   totalOrders Int      @default(0)
   totalAmount Float    @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now())
+  createdAt   DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updatedAt   DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
   
   orders      Order[]
   
@@ -45,7 +45,7 @@ model OrderTaker {
 // 任务管理（发布任务）
 model Task {
   id              String   @id @default(cuid())
-  publishDate     DateTime @default(now()) // 发布日期
+  publishDate     DateTime @default(dbgenerated("CURRENT_TIMESTAMP")) // 发布日期
   productId       String   // 商品ID
   productCode     String   // 产品编号
   taoToken        String?  @unique // 淘口令（唯一，空白时允许多条）
@@ -55,8 +55,8 @@ model Task {
   maxOrders       Int      @default(1) // 限接人数，默认1人
   currentOrders   Int      @default(0) // 已接人数
   status          String   @default("pending") // pending待接单, active进行中, refunded已返款, completed已完成, cancelled已取消
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @default(now())
+  createdAt       DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updatedAt       DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
   
   orders          Order[]
   
@@ -69,7 +69,7 @@ model Task {
 // 订单明细（接单后自动生成）
 model Order {
   id                  String    @id @default(cuid())
-  orderDate           DateTime  @default(now()) // 接单日期
+  orderDate           DateTime  @default(dbgenerated("CURRENT_TIMESTAMP")) // 接单日期
   taskId              String?   // 关联任务（可选）
   takerId             String?   // 接单人（可选）
   
@@ -95,8 +95,8 @@ model Order {
   reviewCommissionDate DateTime? // 好评返佣日期
   
   remark              String?   // 备注
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @default(now())
+  createdAt           DateTime  @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updatedAt           DateTime  @default(dbgenerated("CURRENT_TIMESTAMP"))
   
   task                Task?     @relation(fields: [taskId], references: [id])
   taker               OrderTaker? @relation(fields: [takerId], references: [id])
@@ -120,7 +120,7 @@ model Log {
   action      String   // create, update, delete, status_change
   detail      String
   ipAddress   String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
   
   order       Order?   @relation(fields: [orderId], references: [id])
   user        User?    @relation(fields: [userId], references: [id])
@@ -138,7 +138,7 @@ model SystemSetting {
   value     String   // 设置值
   group     String   @default("general") // 分组：general, ai
   label     String?  // 显示名称
-  updatedAt DateTime @default(now())
+  updatedAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   @@index([key])
   @@index([group])
@@ -162,8 +162,8 @@ model RepeatDiscount {
   g2PaymentBuyers Int      @default(0) // 支付买家数（人）
   g2PaymentItems  Int      @default(0) // 支付件数（件）
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @default(now())
+  createdAt       DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updatedAt       DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   @@index([recordDate])
   @@map("repeat_discounts")
@@ -179,8 +179,8 @@ model RepeatDiscountAnalysis {
   source    String   // 'ai' | 'local'
   model     String?  // AI模型名称
   rawText   String?  @db.Text // AI原始返回文本
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  createdAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
+  updatedAt DateTime @default(dbgenerated("CURRENT_TIMESTAMP"))
 
   @@index([type, scopeKey])
   @@map("repeat_discount_analyses")
