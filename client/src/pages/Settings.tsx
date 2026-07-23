@@ -540,6 +540,7 @@ export default function Settings() {
                         <p className="text-xs text-muted-foreground mb-2">为普通用户设置模块访问和编辑权限</p>
                         <div className="space-y-2 rounded-xl border p-3 bg-muted/30">
                           {[
+                            { key: 'dashboard', label: '数据汇总' },
                             { key: 'orders', label: '订单明细' },
                             { key: 'takers', label: '接单人' },
                             { key: 'tasks', label: '任务' },
