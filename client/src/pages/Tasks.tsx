@@ -8,6 +8,35 @@ import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { useToast } from '@/components/Toast';
+
+// 悬停预览组件
+function HoverPreview({ content, children }: { content: string; children: React.ReactNode }) {
+  const [show, setShow] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const triggerRef = useRef<HTMLDivElement>(null);
+
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPosition({ x: rect.left, y: rect.bottom + 8 });
+    setShow(true);
+  };
+
+  if (!content) return <>{children}</>;
+
+  return (
+    <div ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={() => setShow(false)} className="relative">
+      {children}
+      {show && (
+        <div
+          className="fixed z-50 max-w-[400px] p-3 bg-popover border rounded-xl shadow-lg text-sm break-all animate-in fade-in-0 zoom-in-95"
+          style={{ left: position.x, top: position.y }}
+        >
+          {content}
+        </div>
+      )}
+    </div>
+  );
+}
 import { useConfirm } from '@/components/ConfirmDialog';
 import { taskColumns } from '@/lib/export';
 import { usePermissions, NoPermission } from '@/lib/permissions';
@@ -875,9 +904,11 @@ export default function Tasks() {
                   </td>
                   <td className="px-4 py-2 max-w-[200px]">
                     <div className="flex items-center gap-1">
-                      <div className="overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0" title={task.taoToken || ''}>
-                        {renderEditableCell(task, 'taoToken')}
-                      </div>
+                      <HoverPreview content={task.taoToken || ''}>
+                        <div className="overflow-hidden text-ellipsis whitespace-nowrap flex-1 min-w-0 cursor-help">
+                          {renderEditableCell(task, 'taoToken')}
+                        </div>
+                      </HoverPreview>
                       {task.taoToken && (
                         <button
                           onClick={() => handleCopyTaoToken(task.taoToken)}
