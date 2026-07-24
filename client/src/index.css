@@ -458,10 +458,9 @@
     left: var(--sidebar-width, 0px);
     z-index: 50;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: center;
-    padding-top: 8vh;
-    padding-bottom: 4vh;
+    padding: 2rem;
     background-color: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(4px);
     -webkit-backdrop-filter: blur(4px);
@@ -478,9 +477,11 @@
   .modal-content {
     position: relative;
     z-index: 51;
-    width: 100%;
+    width: auto;
+    min-width: 20rem;
+    max-width: calc(100vw - var(--sidebar-width, 0px) - 4rem);
     height: auto;
-    min-height: 0;
+    max-height: calc(100vh - 4rem);
     overflow-y: auto;
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border) / 0.5);
@@ -558,10 +559,10 @@
   }
 
   /* ── Modal Size Variants ── */
-  .modal-sm  { max-width: 24rem; max-height: min(85vh, 600px); }   /* 384px */
-  .modal-md  { max-width: 28rem; max-height: min(85vh, 700px); }   /* 448px */
-  .modal-lg  { max-width: 32rem; max-height: min(85vh, 800px); }   /* 512px */
-  .modal-xl  { max-width: 48rem; max-height: min(90vh, 90vh); }    /* 768px */
+  .modal-sm  { width: 24rem; max-height: min(85vh, 600px); }   /* 384px */
+  .modal-md  { width: 28rem; max-height: min(85vh, 700px); }   /* 448px */
+  .modal-lg  { width: 32rem; max-height: min(85vh, 800px); }   /* 512px */
+  .modal-xl  { width: 48rem; max-height: min(90vh, 90vh); }    /* 768px */
 
   /* ═══════════════════════════════════════════════════
      PREMIUM UTILITIES
