@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './components/Toast';
-import { ConfirmProvider } from './components/ConfirmDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useBodyScrollLock } from './hooks/useBodyScrollLock';
@@ -192,11 +191,9 @@ function App() {
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
           <ToastProvider>
-            <ConfirmProvider>
-              <Router>
-                <AppRoutes />
-              </Router>
-            </ConfirmProvider>
+            <Router>
+              <AppRoutes />
+            </Router>
           </ToastProvider>
         </AuthProvider>
       </QueryClientProvider>
