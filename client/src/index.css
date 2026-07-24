@@ -526,7 +526,7 @@
     z-index: 40;
     background-color: rgba(0, 0, 0, 0.3);
     overscroll-behavior: contain;
-    will-change: transform;
+    /* 移除 will-change，避免影响 fixed 定位 */
     animation: modalOverlayIn 200ms var(--ease-out) both;
   }
 
