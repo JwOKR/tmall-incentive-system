@@ -8,8 +8,8 @@ const prisma = new PrismaClient({
 // 此 middleware 在 create 时删除时间字段，让 MySQL 的 DEFAULT CURRENT_TIMESTAMP (NOW()) 生效
 // MySQL 容器已设 TZ=Asia/Shanghai，NOW() 返回北京时间
 
-// 所有可能有 @default(now()) 的时间字段
-const TIME_FIELDS = ['createdAt', 'updatedAt', 'publishDate', 'orderDate', 'recordDate'];
+// 只有这些字段有 @default(now())，recordDate 是用户必传的，不能删
+const TIME_FIELDS = ['createdAt', 'updatedAt', 'publishDate', 'orderDate'];
 
 function stripTimeFields(data: any): any {
   if (!data || typeof data !== 'object') return data;
