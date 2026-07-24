@@ -459,10 +459,8 @@
     justify-content: center;
     padding: 2rem;
     background-color: rgba(0, 0, 0, 0.4);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
+    /* 移除 backdrop-filter 和 will-change，避免影响 fixed 定位 */
     overscroll-behavior: contain;
-    will-change: transform;
     animation: modalOverlayIn 200ms var(--ease-out) both;
   }
   @keyframes modalOverlayIn {
