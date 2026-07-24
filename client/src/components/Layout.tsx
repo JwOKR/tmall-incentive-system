@@ -30,6 +30,7 @@ import {
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/lib/permissions';
+import { ConfirmProvider } from './ConfirmDialog';
 
 interface LayoutProps {
   children: ReactNode;
@@ -112,6 +113,7 @@ export default function AppleLayout({ children }: LayoutProps) {
     }`;
 
   return (
+    <ConfirmProvider>
     <div className="min-h-screen bg-background">
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -344,7 +346,7 @@ export default function AppleLayout({ children }: LayoutProps) {
       </aside>
 
       {/* Main content */}
-      <main className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'}`}>
+      <main className={`relative transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'}`}>
         {/* Apple-style Top Bar */}
         <div className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-card/80 backdrop-blur-md px-4 lg:px-6">
           <div className="flex items-center gap-3">
@@ -410,5 +412,6 @@ export default function AppleLayout({ children }: LayoutProps) {
         </div>
       </main>
     </div>
+    </ConfirmProvider>
   );
 }
