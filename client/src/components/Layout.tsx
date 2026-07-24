@@ -30,7 +30,6 @@ import {
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/lib/permissions';
-import { ConfirmProvider } from './ConfirmDialog';
 
 interface LayoutProps {
   children: ReactNode;
@@ -113,7 +112,6 @@ export default function AppleLayout({ children }: LayoutProps) {
     }`;
 
   return (
-    <ConfirmProvider>
     <div className="min-h-screen bg-background">
       {/* Mobile overlay */}
       {sidebarOpen && (
@@ -412,6 +410,5 @@ export default function AppleLayout({ children }: LayoutProps) {
         </div>
       </main>
     </div>
-    </ConfirmProvider>
   );
 }
