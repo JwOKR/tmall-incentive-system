@@ -346,7 +346,7 @@ export default function AppleLayout({ children }: LayoutProps) {
       {/* Main content */}
       <main className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'}`}>
         {/* Apple-style Top Bar */}
-        <div className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-card/80 backdrop-blur-md px-4 lg:px-6">
+        <div className="sticky top-0 z-30 flex h-14 items-center justify-between gap-4 border-b bg-card/80 px-4 lg:px-6">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSidebarOpen(true)}
