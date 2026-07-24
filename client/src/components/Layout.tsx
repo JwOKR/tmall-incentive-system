@@ -114,7 +114,7 @@ export default function AppleLayout({ children }: LayoutProps) {
 
   return (
     <ConfirmProvider>
-    <div className="min-h-screen bg-background" style={{ '--sidebar-width': sidebarCollapsed ? '5rem' : '18rem' } as React.CSSProperties}>
+    <div className="min-h-screen bg-background">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
