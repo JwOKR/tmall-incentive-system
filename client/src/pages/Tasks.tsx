@@ -64,6 +64,40 @@ interface EditingCell {
   field: string;
 }
 
+/**
+ * 复制文本到剪贴板。
+ * 优先使用 navigator.clipboard API（仅在 HTTPS / localhost 安全上下文可用）；
+ * 若该 API 不存在或调用失败，则回退到 document.execCommand('copy') 方案，
+ * 以兼容 HTTP 环境下的复制需求。
+ * 返回 Promise<boolean>，true 表示复制成功，绝不抛出未捕获异常。
+ */
+async function copyToClipboard(text: string): Promise<boolean> {
+  // 优先尝试 Clipboard API（安全上下文：HTTPS 或 localhost）
+  try {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Clipboard API 不可用或被拒绝，继续尝试回退方案
+  }
+
+  // 回退方案：execCommand('copy')，兼容 HTTP 环境
+  try {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    const success = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return success;
+  } catch {
+    return false;
+  }
+}
+
 export default function Tasks() {
   const queryClient = useQueryClient();
   const { success: toastSuccess, error: toastError } = useToast();
@@ -197,10 +231,8 @@ export default function Tasks() {
       setShowTakerDropdown(false);
       setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
       if (taoToken) {
-        navigator.clipboard.writeText(taoToken).then(() => {
-          toastSuccess('接单成功，淘口令已自动复制');
-        }).catch(() => {
-          toastSuccess(data?.message || '接单成功');
+        copyToClipboard(taoToken).then((success) => {
+          toastSuccess(success ? '接单成功，淘口令已自动复制' : (data?.message || '接单成功'));
         });
       } else {
         toastSuccess(data?.message || '接单成功');
@@ -538,8 +570,12 @@ export default function Tasks() {
   };
 
   const handleCopyTaoToken = (taoToken: string) => {
-    navigator.clipboard.writeText(taoToken).then(() => {
-      toastSuccess('淘口令已复制');
+    copyToClipboard(taoToken).then((success) => {
+      if (success) {
+        toastSuccess('淘口令已复制');
+      } else {
+        toastError('复制失败，请手动复制');
+      }
     });
   };
 
