@@ -188,13 +188,23 @@ export default function Tasks() {
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      // 在清空 selectedTask 之前获取淘口令，接单成功后自动复制到剪贴板
+      const taoToken = selectedTask?.taoToken;
       setInlineOrderId(null);
       setSelectedTask(null);
       setSelectedTaker('');
       setTakerSearch('');
       setShowTakerDropdown(false);
       setQuickOrderForm({ orderNo: '', orderNo19: '', actualPayment: '' });
-      toastSuccess(data?.message || '接单成功');
+      if (taoToken) {
+        navigator.clipboard.writeText(taoToken).then(() => {
+          toastSuccess('接单成功，淘口令已自动复制');
+        }).catch(() => {
+          toastSuccess(data?.message || '接单成功');
+        });
+      } else {
+        toastSuccess(data?.message || '接单成功');
+      }
     },
     onError: async (error: any) => {
       const errorData = error?.response?.data;
