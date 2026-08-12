@@ -50,10 +50,10 @@ export const getIncentiveSummary = async (req: Request, res: Response) => {
       },
     });
 
-    // 生成汇总文本
+    // 生成汇总文本：清理浮点尾巴但不四舍五入到2位
     const fmt = (n: number) => {
-      const fixed = n.toFixed(2);
-      return fixed.endsWith('.00') ? fixed.slice(0, -3) : fixed;
+      const cleaned = parseFloat(n.toPrecision(12));
+      return String(cleaned);
     };
     const dateStr = targetDate.toISOString().split('T')[0];
     const dateFormatted = dateStr.replace(/-/g, '.');
