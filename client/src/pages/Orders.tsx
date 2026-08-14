@@ -3,10 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api, { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Star, Calendar, Eye, ExternalLink } from 'lucide-react';
+import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Star, Calendar, Eye, ExternalLink, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
-import ColumnFilter, { filterData } from '@/components/ColumnFilter';
+import ColumnFilter, { filterData, sortData } from '@/components/ColumnFilter';
 import OrderDrawer from '@/components/OrderDrawer';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -40,6 +40,7 @@ export default function Orders() {
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [sortConfig, setSortConfig] = useState<{ field: string; direction: 'asc' | 'desc' } | null>(null);
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const { data, isLoading } = useQuery({
@@ -197,10 +198,10 @@ export default function Orders() {
   };
 
   const handleSelectAll = () => {
-    if (selectedIds.size === filteredOrders.length) {
+    if (selectedIds.size === sortedOrders.length) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(filteredOrders.map((o: any) => o.id)));
+      setSelectedIds(new Set(sortedOrders.map((o: any) => o.id)));
     }
   };
 
@@ -364,6 +365,31 @@ export default function Orders() {
     });
   }, [orders, columnFilters]);
 
+  const sortedOrders = useMemo(() => {
+    return sortData(filteredOrders, sortConfig, (item: any, key: string) => {
+      if (key === 'wechatName') return item.taker?.wechatName || '';
+      if (key === 'wechatId') return item.taker?.wechatId || '';
+      return item[key];
+    });
+  }, [filteredOrders, sortConfig]);
+
+  const handleSort = (field: string) => {
+    setSortConfig(prev => {
+      if (!prev || prev.field !== field) return { field, direction: 'asc' };
+      if (prev.direction === 'asc') return { field, direction: 'desc' };
+      return null; // 回到无排序
+    });
+  };
+
+  const getUniqueValues = (field: string): { value: string; label: string }[] => {
+    const values: string[] = orders.map((o: any): string => {
+      if (field === 'wechatName') return o.taker?.wechatName || '';
+      if (field === 'wechatId') return o.taker?.wechatId || '';
+      return String(o[field] ?? '');
+    }).filter(Boolean);
+    return [...new Set(values)].map(v => ({ value: v, label: v }));
+  };
+
   const setColFilter = (key: string, value: string) => {
     setColumnFilters((prev) => {
       const next = { ...prev };
@@ -415,13 +441,13 @@ export default function Orders() {
 
   // 当前筛选结果的快速统计
   const stats = useMemo(() => {
-    const refundPending = filteredOrders.filter((o: any) => !o.isRefunded).length;
-    const reviewPending = filteredOrders.filter((o: any) => o.isGoodReview === 'pending').length;
-    const totalAmount = filteredOrders.reduce((sum: number, o: any) => sum + (o.actualPayment || 0), 0);
-    const totalRefund = filteredOrders.reduce((sum: number, o: any) =>
+    const refundPending = sortedOrders.filter((o: any) => !o.isRefunded).length;
+    const reviewPending = sortedOrders.filter((o: any) => o.isGoodReview === 'pending').length;
+    const totalAmount = sortedOrders.reduce((sum: number, o: any) => sum + (o.actualPayment || 0), 0);
+    const totalRefund = sortedOrders.reduce((sum: number, o: any) =>
       sum + (o.actualPayment || 0) + (o.baseCommission || 0) + (o.reviewCommission || 0), 0);
-    return { refundPending, reviewPending, totalAmount, totalRefund, count: filteredOrders.length };
-  }, [filteredOrders]);
+    return { refundPending, reviewPending, totalAmount, totalRefund, count: sortedOrders.length };
+  }, [sortedOrders]);
 
   return (
     <div className="space-y-6">
@@ -675,9 +701,9 @@ export default function Orders() {
                 <button
                   onClick={handleSelectAll}
                   className="p-1 hover:bg-accent rounded"
-                  title={selectedIds.size === filteredOrders.length ? '取消全选' : '全选'}
+                  title={selectedIds.size === sortedOrders.length ? '取消全选' : '全选'}
                 >
-                  {selectedIds.size === filteredOrders.length && filteredOrders.length > 0 ? (
+                  {selectedIds.size === sortedOrders.length && sortedOrders.length > 0 ? (
                     <CheckSquare className="h-4 w-4 text-primary" />
                   ) : (
                     <Square className="h-4 w-4 text-muted-foreground" />
@@ -685,66 +711,171 @@ export default function Orders() {
                 </button>
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">接单日期</div>
-                <ColumnFilter value={columnFilters['orderDate'] || ''} onChange={(v) => setColFilter('orderDate', v)} />
+                <button onClick={() => handleSort('orderDate')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  接单日期
+                  {sortConfig?.field === 'orderDate' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['orderDate'] || ''} onChange={(v) => setColFilter('orderDate', v)} options={getUniqueValues('orderDate')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">微信昵称</div>
-                <ColumnFilter value={columnFilters['wechatName'] || ''} onChange={(v) => setColFilter('wechatName', v)} />
+                <button onClick={() => handleSort('wechatName')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  微信昵称
+                  {sortConfig?.field === 'wechatName' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['wechatName'] || ''} onChange={(v) => setColFilter('wechatName', v)} options={getUniqueValues('wechatName')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">微信号</div>
-                <ColumnFilter value={columnFilters['wechatId'] || ''} onChange={(v) => setColFilter('wechatId', v)} />
+                <button onClick={() => handleSort('wechatId')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  微信号
+                  {sortConfig?.field === 'wechatId' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['wechatId'] || ''} onChange={(v) => setColFilter('wechatId', v)} options={getUniqueValues('wechatId')} />
               </th>
               <th className="px-3 py-2 text-left font-medium"><div className="whitespace-nowrap">总返款</div></th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">返款状态</div>
+                <button onClick={() => handleSort('isRefunded')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  返款状态
+                  {sortConfig?.field === 'isRefunded' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
                 <ColumnFilter type="select" value={columnFilters['isRefunded'] || ''} onChange={(v) => setColFilter('isRefunded', v)} options={[{ value: 'true', label: '已返款' }, { value: 'false', label: '未返款' }]} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">返款日期</div>
-                <ColumnFilter value={columnFilters['refundDate'] || ''} onChange={(v) => setColFilter('refundDate', v)} />
+                <button onClick={() => handleSort('refundDate')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  返款日期
+                  {sortConfig?.field === 'refundDate' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['refundDate'] || ''} onChange={(v) => setColFilter('refundDate', v)} options={getUniqueValues('refundDate')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">商品ID</div>
-                <ColumnFilter value={columnFilters['productId'] || ''} onChange={(v) => setColFilter('productId', v)} />
+                <button onClick={() => handleSort('productId')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  商品ID
+                  {sortConfig?.field === 'productId' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['productId'] || ''} onChange={(v) => setColFilter('productId', v)} options={getUniqueValues('productId')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">产品编号</div>
-                <ColumnFilter value={columnFilters['productCode'] || ''} onChange={(v) => setColFilter('productCode', v)} />
+                <button onClick={() => handleSort('productCode')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  产品编号
+                  {sortConfig?.field === 'productCode' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['productCode'] || ''} onChange={(v) => setColFilter('productCode', v)} options={getUniqueValues('productCode')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">19订单号</div>
-                <ColumnFilter value={columnFilters['orderNo19'] || ''} onChange={(v) => setColFilter('orderNo19', v)} />
+                <button onClick={() => handleSort('orderNo19')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  19订单号
+                  {sortConfig?.field === 'orderNo19' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['orderNo19'] || ''} onChange={(v) => setColFilter('orderNo19', v)} options={getUniqueValues('orderNo19')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">订单编号</div>
-                <ColumnFilter value={columnFilters['orderNo'] || ''} onChange={(v) => setColFilter('orderNo', v)} />
+                <button onClick={() => handleSort('orderNo')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  订单编号
+                  {sortConfig?.field === 'orderNo' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['orderNo'] || ''} onChange={(v) => setColFilter('orderNo', v)} options={getUniqueValues('orderNo')} />
               </th>
               <th className="px-3 py-2 text-left font-medium"><div className="whitespace-nowrap">订单链接</div></th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">实付</div>
-                <ColumnFilter value={columnFilters['actualPayment'] || ''} onChange={(v) => setColFilter('actualPayment', v)} />
+                <button onClick={() => handleSort('actualPayment')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  实付
+                  {sortConfig?.field === 'actualPayment' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['actualPayment'] || ''} onChange={(v) => setColFilter('actualPayment', v)} options={getUniqueValues('actualPayment')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">好评状态</div>
+                <button onClick={() => handleSort('isGoodReview')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  好评状态
+                  {sortConfig?.field === 'isGoodReview' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
                 <ColumnFilter type="select" value={columnFilters['isGoodReview'] || ''} onChange={(v) => setColFilter('isGoodReview', v)} options={[{ value: 'pending', label: '未好评' }, { value: 'reviewed', label: '已好评' }, { value: 'creating', label: '作图中' }, { value: 'returned', label: '已返图' }]} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">基础返佣</div>
-                <ColumnFilter value={columnFilters['baseCommission'] || ''} onChange={(v) => setColFilter('baseCommission', v)} />
+                <button onClick={() => handleSort('baseCommission')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  基础返佣
+                  {sortConfig?.field === 'baseCommission' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['baseCommission'] || ''} onChange={(v) => setColFilter('baseCommission', v)} options={getUniqueValues('baseCommission')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">好评返佣</div>
-                <ColumnFilter value={columnFilters['reviewCommission'] || ''} onChange={(v) => setColFilter('reviewCommission', v)} />
+                <button onClick={() => handleSort('reviewCommission')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  好评返佣
+                  {sortConfig?.field === 'reviewCommission' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['reviewCommission'] || ''} onChange={(v) => setColFilter('reviewCommission', v)} options={getUniqueValues('reviewCommission')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">好评返佣日期</div>
-                <ColumnFilter value={columnFilters['reviewCommissionDate'] || ''} onChange={(v) => setColFilter('reviewCommissionDate', v)} />
+                <button onClick={() => handleSort('reviewCommissionDate')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  好评返佣日期
+                  {sortConfig?.field === 'reviewCommissionDate' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['reviewCommissionDate'] || ''} onChange={(v) => setColFilter('reviewCommissionDate', v)} options={getUniqueValues('reviewCommissionDate')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <div className="whitespace-nowrap">备注</div>
-                <ColumnFilter value={columnFilters['remark'] || ''} onChange={(v) => setColFilter('remark', v)} />
+                <button onClick={() => handleSort('remark')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  备注
+                  {sortConfig?.field === 'remark' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['remark'] || ''} onChange={(v) => setColFilter('remark', v)} options={getUniqueValues('remark')} />
               </th>
               <th className="px-3 py-2 text-right font-medium"><div className="whitespace-nowrap">操作</div></th>
             </tr>
@@ -756,14 +887,14 @@ export default function Orders() {
                   加载中...
                 </td>
               </tr>
-            ) : filteredOrders.length === 0 ? (
+            ) : sortedOrders.length === 0 ? (
               <tr>
                 <td colSpan={19} className="px-4 py-8 text-center text-muted-foreground">
                   暂无匹配数据
                 </td>
               </tr>
             ) : (
-              filteredOrders.map((order: any) => (
+              sortedOrders.map((order: any) => (
                 <tr key={order.id} className={`table-row-hover table-row-zebra ${selectedIds.has(order.id) ? 'table-row-selected' : ''}`}>
                   <td className="px-3 py-2">
                     <button
