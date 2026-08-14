@@ -49,6 +49,7 @@ export const orderColumns: ExportColumn[] = [
   { key: 'orderLink', label: '订单链接', selected: true },
   { key: 'actualPayment', label: '实付', selected: true },
   { key: 'isGoodReview', label: '是否好评', selected: true },
+  { key: 'drawingDate', label: '作图时间', selected: true },
   { key: 'baseCommission', label: '基础返佣', selected: true },
   { key: 'reviewCommission', label: '好评返佣', selected: true },
   { key: 'reviewCommissionDate', label: '好评返佣日期', selected: true },

@@ -127,8 +127,8 @@ export default function Orders() {
     
     setEditingCell({ orderId, field });
     
-    if (field === 'refundDate' || field === 'reviewCommissionDate') {
-      if (field === 'reviewCommissionDate' && currentValue) {
+    if (field === 'refundDate' || field === 'drawingDate' || field === 'reviewCommissionDate') {
+      if ((field === 'drawingDate' || field === 'reviewCommissionDate') && currentValue) {
         const d = new Date(currentValue);
         const pad = (n: number) => String(n).padStart(2, '0');
         setEditValue(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
@@ -168,6 +168,10 @@ export default function Orders() {
     if (field === 'isRefunded' && value) {
       updateData.refundDate = new Date().toISOString().split('T')[0];
     }
+    // 如果标记为作图中，自动设置作图时间（精确到分钟）
+    if (field === 'isGoodReview' && value === 'creating') {
+      updateData.drawingDate = new Date().toISOString();
+    }
     // 如果标记为已好评，自动设置好评返佣日期（精确到分钟）
     if (field === 'isGoodReview' && value === 'reviewed') {
       updateData.reviewCommissionDate = new Date().toISOString();
@@ -183,6 +187,9 @@ export default function Orders() {
     
     if (field === 'isRefunded' && value === 'true') {
       updateData.refundDate = new Date().toISOString().split('T')[0];
+    }
+    if (field === 'isGoodReview' && value === 'creating') {
+      updateData.drawingDate = new Date().toISOString();
     }
     if (field === 'isGoodReview' && value === 'reviewed') {
       updateData.reviewCommissionDate = new Date().toISOString();
@@ -505,6 +512,7 @@ export default function Orders() {
                 { key: 'isRefunded', label: '是否已返款' },
                 { key: 'refundDate', label: '返款日期' },
                 { key: 'isGoodReview', label: '是否好评' },
+                { key: 'drawingDate', label: '作图时间' },
                 { key: 'reviewCommissionDate', label: '好评返佣日期' },
                 { key: 'remark', label: '备注' },
               ]}
@@ -541,6 +549,7 @@ export default function Orders() {
                 { key: 'isRefunded', label: '是否已返款' },
                 { key: 'refundDate', label: '返款日期' },
                 { key: 'isGoodReview', label: '是否好评' },
+                { key: 'drawingDate', label: '作图时间' },
                 { key: 'reviewCommissionDate', label: '好评返佣日期' },
                 { key: 'remark', label: '备注' },
             ]}
@@ -864,6 +873,17 @@ export default function Orders() {
                 <ColumnFilter value={columnFilters['reviewCommission'] || ''} onChange={(v) => setColFilter('reviewCommission', v)} options={getUniqueValues('reviewCommission')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
+                <button onClick={() => handleSort('drawingDate')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  作图时间
+                  {sortConfig?.field === 'drawingDate' ? (
+                    sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ArrowUpDown className="h-3 w-3 opacity-30" />
+                  )}
+                </button>
+                <ColumnFilter value={columnFilters['drawingDate'] || ''} onChange={(v) => setColFilter('drawingDate', v)} options={getUniqueValues('drawingDate')} />
+              </th>
+              <th className="px-3 py-2 text-left font-medium">
                 <button onClick={() => handleSort('reviewCommissionDate')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
                   好评返佣日期
                   {sortConfig?.field === 'reviewCommissionDate' ? (
@@ -1040,6 +1060,9 @@ export default function Orders() {
                   </td>
                   <td className="px-3 py-2">
                     {renderEditableCell(order, 'reviewCommission', 'number')}
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground">
+                    {renderEditableCell(order, 'drawingDate', 'datetime')}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
                     {renderEditableCell(order, 'reviewCommissionDate', 'datetime')}

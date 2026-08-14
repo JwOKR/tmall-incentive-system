@@ -128,6 +128,7 @@ export interface UpdateOrderInput {
   isRefunded?: boolean;
   refundDate?: string;
   isGoodReview?: boolean;
+  drawingDate?: string;
   baseCommission?: number;
   reviewCommission?: number;
   reviewCommissionDate?: string;
@@ -162,6 +163,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
       isRefunded: input.isRefunded !== undefined ? parseBoolValue(input.isRefunded) : undefined,
       refundDate: input.refundDate !== undefined ? parseExcelDate(input.refundDate) : undefined,
       isGoodReview: input.isGoodReview !== undefined ? String(input.isGoodReview) : undefined,
+      drawingDate: input.drawingDate !== undefined ? parseExcelDate(input.drawingDate) : undefined,
       baseCommission: input.baseCommission !== undefined ? Number(input.baseCommission) : undefined,
       reviewCommission: input.reviewCommission !== undefined ? Number(input.reviewCommission) : undefined,
       reviewCommissionDate: input.reviewCommissionDate !== undefined ? parseExcelDate(input.reviewCommissionDate) : undefined,

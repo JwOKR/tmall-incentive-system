@@ -45,7 +45,7 @@ export const updateOrder = async (req: AuthRequest, res: Response) => {
     const fields: Record<string, string> = {
       orderNo: '订单编号', orderNo19: '19订单号', actualPayment: '实付款',
       isRefunded: '返款状态', baseCommission: '基础返佣',
-      reviewCommission: '好评返佣', remark: '备注',
+      reviewCommission: '好评返佣', drawingDate: '作图时间', remark: '备注',
     };
     
     // 好评状态映射
