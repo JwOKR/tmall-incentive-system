@@ -128,7 +128,13 @@ export default function Orders() {
     setEditingCell({ orderId, field });
     
     if (field === 'refundDate' || field === 'reviewCommissionDate') {
-      setEditValue(currentValue ? currentValue.split('T')[0] : '');
+      if (field === 'reviewCommissionDate' && currentValue) {
+        const d = new Date(currentValue);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        setEditValue(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
+      } else {
+        setEditValue(currentValue ? currentValue.split('T')[0] : '');
+      }
     } else if (typeof currentValue === 'boolean') {
       setEditValue(currentValue ? 'true' : 'false');
     } else {
@@ -162,9 +168,9 @@ export default function Orders() {
     if (field === 'isRefunded' && value) {
       updateData.refundDate = new Date().toISOString().split('T')[0];
     }
-    // 如果标记为已好评，自动设置好评返佣日期
+    // 如果标记为已好评，自动设置好评返佣日期（精确到分钟）
     if (field === 'isGoodReview' && value === 'reviewed') {
-      updateData.reviewCommissionDate = new Date().toISOString().split('T')[0];
+      updateData.reviewCommissionDate = new Date().toISOString();
     }
     
     updateMutation.mutate({ id: orderId, data: updateData });
@@ -179,7 +185,7 @@ export default function Orders() {
       updateData.refundDate = new Date().toISOString().split('T')[0];
     }
     if (field === 'isGoodReview' && value === 'reviewed') {
-      updateData.reviewCommissionDate = new Date().toISOString().split('T')[0];
+      updateData.reviewCommissionDate = new Date().toISOString();
     }
     
     updateMutation.mutate({ id: orderId, data: updateData });
@@ -257,7 +263,7 @@ export default function Orders() {
     return editingCell?.orderId === orderId && editingCell?.field === field;
   };
 
-  const renderEditableCell = (order: any, field: string, type: 'text' | 'number' | 'date' = 'text') => {
+  const renderEditableCell = (order: any, field: string, type: 'text' | 'number' | 'date' | 'datetime' = 'text') => {
     const editing = isEditing(order.id, field);
     const value = order[field];
     
@@ -266,7 +272,7 @@ export default function Orders() {
         <div className="flex items-center gap-1">
           <input
             ref={inputRef}
-            type={type}
+            type={type === 'datetime' ? 'datetime-local' : type}
             step={type === 'number' ? '0.01' : undefined}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
@@ -286,6 +292,7 @@ export default function Orders() {
     
     const displayValue = () => {
       if (type === 'number') return value ? formatCurrency(value) : '-';
+      if (type === 'datetime') return value ? formatDate(value) : '-';
       if (type === 'date') return value ? formatDate(value).split(' ')[0] : '-';
       return value || '-';
     };
@@ -302,9 +309,10 @@ export default function Orders() {
   };
 
   // 只读单元格（不可编辑）
-  const renderReadOnlyCell = (value: any, type: 'text' | 'number' | 'date' = 'text') => {
+  const renderReadOnlyCell = (value: any, type: 'text' | 'number' | 'date' | 'datetime' = 'text') => {
     const displayValue = () => {
       if (type === 'number') return value ? formatCurrency(value) : '-';
+      if (type === 'datetime') return value ? formatDate(value) : '-';
       if (type === 'date') return value ? formatDate(value).split(' ')[0] : '-';
       return value || '-';
     };
@@ -1034,7 +1042,7 @@ export default function Orders() {
                     {renderEditableCell(order, 'reviewCommission', 'number')}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
-                    {renderEditableCell(order, 'reviewCommissionDate', 'date')}
+                    {renderEditableCell(order, 'reviewCommissionDate', 'datetime')}
                   </td>
                   <td className="px-3 py-2">
                     {renderEditableCell(order, 'remark', 'text')}
