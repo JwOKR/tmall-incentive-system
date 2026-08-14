@@ -37,6 +37,9 @@ Thumbs.db
 *.db
 *.db-journal
 
+# WorkBuddy
+.workbuddy/
+
 # Prisma
 server/prisma/dev.db
 server/prisma/migrations/
