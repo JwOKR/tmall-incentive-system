@@ -65,15 +65,20 @@ export async function getOrderList(params: OrderListParams) {
   if (isRefunded !== undefined && isRefunded !== '') where.isRefunded = isRefunded === 'true';
   if (isGoodReview !== undefined && isGoodReview !== '') where.isGoodReview = isGoodReview;
 
-  if (search) {
-    where.OR = [
-      { orderNo: { contains: search } },
-      { orderNo19: { contains: search } },
-      { productId: { contains: search } },
-      { productCode: { contains: search } },
-      { remark: { contains: search } },
-      { taker: { OR: [{ wechatName: { contains: search } }, { wechatId: { contains: search } }] } },
-    ];
+  const searchTokens = search
+    ?.split(/[\s,，、；;]+/)
+    .map(token => token.trim())
+    .filter(Boolean);
+
+  if (searchTokens?.length) {
+    where.OR = searchTokens.flatMap(token => [
+      { orderNo: { contains: token } },
+      { orderNo19: { contains: token } },
+      { productId: { contains: token } },
+      { productCode: { contains: token } },
+      { remark: { contains: token } },
+      { taker: { OR: [{ wechatName: { contains: token } }, { wechatId: { contains: token } }] } },
+    ]);
   }
 
   if (startDate || endDate) {

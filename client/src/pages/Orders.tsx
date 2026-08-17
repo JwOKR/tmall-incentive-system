@@ -578,12 +578,12 @@ export default function Orders() {
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="搜索订单号、商品ID、微信昵称..."
+            <textarea
+              rows={2}
+              placeholder="批量搜索产品编号、商品ID、订单编号（支持换行、逗号、顿号、分号、空格）..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="apple-input w-full rounded-xl border bg-card pl-10 pr-4 py-2 text-sm"
+              className="apple-input w-full resize-y rounded-xl border bg-card pl-10 pr-4 py-2 text-sm"
             />
           </div>
           <select
