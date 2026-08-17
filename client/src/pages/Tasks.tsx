@@ -498,7 +498,7 @@ export default function Tasks() {
   };
 
   const handleBatchCreate = () => {
-    const codes = batchProductCodes.split('\n').filter(code => code.trim());
+    const codes = batchProductCodes.split(/[\s,，、;；]+/).filter(code => code.trim());
     if (codes.length === 0) {
       toastError('请输入商品编号');
       return;
@@ -710,13 +710,13 @@ export default function Tasks() {
             <h3 className="text-lg font-semibold mb-4">批量新增任务</h3>
             <div className="space-y-4">
               <div>
-                <label className="text-sm font-medium">商品编号（每行一个）</label>
+                <label className="text-sm font-medium">商品编号（支持换行、空格、逗号、顿号、分号分隔）</label>
                 <textarea
                   value={batchProductCodes}
                   onChange={(e) => setBatchProductCodes(e.target.value)}
                   className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm apple-input"
                   rows={10}
-                  placeholder="SKU-001&#10;SKU-002&#10;SKU-003"
+                  placeholder="SKU-001，SKU-002\nSKU-003; SKU-004"
                 />
               </div>
               <p className="text-xs text-muted-foreground">
