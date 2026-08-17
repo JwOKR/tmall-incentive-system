@@ -41,7 +41,28 @@ export interface OrderListParams {
   isGoodReview?: string;
   startDate?: string;
   endDate?: string;
+  sortField?: string;
+  sortDirection?: string;
 }
+
+const ORDER_SORT_FIELDS: Record<string, string | { taker: { wechatName: string } } | { taker: { wechatId: string } }> = {
+  productId: 'productId',
+  productCode: 'productCode',
+  orderNo: 'orderNo',
+  orderNo19: 'orderNo19',
+  orderDate: 'orderDate',
+  isRefunded: 'isRefunded',
+  isGoodReview: 'isGoodReview',
+  refundDate: 'refundDate',
+  reviewCommissionDate: 'reviewCommissionDate',
+  drawingDate: 'drawingDate',
+  actualPayment: 'actualPayment',
+  baseCommission: 'baseCommission',
+  reviewCommission: 'reviewCommission',
+  remark: 'remark',
+  wechatName: { taker: { wechatName: 'wechatName' } },
+  wechatId: { taker: { wechatId: 'wechatId' } },
+};
 
 export interface BatchImportResult {
   success: number;
@@ -58,6 +79,11 @@ export async function getOrderList(params: OrderListParams) {
   const page = Number(params.page) || 1;
   const pageSize = Number(params.pageSize) || 10;
   const { search, isRefunded, isGoodReview, startDate, endDate } = params;
+  const sortField = params.sortField && ORDER_SORT_FIELDS[params.sortField] ? params.sortField : 'orderDate';
+  const sortDirection = params.sortDirection === 'asc' ? 'asc' : 'desc';
+  const orderBy: Record<string, any> = typeof ORDER_SORT_FIELDS[sortField] === 'string'
+    ? { [ORDER_SORT_FIELDS[sortField] as string]: sortDirection }
+    : { taker: { [Object.keys(ORDER_SORT_FIELDS[sortField] as object)[0]]: sortDirection } };
 
   // 用 any 构建动态条件，最后传给 Prisma
   const where: any = {};
@@ -96,7 +122,7 @@ export async function getOrderList(params: OrderListParams) {
       where,
       skip: (page - 1) * pageSize,
       take: pageSize,
-      orderBy: { orderDate: 'desc' },
+      orderBy,
       include: {
         task: { select: { id: true, productId: true, productCode: true } },
         taker: { select: { id: true, wechatName: true, wechatId: true } },

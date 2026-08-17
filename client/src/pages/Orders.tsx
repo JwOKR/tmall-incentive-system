@@ -6,7 +6,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Star, Calendar, Eye, ExternalLink, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
-import ColumnFilter, { filterData, sortData } from '@/components/ColumnFilter';
+import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import OrderDrawer from '@/components/OrderDrawer';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -44,7 +44,7 @@ export default function Orders() {
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['orders', page, debouncedSearch, refundFilter, reviewFilter, startDate, endDate],
+    queryKey: ['orders', page, debouncedSearch, refundFilter, reviewFilter, startDate, endDate, sortConfig],
     queryFn: () => ordersApi.getAll({
       page,
       pageSize: 20,
@@ -53,6 +53,8 @@ export default function Orders() {
       isGoodReview: reviewFilter || undefined,
       startDate: startDate || undefined,
       endDate: endDate || undefined,
+      sortField: sortConfig?.field || undefined,
+      sortDirection: sortConfig?.direction || undefined,
     }),
   });
 
@@ -380,19 +382,14 @@ export default function Orders() {
     });
   }, [orders, columnFilters]);
 
-  const sortedOrders = useMemo(() => {
-    return sortData(filteredOrders, sortConfig, (item: any, key: string) => {
-      if (key === 'wechatName') return item.taker?.wechatName || '';
-      if (key === 'wechatId') return item.taker?.wechatId || '';
-      return item[key];
-    });
-  }, [filteredOrders, sortConfig]);
+  const sortedOrders = filteredOrders;
 
   const handleSort = (field: string) => {
+    setPage(1);
     setSortConfig(prev => {
       if (!prev || prev.field !== field) return { field, direction: 'asc' };
       if (prev.direction === 'asc') return { field, direction: 'desc' };
-      return null; // 回到无排序
+      return null; // 回到默认排序
     });
   };
 
