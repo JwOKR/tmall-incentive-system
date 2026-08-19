@@ -6,7 +6,7 @@ import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Star, Calendar, Eye, ExternalLink, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
-import ColumnFilter, { filterData } from '@/components/ColumnFilter';
+import ColumnFilter from '@/components/ColumnFilter';
 import OrderDrawer from '@/components/OrderDrawer';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
@@ -45,7 +45,7 @@ export default function Orders() {
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['orders', page, debouncedSearch, refundFilter, reviewFilter, startDate, endDate, sortConfig],
+    queryKey: ['orders', page, debouncedSearch, refundFilter, reviewFilter, startDate, endDate, sortConfig, columnFilters],
     queryFn: () => ordersApi.getAll({
       page,
       pageSize: 20,
@@ -56,6 +56,7 @@ export default function Orders() {
       endDate: endDate || undefined,
       sortField: sortConfig?.field || undefined,
       sortDirection: sortConfig?.direction || undefined,
+      columnFilters,
     }),
   });
 
@@ -375,15 +376,8 @@ export default function Orders() {
   const orders = (data as any)?.data?.list || [];
   const total = (data as any)?.data?.total || 0;
 
-  const filteredOrders = useMemo(() => {
-    return filterData(orders, columnFilters, (item: any, key: string) => {
-      if (key === 'wechatName') return item.taker?.wechatName || '';
-      if (key === 'wechatId') return item.taker?.wechatId || '';
-      return String(item[key] ?? '');
-    });
-  }, [orders, columnFilters]);
-
-  const sortedOrders = filteredOrders;
+  // Filtering and sorting are performed by the server before pagination.
+  const sortedOrders = orders;
 
   const handleSort = (field: string) => {
     setPage(1);
@@ -404,6 +398,7 @@ export default function Orders() {
   };
 
   const setColFilter = (key: string, value: string) => {
+    setPage(1);
     setColumnFilters((prev) => {
       const next = { ...prev };
       if (value) next[key] = value;

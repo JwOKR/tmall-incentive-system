@@ -43,6 +43,8 @@ export interface OrderListParams {
   endDate?: string;
   sortField?: string;
   sortDirection?: string;
+  /** JSON-encoded per-column filters from the orders table. */
+  columnFilters?: string | Record<string, string>;
 }
 
 const ORDER_SORT_FIELDS: Record<string, string | { taker: { wechatName: string } } | { taker: { wechatId: string } }> = {
@@ -85,36 +87,53 @@ export async function getOrderList(params: OrderListParams) {
     ? { [ORDER_SORT_FIELDS[sortField] as string]: sortDirection }
     : { taker: { [Object.keys(ORDER_SORT_FIELDS[sortField] as object)[0]]: sortDirection } };
 
-  // 用 any 构建动态条件，最后传给 Prisma
-  const where: any = {};
-
+  // Build a Prisma-safe where clause from a strict field whitelist.
+  const where: Record<string, any> = {};
   if (isRefunded !== undefined && isRefunded !== '') where.isRefunded = isRefunded === 'true';
   if (isGoodReview !== undefined && isGoodReview !== '') where.isGoodReview = isGoodReview;
 
-  const searchTokens = search
-    ?.split(/[\s,，、；;]+/)
-    .map(token => token.trim())
-    .filter(Boolean);
+  const filterInput: Record<string, string> = typeof params.columnFilters === 'string'
+    ? (() => { try { return JSON.parse(params.columnFilters as string) as Record<string, string>; } catch { return {}; } })()
+    : (params.columnFilters || {});
+  const columnMap: Record<string, string | { taker: Record<string, { contains: string }> }> = {
+    orderDate: 'orderDate', refundDate: 'refundDate', productId: 'productId', productCode: 'productCode',
+    orderNo19: 'orderNo19', orderNo: 'orderNo', actualPayment: 'actualPayment', baseCommission: 'baseCommission',
+    reviewCommission: 'reviewCommission', drawingDate: 'drawingDate', reviewCommissionDate: 'reviewCommissionDate',
+    remark: 'remark', isRefunded: 'isRefunded', isGoodReview: 'isGoodReview',
+    wechatName: { taker: { wechatName: { contains: '' } } },
+    wechatId: { taker: { wechatId: { contains: '' } } },
+  };
+  for (const [key, rawValue] of Object.entries(filterInput)) {
+    const value = String(rawValue || '').trim();
+    const mapped = columnMap[key];
+    if (!value || !mapped) continue;
+    if (key === 'isRefunded') { where.isRefunded = value === 'true'; continue; }
+    if (key === 'isGoodReview') { where.isGoodReview = value; continue; }
+    if (typeof mapped === 'string') {
+      const dateFields = new Set(['orderDate', 'refundDate', 'drawingDate', 'reviewCommissionDate']);
+      const numericFields = new Set(['actualPayment', 'baseCommission', 'reviewCommission']);
+      if (dateFields.has(key)) {
+        const dayStart = new Date(value); const dayEnd = new Date(value);
+        if (!Number.isNaN(dayStart.getTime())) { dayEnd.setHours(23, 59, 59, 999); where[mapped] = { gte: dayStart, lte: dayEnd }; }
+      } else if (numericFields.has(key)) {
+        const numericValue = Number(value); if (!Number.isNaN(numericValue)) where[mapped] = numericValue;
+      } else where[mapped] = { contains: value };
+    } else where.taker = { ...(where.taker || {}), [key]: { contains: value } };
+  }
 
-  if (searchTokens?.length) {
-    where.OR = searchTokens.flatMap(token => [
-      { orderNo: { contains: token } },
-      { orderNo19: { contains: token } },
-      { productId: { contains: token } },
-      { productCode: { contains: token } },
-      { remark: { contains: token } },
+  const searchTokens = search?.split(/[\s,，、；;]+/).map(token => token.trim()).filter(Boolean) || [];
+  if (searchTokens.length) {
+    where.AND = searchTokens.map(token => ({ OR: [
+      { orderNo: { contains: token } }, { orderNo19: { contains: token } },
+      { productId: { contains: token } }, { productCode: { contains: token } }, { remark: { contains: token } },
       { taker: { OR: [{ wechatName: { contains: token } }, { wechatId: { contains: token } }] } },
-    ]);
+    ] }));
   }
 
   if (startDate || endDate) {
     where.orderDate = {};
     if (startDate) where.orderDate.gte = new Date(startDate);
-    if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      where.orderDate.lte = end;
-    }
+    if (endDate) { const end = new Date(endDate); end.setHours(23, 59, 59, 999); where.orderDate.lte = end; }
   }
 
   const [orders, total] = await Promise.all([
