@@ -741,7 +741,7 @@ export default function Orders() {
                     <ArrowUpDown className="h-3 w-3 opacity-30" />
                   )}
                 </button>
-                <ColumnFilter value={columnFilters['orderDate'] || ''} onChange={(v) => setColFilter('orderDate', v)} options={getUniqueValues('orderDate')} />
+                <ColumnFilter type="date" value={columnFilters['orderDate'] || ''} onChange={(v) => setColFilter('orderDate', v)} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
                 <button onClick={() => handleSort('wechatName')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
@@ -786,7 +786,7 @@ export default function Orders() {
                     <ArrowUpDown className="h-3 w-3 opacity-30" />
                   )}
                 </button>
-                <ColumnFilter value={columnFilters['refundDate'] || ''} onChange={(v) => setColFilter('refundDate', v)} options={getUniqueValues('refundDate')} />
+                <ColumnFilter type="date" value={columnFilters['refundDate'] || ''} onChange={(v) => setColFilter('refundDate', v)} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
                 <button onClick={() => handleSort('productId')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
@@ -886,7 +886,7 @@ export default function Orders() {
                     <ArrowUpDown className="h-3 w-3 opacity-30" />
                   )}
                 </button>
-                <ColumnFilter value={columnFilters['drawingDate'] || ''} onChange={(v) => setColFilter('drawingDate', v)} options={getUniqueValues('drawingDate')} />
+                <ColumnFilter type="date" value={columnFilters['drawingDate'] || ''} onChange={(v) => setColFilter('drawingDate', v)} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
                 <button onClick={() => handleSort('reviewCommissionDate')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
@@ -897,7 +897,7 @@ export default function Orders() {
                     <ArrowUpDown className="h-3 w-3 opacity-30" />
                   )}
                 </button>
-                <ColumnFilter value={columnFilters['reviewCommissionDate'] || ''} onChange={(v) => setColFilter('reviewCommissionDate', v)} options={getUniqueValues('reviewCommissionDate')} />
+                <ColumnFilter type="date" value={columnFilters['reviewCommissionDate'] || ''} onChange={(v) => setColFilter('reviewCommissionDate', v)} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
                 <button onClick={() => handleSort('remark')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">

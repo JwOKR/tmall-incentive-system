@@ -112,14 +112,22 @@ export async function getOrderList(params: OrderListParams) {
     if (typeof mapped === 'string') {
       const dateFields = new Set(['orderDate', 'refundDate', 'drawingDate', 'reviewCommissionDate']);
       if (dateFields.has(key)) {
-        const dayStart = new Date(value); const dayEnd = new Date(value);
-        if (!Number.isNaN(dayStart.getTime())) {
-          dayEnd.setHours(23, 59, 59, 999);
+        let rangeStart: Date | null = null;
+        let rangeEnd: Date | null = null;
+        if (value.startsWith('range:')) {
+          const parts = value.slice(6).split(',');
+          if (parts[0]) { const d = new Date(parts[0]); if (!Number.isNaN(d.getTime())) rangeStart = d; }
+          if (parts[1]) { const d = new Date(parts[1]); if (!Number.isNaN(d.getTime())) { d.setHours(23, 59, 59, 999); rangeEnd = d; } }
+        } else {
+          const d = new Date(value);
+          if (!Number.isNaN(d.getTime())) { rangeStart = d; rangeEnd = new Date(d); rangeEnd.setHours(23, 59, 59, 999); }
+        }
+        if (rangeStart || rangeEnd) {
           const existingRange = where[mapped] || {};
           where[mapped] = {
             ...existingRange,
-            gte: existingRange.gte && existingRange.gte > dayStart ? existingRange.gte : dayStart,
-            lte: existingRange.lte && existingRange.lte < dayEnd ? existingRange.lte : dayEnd,
+            ...(rangeStart ? { gte: existingRange.gte && existingRange.gte > rangeStart ? existingRange.gte : rangeStart } : {}),
+            ...(rangeEnd ? { lte: existingRange.lte && existingRange.lte < rangeEnd ? existingRange.lte : rangeEnd } : {}),
           };
         }
       } else where[mapped] = { contains: value };
