@@ -34,6 +34,7 @@ export default function Orders() {
   }
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [datePreset, setDatePreset] = useState<'today' | 'yesterday' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'custom' | 'clear'>('clear');
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editValue, setEditValue] = useState<any>('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -424,15 +425,18 @@ export default function Orders() {
   ];
 
   // 快捷日期筛选
-  const applyDatePreset = (preset: 'today' | 'yesterday' | '7days' | '30days' | 'clear') => {
+  const applyDatePreset = (preset: 'today' | 'yesterday' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'custom' | 'clear') => {
+    setDatePreset(preset);
+    if (preset === 'custom') return;
     const now = new Date();
-    const fmt = (d: Date) => d.toISOString().split('T')[0];
+    const fmt = (d: Date) => {
+      const pad = (n: number) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    };
     if (preset === 'clear') {
       setStartDate('');
       setEndDate('');
-      return;
-    }
-    if (preset === 'today') {
+    } else if (preset === 'today') {
       setStartDate(fmt(now));
       setEndDate(fmt(now));
     } else if (preset === 'yesterday') {
@@ -447,6 +451,12 @@ export default function Orders() {
       const d = new Date(now); d.setDate(d.getDate() - 29);
       setStartDate(fmt(d));
       setEndDate(fmt(now));
+    } else if (preset === 'thisMonth') {
+      setStartDate(fmt(new Date(now.getFullYear(), now.getMonth(), 1)));
+      setEndDate(fmt(now));
+    } else if (preset === 'lastMonth') {
+      setStartDate(fmt(new Date(now.getFullYear(), now.getMonth() - 1, 1)));
+      setEndDate(fmt(new Date(now.getFullYear(), now.getMonth(), 0)));
     }
     setPage(1);
   };
@@ -607,7 +617,7 @@ export default function Orders() {
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => { setStartDate(e.target.value); setDatePreset('custom'); setPage(1); }}
               className="apple-input rounded-xl border bg-card px-3 py-2 text-sm"
               placeholder="开始日期"
             />
@@ -615,7 +625,7 @@ export default function Orders() {
             <input
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              onChange={(e) => { setEndDate(e.target.value); setDatePreset('custom'); setPage(1); }}
               className="apple-input rounded-xl border bg-card px-3 py-2 text-sm"
               placeholder="结束日期"
             />
@@ -629,6 +639,9 @@ export default function Orders() {
             { label: '昨天', value: 'yesterday' as const },
             { label: '近7天', value: '7days' as const },
             { label: '近30天', value: '30days' as const },
+            { label: '本月', value: 'thisMonth' as const },
+            { label: '上月', value: 'lastMonth' as const },
+            { label: '自定义', value: 'custom' as const },
             { label: '全部', value: 'clear' as const },
           ].map(preset => (
             <button
