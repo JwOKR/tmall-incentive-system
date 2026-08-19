@@ -388,14 +388,16 @@ export default function Orders() {
     });
   };
 
-  const getUniqueValues = (field: string): { value: string; label: string }[] => {
-    const values: string[] = orders.map((o: any): string => {
-      if (field === 'wechatName') return o.taker?.wechatName || '';
-      if (field === 'wechatId') return o.taker?.wechatId || '';
-      return String(o[field] ?? '');
-    }).filter(Boolean);
-    return [...new Set(values)].map(v => ({ value: v, label: v }));
-  };
+  const getUniqueValues = useMemo(() => {
+    return (field: string): { value: string; label: string }[] => {
+      const values: string[] = orders.map((o: any): string => {
+        if (field === 'wechatName') return o.taker?.wechatName || '';
+        if (field === 'wechatId') return o.taker?.wechatId || '';
+        return String(o[field] ?? '');
+      }).filter(Boolean);
+      return [...new Set(values)].map(v => ({ value: v, label: v }));
+    };
+  }, [orders]);
 
   const setColFilter = (key: string, value: string) => {
     setPage(1);
@@ -456,15 +458,15 @@ export default function Orders() {
     setPage(1);
   };
 
-  // 当前筛选结果的快速统计
+  // 当前页快速统计（总额/待返款等仅反映当前页数据，总数由服务端返回）
   const stats = useMemo(() => {
     const refundPending = sortedOrders.filter((o: any) => !o.isRefunded).length;
     const reviewPending = sortedOrders.filter((o: any) => o.isGoodReview === 'pending').length;
     const totalAmount = sortedOrders.reduce((sum: number, o: any) => sum + (o.actualPayment || 0), 0);
     const totalRefund = sortedOrders.reduce((sum: number, o: any) =>
       sum + (o.actualPayment || 0) + (o.baseCommission || 0) + (o.reviewCommission || 0), 0);
-    return { refundPending, reviewPending, totalAmount, totalRefund, count: sortedOrders.length };
-  }, [sortedOrders]);
+    return { refundPending, reviewPending, totalAmount, totalRefund, count: total };
+  }, [sortedOrders, total]);
 
   return (
     <div className="space-y-6">
@@ -490,6 +492,9 @@ export default function Orders() {
                   isGoodReview: reviewFilter || undefined,
                   startDate: startDate || undefined,
                   endDate: endDate || undefined,
+                  sortField: sortConfig?.field || undefined,
+                  sortDirection: sortConfig?.direction || undefined,
+                  columnFilters: Object.keys(columnFilters).length > 0 ? columnFilters : undefined,
                 },
                 timeout: 120000,
               });
