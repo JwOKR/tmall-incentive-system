@@ -111,12 +111,17 @@ export async function getOrderList(params: OrderListParams) {
     if (key === 'isGoodReview') { where.isGoodReview = value; continue; }
     if (typeof mapped === 'string') {
       const dateFields = new Set(['orderDate', 'refundDate', 'drawingDate', 'reviewCommissionDate']);
-      const numericFields = new Set(['actualPayment', 'baseCommission', 'reviewCommission']);
       if (dateFields.has(key)) {
         const dayStart = new Date(value); const dayEnd = new Date(value);
-        if (!Number.isNaN(dayStart.getTime())) { dayEnd.setHours(23, 59, 59, 999); where[mapped] = { gte: dayStart, lte: dayEnd }; }
-      } else if (numericFields.has(key)) {
-        const numericValue = Number(value); if (!Number.isNaN(numericValue)) where[mapped] = numericValue;
+        if (!Number.isNaN(dayStart.getTime())) {
+          dayEnd.setHours(23, 59, 59, 999);
+          const existingRange = where[mapped] || {};
+          where[mapped] = {
+            ...existingRange,
+            gte: existingRange.gte && existingRange.gte > dayStart ? existingRange.gte : dayStart,
+            lte: existingRange.lte && existingRange.lte < dayEnd ? existingRange.lte : dayEnd,
+          };
+        }
       } else where[mapped] = { contains: value };
     } else where.taker = { ...(where.taker || {}), [key]: { contains: value } };
   }
@@ -131,9 +136,22 @@ export async function getOrderList(params: OrderListParams) {
   }
 
   if (startDate || endDate) {
-    where.orderDate = {};
-    if (startDate) where.orderDate.gte = new Date(startDate);
-    if (endDate) { const end = new Date(endDate); end.setHours(23, 59, 59, 999); where.orderDate.lte = end; }
+    const existingRange = where.orderDate || {};
+    const range: Record<string, Date> = { ...existingRange };
+    if (startDate) {
+      const start = new Date(startDate);
+      if (!Number.isNaN(start.getTime())) {
+        range.gte = range.gte && range.gte > start ? range.gte : start;
+      }
+    }
+    if (endDate) {
+      const end = new Date(endDate);
+      if (!Number.isNaN(end.getTime())) {
+        end.setHours(23, 59, 59, 999);
+        range.lte = range.lte && range.lte < end ? range.lte : end;
+      }
+    }
+    where.orderDate = range;
   }
 
   const [orders, total] = await Promise.all([
