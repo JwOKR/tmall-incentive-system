@@ -521,7 +521,8 @@ export default function Takers() {
                           }}
                           onBlur={handleRegisterDateBlur}
                           className="apple-input pr-9"
-                          placeholder="如 2024-05-01 / 2024年5月"
+                          placeholder="如 2024-05-01"
+                          title="支持 2024-05-01 / 2024/5/1 / 2024年5月1日 等格式"
                         />
                         <button
                           type="button"
