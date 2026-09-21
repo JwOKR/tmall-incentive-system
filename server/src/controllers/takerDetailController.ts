@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
+import { evaluateTakerCompliance } from '../utils/takerCompliance';
 
 // 接单人详情（含历史订单 + 佣金汇总）
 export const getTakerDetail = async (req: Request, res: Response) => {
@@ -76,7 +77,7 @@ export const getTakerDetail = async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: {
-        taker,
+        taker: { ...taker, compliance: evaluateTakerCompliance(taker) },
         orders: {
           list: orders,
           total: totalOrders,

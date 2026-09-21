@@ -78,7 +78,18 @@ export interface TakerComplianceInput {
   creditLevel?: string | null;
   weeklyReceiptCount?: number | null;
   monthlyReceiptCount?: number | null;
+  /** 列表查询只带此计数；若缺省则用三个截图字段回退计算 */
   screenshotCount?: number;
+  avatarScreenshot?: string | null;
+  securityScreenshot?: string | null;
+  reviewScreenshot?: string | null;
+  /** 资质信息最近登记时间；为空表示从未登记过资质 */
+  accountInfoUpdatedAt?: Date | string | null;
+}
+
+/** 判断字段是否「已填写」（null / undefined / 空字符串均视为未填写；false 视为已填写） */
+function hasValue(value: unknown): boolean {
+  return value !== null && value !== undefined && value !== '';
 }
 
 /**
@@ -104,12 +115,17 @@ function oneYearAgoFrom(now: Date): Date {
  *
  * 判定规则：
  * - registerDate <= 一年前 → registerOverOneYear = true；晚于 → false；为空 → null
- * - realNameVerified = !!isRealNameVerified（为 false 时计入 fails）
+ * - realNameVerified = !!isRealNameVerified；为 false 时计入 fails
+ *   （实名是硬性门槛，必须显式确认为「是」）
  * - creditLevelOk：等级无法识别 → null；否则 rank >= 3
  * - weeklyOk：为空 → null；否则 <= 5
  * - monthlyOk：为空 → null；否则 <= 20
- * - screenshotsComplete：screenshotCount === 3
- * - status：有 fails → 'unqualified'；否则任一必填项缺失 → 'incomplete'；否则 'qualified'
+ * - screenshotsComplete：screenshotCount 缺省时用三个截图字段回退计算，等于 3 即齐全
+ * - status：
+ *   1) 从未登记过任何资质信息 → 'incomplete'（历史数据不会被误判为不合格）
+ *   2) 有 fails → 'unqualified'
+ *   3) 任一必填项缺失 → 'incomplete'
+ *   4) 否则 → 'qualified'
  */
 export function evaluateTakerCompliance(taker: TakerComplianceInput): TakerCompliance {
   const registerDate = normalizeRegisterDate(taker.registerDate);
@@ -122,6 +138,7 @@ export function evaluateTakerCompliance(taker: TakerComplianceInput): TakerCompl
     registerOverOneYear = registerDate.getTime() <= oneYearAgo.getTime();
   }
 
+  // 实名认证是硬性门槛：未确认为「是」即视为不通过
   const realNameVerified = !!taker.isRealNameVerified;
 
   const rank = creditLevelRank(taker.creditLevel);
@@ -137,7 +154,9 @@ export function evaluateTakerCompliance(taker: TakerComplianceInput): TakerCompl
       ? null
       : taker.monthlyReceiptCount <= MONTHLY_RECEIPT_MAX;
 
-  const screenshotsComplete = (taker.screenshotCount ?? 0) === SCREENSHOT_TARGET;
+  // 列表行只带 screenshotCount；详情行带完整记录，缺省时用三个截图字段回退计算
+  const screenshotCount = taker.screenshotCount ?? countScreenshots(taker);
+  const screenshotsComplete = screenshotCount === SCREENSHOT_TARGET;
 
   const fails: string[] = [];
   if (registerOverOneYear === false) fails.push('注册未满一年');
@@ -146,19 +165,30 @@ export function evaluateTakerCompliance(taker: TakerComplianceInput): TakerCompl
   if (weeklyOk === false) fails.push('每周收货次数超过5单');
   if (monthlyOk === false) fails.push('每月收货次数超过20单');
 
-  let status: TakerCompliance['status'];
-  if (fails.length > 0) {
-    status = 'unqualified';
-  } else if (
+  // 从未登记过任何资质信息（含历史遗留数据）时一律视为「待完善」，
+  // 避免资料还没收集就被误判成「不合格」。
+  const hasAnyRegistration =
+    hasValue(taker.accountInfoUpdatedAt) ||
+    registerDate !== null ||
+    rank !== null ||
+    hasValue(taker.weeklyReceiptCount) ||
+    hasValue(taker.monthlyReceiptCount) ||
+    screenshotCount > 0;
+
+  const missingRequired =
     registerDate === null ||
-    taker.creditLevel === null ||
-    taker.creditLevel === undefined ||
-    taker.creditLevel === '' ||
-    taker.weeklyReceiptCount === null ||
-    taker.weeklyReceiptCount === undefined ||
-    taker.monthlyReceiptCount === null ||
-    taker.monthlyReceiptCount === undefined
-  ) {
+    !hasValue(taker.creditLevel) ||
+    !hasValue(taker.weeklyReceiptCount) ||
+    !hasValue(taker.monthlyReceiptCount);
+
+  const neverRegistered = !hasAnyRegistration;
+
+  let status: TakerCompliance['status'];
+  if (neverRegistered) {
+    status = 'incomplete';
+  } else if (fails.length > 0) {
+    status = 'unqualified';
+  } else if (missingRequired) {
     status = 'incomplete';
   } else {
     status = 'qualified';
@@ -172,6 +202,8 @@ export function evaluateTakerCompliance(taker: TakerComplianceInput): TakerCompl
     weeklyOk,
     monthlyOk,
     screenshotsComplete,
-    fails,
+    // 从未登记过资质时，isRealNameVerified 的 false 只是数据库默认值而非运营的确认结果，
+    // 不应作为「不通过项」对外暴露
+    fails: neverRegistered ? [] : fails,
   };
 }

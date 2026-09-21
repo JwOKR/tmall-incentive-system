@@ -10,7 +10,8 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
-    "db:seed": "ts-node prisma/seed.ts"
+    "db:seed": "ts-node prisma/seed.ts",
+    "test": "ts-node --transpile-only tests/takerCompliance.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0",

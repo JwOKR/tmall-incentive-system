@@ -15,7 +15,7 @@ import {
   ImageOff,
 } from 'lucide-react';
 import { usePermissions, NoPermission } from '@/lib/permissions';
-import { COMPLIANCE_META, evaluateTakerComplianceClient } from '@/lib/takerConstants';
+import { COMPLIANCE_META, type TakerCompliance } from '@/lib/takerConstants';
 import ImageZoom from '@/components/ImageZoom';
 
 export default function TakerDetail() {
@@ -71,8 +71,8 @@ export default function TakerDetail() {
     { title: '距上次接单', value: summary.daysSinceLastOrder !== null ? `${summary.daysSinceLastOrder}天` : '-', icon: Clock, color: summary.daysSinceLastOrder && summary.daysSinceLastOrder > 7 ? 'text-rose-600 dark:text-rose-400' : 'text-violet-600 dark:text-violet-400', bg: summary.daysSinceLastOrder && summary.daysSinceLastOrder > 7 ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-violet-100 dark:bg-violet-900/30' },
   ];
 
-  // 账号资质判定（前端轻量计算，与后端规则一致）
-  const compliance = evaluateTakerComplianceClient(taker);
+  // 账号资质判定：由服务端在 taker 上附带 compliance，前端不重复实现规则
+  const compliance: TakerCompliance = taker.compliance || { status: 'incomplete', fails: [] };
   const complianceMeta = COMPLIANCE_META[compliance.status];
 
   const accountItems = [

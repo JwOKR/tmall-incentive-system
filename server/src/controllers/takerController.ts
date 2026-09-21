@@ -68,7 +68,7 @@ export function parseAccountInfo(
     }
   }
 
-  // 实名认证
+  // 实名认证（必须显式确认；未传/空值一律视为否）
   if (Object.prototype.hasOwnProperty.call(body, 'isRealNameVerified')) {
     hasAnyField = true;
     data.isRealNameVerified = parseBooleanFlag(body.isRealNameVerified);

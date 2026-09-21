@@ -20,6 +20,7 @@ interface TakerFormState {
   wechatName: string;
   wechatId: string;
   registerDate: string;
+  /** 实名认证是硬性门槛：必须显式确认为「是」，未确认视为不通过 */
   isRealNameVerified: boolean;
   creditLevel: string;
   weeklyReceiptCount: string;
@@ -367,11 +368,16 @@ export default function Takers() {
                       <label className="mb-2 block text-sm font-medium">实名认证</label>
                       <select
                         value={formData.isRealNameVerified ? 'true' : 'false'}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, isRealNameVerified: e.target.value === 'true' }))}
+                        onChange={(e) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            isRealNameVerified: e.target.value === 'true',
+                          }))
+                        }
                         className="apple-input"
                       >
-                        <option value="false">否</option>
                         <option value="true">是</option>
+                        <option value="false">否</option>
                       </select>
                     </div>
                   </div>
