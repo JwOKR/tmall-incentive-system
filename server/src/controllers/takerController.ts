@@ -376,7 +376,11 @@ export const updateTaker = async (req: AuthRequest, res: Response) => {
       wechatName,
       wechatId,
       status,
-      taobaoNickname: normalizeOptionalString(req.body.taobaoNickname),
+      // 淘宝昵称：仅当请求体显式携带该键时才写入，避免 PUT body 缺该字段时被强制置 null；
+      // 前端恒传该键（空值传 null），因此「清空该字段」的能力不受影响。
+      ...(Object.prototype.hasOwnProperty.call(req.body, 'taobaoNickname')
+        ? { taobaoNickname: normalizeOptionalString(req.body.taobaoNickname) }
+        : {}),
       ...account.data,
     };
     if (account.hasAnyField) {
@@ -450,6 +454,7 @@ export const batchCreateTakers = async (req: AuthRequest, res: Response) => {
         const data: Record<string, unknown> = {
           wechatName: taker.wechatName,
           wechatId: taker.wechatId,
+          taobaoNickname: normalizeOptionalString(taker.taobaoNickname),
           ...account.data,
         };
         if (hasSubstantiveAccountInfo(account.data)) {
