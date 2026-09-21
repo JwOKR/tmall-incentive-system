@@ -2,6 +2,11 @@ import { Request, Response } from 'express';
 import prisma from '../utils/db';
 import { createAuditLog, getClientIp } from '../utils/auditLog';
 import { parseExcelDate } from '../utils/parseExcelDate';
+import {
+  evaluateTakerCompliance,
+  describeComplianceBlock,
+  canTakeOrders,
+} from '../utils/takerCompliance';
 import { AuthRequest } from '../middleware/auth';
 
 // 获取所有任务
@@ -418,6 +423,19 @@ export const quickOrder = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({
         success: false,
         message: '接单人不存在',
+      });
+    }
+
+    // 【账号资质门槛】只有资质「合格」的接单人才能接单；unqualified / incomplete 一律拦下。
+    // 本拦截只作用于「快速接单」入口，Excel 批量导入订单（历史数据补录）不受此限制。
+    // 注意：force 仅用于绕过 7 天接单间隔，不适用于资质门槛 —— 即便 force === true 也必须拒绝。
+    // 拦截点在 $transaction 之前，不产生任何副作用。
+    const compliance = evaluateTakerCompliance(taker);
+    if (!canTakeOrders(compliance)) {
+      return res.status(403).json({
+        success: false,
+        code: 'TAKER_NOT_QUALIFIED',
+        message: describeComplianceBlock(compliance),
       });
     }
 

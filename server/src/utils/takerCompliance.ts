@@ -229,3 +229,46 @@ export function evaluateTakerCompliance(taker: TakerComplianceInput): TakerCompl
     fails: neverRegistered ? [] : fails,
   };
 }
+
+/**
+ * 接单门槛：只有「合格」的接单人才能接单。
+ *
+ * 说明：本函数只服务「快速接单」（POST /api/tasks/quick-order）这一个入口。
+ * Excel 批量导入订单（orderService.batchCreateOrders）是历史数据补录通道，
+ * 不受账号资质门槛限制，因此不得在该路径调用本函数。
+ *
+ * @param compliance evaluateTakerCompliance 的判定结果
+ * @returns true 表示允许接单；unqualified / incomplete 一律 false
+ */
+export function canTakeOrders(compliance: Pick<TakerCompliance, 'status'>): boolean {
+  return compliance.status === 'qualified';
+}
+
+/**
+ * 生成「接单被拦截」时对外展示的原因文案（纯函数，不依赖 Prisma，便于单测）。
+ *
+ * 文案区分两种状态：
+ * - unqualified：「该接单人账号资质不合格：注册未满一年、未完成实名认证」（fails 用「、」连接）
+ * - incomplete：「该接单人账号资质待完善（尚未登记资质信息）」（fails 非空时追加）
+ * - qualified：不拦截，返回空字符串
+ *
+ * @param compliance evaluateTakerCompliance 的判定结果
+ * @returns 可读的拒绝原因；qualified 时返回空字符串
+ */
+export function describeComplianceBlock(
+  compliance: Pick<TakerCompliance, 'status' | 'fails'>
+): string {
+  const fails: string[] = compliance.fails ?? [];
+  const detail = fails.join('、');
+
+  if (compliance.status === 'unqualified') {
+    return detail ? `该接单人账号资质不合格：${detail}` : '该接单人账号资质不合格';
+  }
+
+  if (compliance.status === 'incomplete') {
+    const base = '该接单人账号资质待完善（尚未登记资质信息）';
+    return detail ? `${base}：${detail}` : base;
+  }
+
+  return '';
+}

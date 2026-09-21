@@ -58,6 +58,13 @@ function HoverPreview({ content, children, className = '' }: { content: string; 
 import { useConfirm } from '@/components/ConfirmDialog';
 import { taskColumns } from '@/lib/export';
 import { usePermissions, NoPermission } from '@/lib/permissions';
+import {
+  COMPLIANCE_META,
+  describeComplianceReason,
+  isTakerOrderable,
+  type ComplianceStatus,
+  type TakerCompliance,
+} from '@/lib/takerConstants';
 
 interface EditingCell {
   taskId: string;
@@ -112,6 +119,8 @@ export default function Tasks() {
   const [selectedTaker, setSelectedTaker] = useState('');
   const [takerSearch, setTakerSearch] = useState('');
   const [showTakerDropdown, setShowTakerDropdown] = useState(false);
+  // 下拉里只展示资质合格的接单人（默认关闭：不合格的仍会列出，但置灰不可选）
+  const [onlyQualifiedTaker, setOnlyQualifiedTaker] = useState(false);
   const [quickOrderForm, setQuickOrderForm] = useState({ orderNo: '', orderNo19: '', actualPayment: '' });
   const takerDropdownRef = useRef<HTMLDivElement>(null);
   const batchFormModalRef = useRef<HTMLDivElement>(null);
@@ -243,6 +252,12 @@ export default function Tasks() {
       const message = errorData?.message || '接单失败';
       const code = errorData?.code;
       
+      // 账号资质不合格：服务端已拦截，直接提示原因，不提供「强制接单」（force 对资质无效）
+      if (code === 'TAKER_NOT_QUALIFIED') {
+        toastError(message);
+        return;
+      }
+
       // 如果是7天间隔限制，显示二次确认
       if (code === 'INTERVAL_LIMIT') {
         const confirmed = await confirm({ message: `${message}\n\n是否强制接单？`, variant: 'warning', confirmText: '强制接单' });
@@ -1090,9 +1105,20 @@ export default function Tasks() {
                             </button>
                           </div>
                           {showTakerDropdown && (
-                            <div className="absolute z-10 mt-1 w-full max-h-40 overflow-y-auto rounded-md border bg-card shadow-lg">
+                            <div className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border bg-card shadow-lg">
+                              <label className="flex cursor-pointer items-center gap-2 border-b px-3 py-1.5 text-xs text-muted-foreground select-none hover:bg-accent">
+                                <input
+                                  type="checkbox"
+                                  checked={onlyQualifiedTaker}
+                                  onMouseDown={(e) => e.stopPropagation()}
+                                  onChange={(e) => setOnlyQualifiedTaker(e.target.checked)}
+                                  className="h-3 w-3 accent-indigo-500"
+                                />
+                                只看可接单（资质合格）
+                              </label>
                               {takers
                                 .filter((t: any) => {
+                                  if (onlyQualifiedTaker && !isTakerOrderable(t.compliance)) return false;
                                   if (!takerSearch) return true;
                                   const keyword = takerSearch.toLowerCase();
                                   return (
@@ -1101,22 +1127,46 @@ export default function Tasks() {
                                   );
                                 })
                                 .slice(0, 30)
-                                .map((taker: any) => (
-                                  <div
-                                    key={taker.id}
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      setSelectedTaker(taker.id);
-                                      setTakerSearch(`${taker.wechatName}（${taker.wechatId}）`);
-                                      setShowTakerDropdown(false);
-                                    }}
-                                    className={`cursor-pointer px-3 py-1.5 text-sm hover:bg-accent ${
-                                      selectedTaker === taker.id ? 'bg-accent font-medium' : ''
-                                    }`}
-                                  >
-                                    {taker.wechatName} <span className="text-xs text-muted-foreground">{taker.wechatId}</span>
-                                  </div>
-                                ))
+                                .map((taker: any) => {
+                                  const compliance = (taker.compliance ?? null) as TakerCompliance | null;
+                                  const orderable = isTakerOrderable(compliance);
+                                  const status = (compliance?.status ?? 'incomplete') as ComplianceStatus;
+                                  const meta = COMPLIANCE_META[status];
+                                  const reason = describeComplianceReason(compliance);
+                                  return (
+                                    <div
+                                      key={taker.id}
+                                      onMouseDown={(e) => {
+                                        e.preventDefault();
+                                        // 资质非「合格」的接单人置灰不可选（服务端同样会拦截）
+                                        if (!orderable) return;
+                                        setSelectedTaker(taker.id);
+                                        setTakerSearch(`${taker.wechatName}（${taker.wechatId}）`);
+                                        setShowTakerDropdown(false);
+                                      }}
+                                      title={orderable ? '账号资质合格，可接单' : `${meta.label}：${reason}（不可接单）`}
+                                      className={`px-3 py-1.5 text-sm ${
+                                        orderable ? 'cursor-pointer hover:bg-accent' : 'cursor-not-allowed opacity-50'
+                                      } ${selectedTaker === taker.id ? 'bg-accent font-medium' : ''}`}
+                                    >
+                                      <div className="flex items-center justify-between gap-2">
+                                        <span className="truncate">
+                                          {taker.wechatName} <span className="text-xs text-muted-foreground">{taker.wechatId}</span>
+                                        </span>
+                                        <span
+                                          className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.className}`}
+                                        >
+                                          {meta.label}
+                                        </span>
+                                      </div>
+                                      {!orderable && (
+                                        <div className="mt-0.5 text-[11px] text-muted-foreground">
+                                          {meta.label}：{reason}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })
                               }
                             </div>
                           )}
