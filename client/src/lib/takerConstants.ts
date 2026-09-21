@@ -58,8 +58,10 @@ export const COMPLIANCE_META: Record<ComplianceStatus, ComplianceMetaItem> = {
 /**
  * 依据后端返回的 compliance 生成「不可接单」的原因文案（前端只读展示，不重复实现判定规则）。
  *
- * 列表接口返回的 compliance 只有 status / fails / weeklyOk / monthlyOk，
- * 因此这里只能基于 status + fails 生成文案。
+ * 列表接口（GET /api/takers）返回的 compliance 是服务端 evaluateTakerCompliance 的
+ * 完整结果（status / fails / registerOverOneYear / realNameVerified / creditLevelOk /
+ * weeklyOk / monthlyOk / screenshotsComplete），本文件声明的 TakerCompliance 只是
+ * 前端实际用到的子集。文案只依赖 status + fails，不重复实现判定规则。
  *
  * @param compliance 后端返回的合规判定结果；缺省时按「待完善」处理
  * @returns 原因文案；qualified 时返回空字符串
