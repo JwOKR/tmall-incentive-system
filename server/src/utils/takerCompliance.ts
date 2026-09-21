@@ -83,7 +83,7 @@ export interface TakerComplianceInput {
   avatarScreenshot?: string | null;
   securityScreenshot?: string | null;
   reviewScreenshot?: string | null;
-  /** 资质信息最近登记时间；为空表示从未登记过资质 */
+  /** 资质信息最近登记时间（仅用于展示，不参与「是否登记过」判定） */
   accountInfoUpdatedAt?: Date | string | null;
 }
 
@@ -124,7 +124,7 @@ function oneYearAgoFrom(now: Date): Date {
  * - status：
  *   1) 从未登记过任何资质信息 → 'incomplete'（历史数据不会被误判为不合格）
  *   2) 有 fails → 'unqualified'
- *   3) 任一必填项缺失 → 'incomplete'
+ *   3) 任一必填项缺失（含 3 张截图未传齐）→ 'incomplete'
  *   4) 否则 → 'qualified'
  */
 export function evaluateTakerCompliance(taker: TakerComplianceInput): TakerCompliance {
@@ -165,21 +165,24 @@ export function evaluateTakerCompliance(taker: TakerComplianceInput): TakerCompl
   if (weeklyOk === false) fails.push('每周收货次数超过5单');
   if (monthlyOk === false) fails.push('每月收货次数超过20单');
 
+  // 以实质字段为准判断「是否登记过资质」：accountInfoUpdatedAt 仅用于展示最近登记时间，
+  // 不能作为「已登记」的依据（服务端在全空载荷上也会盖时间戳）。
   // 从未登记过任何资质信息（含历史遗留数据）时一律视为「待完善」，
   // 避免资料还没收集就被误判成「不合格」。
   const hasAnyRegistration =
-    hasValue(taker.accountInfoUpdatedAt) ||
     registerDate !== null ||
     rank !== null ||
     hasValue(taker.weeklyReceiptCount) ||
     hasValue(taker.monthlyReceiptCount) ||
     screenshotCount > 0;
 
+  // 3 张截图也是登记要求的一部分：未传齐视为资料未交齐（待完善），而非资质不合格
   const missingRequired =
     registerDate === null ||
     !hasValue(taker.creditLevel) ||
     !hasValue(taker.weeklyReceiptCount) ||
-    !hasValue(taker.monthlyReceiptCount);
+    !hasValue(taker.monthlyReceiptCount) ||
+    !screenshotsComplete;
 
   const neverRegistered = !hasAnyRegistration;
 

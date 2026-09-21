@@ -74,6 +74,7 @@ export default function Takers() {
     if (showForm && formModalRef.current) formModalRef.current.focus();
   }, [showForm]);
   const [formData, setFormData] = useState<TakerFormState>({ ...EMPTY_FORM });
+  const [prefilling, setPrefilling] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['takers', page, debouncedSearch],
@@ -142,6 +143,7 @@ export default function Takers() {
   // 列表数据不含截图，需先取完整记录再填表
   const handleEdit = async (taker: any) => {
     setEditingTaker(taker);
+    setPrefilling(true);
     setFormData({ ...EMPTY_FORM, wechatName: taker.wechatName ?? '', wechatId: taker.wechatId ?? '' });
     setShowForm(true);
     try {
@@ -162,6 +164,10 @@ export default function Takers() {
       });
     } catch (e) {
       toastError('获取接单人资质信息失败');
+      // 拿不到完整资质就不该让用户在空表单上提交（否则会把已存截图清空）
+      setShowForm(false);
+    } finally {
+      setPrefilling(false);
     }
   };
 
@@ -180,21 +186,24 @@ export default function Takers() {
   const closeForm = () => {
     setShowForm(false);
     setEditingTaker(null);
+    setPrefilling(false);
   };
 
   const takers = (data as any)?.data?.list || [];
   const total = (data as any)?.data?.total || 0;
 
   const filteredTakers = useMemo(() => {
-    return filterData(takers, columnFilters, (item: any, key: string) => {
-      if (key === 'createdAt') return item.createdAt ? formatDate(item.createdAt) : '';
-      if (key === 'totalAmount') return item.totalAmount ? formatCurrency(item.totalAmount) : '';
-      if (key === 'compliance') {
-        const meta = COMPLIANCE_META[(item.compliance?.status as ComplianceStatus) || 'incomplete'];
-        return meta ? meta.label : '';
-      }
-      return String(item[key] ?? '');
-    });
+    return filterData(
+      takers,
+      columnFilters,
+      (item: any, key: string) => {
+        if (key === 'createdAt') return item.createdAt ? formatDate(item.createdAt) : '';
+        if (key === 'totalAmount') return item.totalAmount ? formatCurrency(item.totalAmount) : '';
+        if (key === 'compliance') return item.compliance?.status || 'incomplete';
+        return String(item[key] ?? '');
+      },
+      ['compliance', 'status']
+    );
   }, [takers, columnFilters]);
 
   const setColFilter = (key: string, value: string) => {
@@ -455,9 +464,10 @@ export default function Takers() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 hover:from-indigo-600 hover:to-violet-700 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+                  disabled={prefilling}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-600 text-white text-sm font-medium shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30 hover:from-indigo-600 hover:to-violet-700 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {editingTaker ? '更新信息' : '添加接单人'}
+                  {prefilling ? '加载中...' : editingTaker ? '更新信息' : '添加接单人'}
                 </button>
               </div>
             </form>
@@ -484,7 +494,7 @@ export default function Takers() {
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>账号资质</div>
-                <ColumnFilter type="select" value={columnFilters['compliance'] || ''} onChange={(v) => setColFilter('compliance', v)} options={[{ value: '合格', label: '合格' }, { value: '不合格', label: '不合格' }, { value: '待完善', label: '待完善' }]} />
+                <ColumnFilter type="select" value={columnFilters['compliance'] || ''} onChange={(v) => setColFilter('compliance', v)} options={[{ value: 'qualified', label: '合格' }, { value: 'unqualified', label: '不合格' }, { value: 'incomplete', label: '待完善' }]} />
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>总订单</div>

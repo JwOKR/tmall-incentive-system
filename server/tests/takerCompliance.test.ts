@@ -186,5 +186,52 @@ check(
   null
 );
 
+console.log('\n=== 12. F1 回归：全空载荷（前端无条件提交全部字段但为空）不得判为不合格 ===');
+// 真实 UI 写入路径：只填微信昵称/微信号，其余资质字段为空，服务端仍会盖 accountInfoUpdatedAt
+const emptyButStamped = evaluateTakerCompliance({
+  registerDate: null,
+  isRealNameVerified: false,
+  creditLevel: null,
+  weeklyReceiptCount: null,
+  monthlyReceiptCount: null,
+  screenshotCount: 0,
+  accountInfoUpdatedAt: new Date(),
+});
+check('status = incomplete（不能是 unqualified）', emptyButStamped.status, 'incomplete');
+check('fails 为空数组', emptyButStamped.fails, []);
+
+// 只有 wechatName + wechatId 的新增场景（无任何 accountInfoUpdatedAt）
+const onlyNames = evaluateTakerCompliance({
+  registerDate: null,
+  isRealNameVerified: false,
+  creditLevel: null,
+  weeklyReceiptCount: null,
+  monthlyReceiptCount: null,
+  screenshotCount: 0,
+  accountInfoUpdatedAt: null,
+});
+check('仅名称新增 → incomplete', onlyNames.status, 'incomplete');
+check('仅名称新增 → fails 为空', onlyNames.fails, []);
+
+// 实质性登记但实名选「否」→ 不合格，且仅含实名一项
+const substantiveNoRealName = evaluateTakerCompliance({
+  registerDate: new Date(now - 500 * DAY),
+  isRealNameVerified: false,
+  creditLevel: '3心',
+  weeklyReceiptCount: 1,
+  monthlyReceiptCount: 1,
+  screenshotCount: 3,
+  accountInfoUpdatedAt: new Date(),
+});
+check('资质齐全但未实名 → unqualified', substantiveNoRealName.status, 'unqualified');
+check('失败项仅「未完成实名认证」', substantiveNoRealName.fails, ['未完成实名认证']);
+
+console.log('\n=== 13. F2 回归：3 张截图未传齐 → 待完善（不是合格，也不是不合格）===');
+const dataOnlyNoShots = evaluateTakerCompliance({ ...GOOD, screenshotCount: 0 });
+check('数据齐但截图 0/3 → incomplete', dataOnlyNoShots.status, 'incomplete');
+check('截图未齐 → fails 为空（不是不合格）', dataOnlyNoShots.fails, []);
+check('截图 2/3 → incomplete', evaluateTakerCompliance({ ...GOOD, screenshotCount: 2 }).status, 'incomplete');
+check('截图 3/3 → qualified', evaluateTakerCompliance({ ...GOOD, screenshotCount: 3 }).status, 'qualified');
+
 console.log(`\n========== 结果：PASS=${passed}  FAIL=${failed} ==========`);
 process.exit(failed > 0 ? 1 : 0);

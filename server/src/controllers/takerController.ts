@@ -15,6 +15,24 @@ const MAX_SCREENSHOT_LENGTH = 2_000_000;
 /** 截图字段键名 */
 const SCREENSHOT_FIELDS = ['avatarScreenshot', 'securityScreenshot', 'reviewScreenshot'] as const;
 
+/** 判断字段是否「已填写」（null / undefined / 空字符串均视为未填写；false 视为已填写） */
+function hasValue(value: unknown): boolean {
+  return value !== null && value !== undefined && value !== '';
+}
+
+/**
+ * 资质是否为「实质性登记」：全空载荷（前端无条件提交全部字段但均为空值）不算登记。
+ * 用于决定是否记录 accountInfoUpdatedAt，避免空登记被评定为「已登记」。
+ */
+function hasSubstantiveAccountInfo(parsed: Record<string, unknown>): boolean {
+  if (parsed.registerDate) return true;
+  if (parsed.isRealNameVerified === true) return true;
+  if (hasValue(parsed.creditLevel)) return true;
+  if (parsed.weeklyReceiptCount !== null && parsed.weeklyReceiptCount !== undefined) return true;
+  if (parsed.monthlyReceiptCount !== null && parsed.monthlyReceiptCount !== undefined) return true;
+  return SCREENSHOT_FIELDS.some((k) => hasValue(parsed[k]));
+}
+
 /**
  * 布尔语义解析：'true' / '是' / '1' / 'yes' / 'y' 视为 true，其余为 false。
  */
@@ -281,6 +299,8 @@ export const createTaker = async (req: AuthRequest, res: Response) => {
     };
     if (account.hasAnyField) {
       data.screenshotCount = resolveScreenshotCount(account.data);
+    }
+    if (hasSubstantiveAccountInfo(account.data)) {
       data.accountInfoUpdatedAt = new Date();
     }
 
@@ -346,6 +366,8 @@ export const updateTaker = async (req: AuthRequest, res: Response) => {
     };
     if (account.hasAnyField) {
       data.screenshotCount = resolveScreenshotCount(account.data, existingTaker);
+    }
+    if (hasSubstantiveAccountInfo(account.data)) {
       data.accountInfoUpdatedAt = new Date();
     }
 
@@ -415,7 +437,7 @@ export const batchCreateTakers = async (req: AuthRequest, res: Response) => {
           wechatId: taker.wechatId,
           ...account.data,
         };
-        if (account.hasAnyField) {
+        if (hasSubstantiveAccountInfo(account.data)) {
           data.accountInfoUpdatedAt = new Date();
         }
 

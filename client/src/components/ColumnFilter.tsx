@@ -126,11 +126,13 @@ export default function ColumnFilter({
  * @param data 原始数据数组
  * @param filters 列筛选值 { field: value }
  * @param getField 获取字段值的函数，处理嵌套字段等
+ * @param exactKeys 需要「全等」比较的 key（默认 substring 匹配，保持既有行为）
  */
 export function filterData<T>(
   data: T[],
   filters: Record<string, string>,
-  getField: (item: T, key: string) => string
+  getField: (item: T, key: string) => string,
+  exactKeys?: string[]
 ): T[] {
   const activeFilters = Object.entries(filters).filter(([, v]) => v);
   if (activeFilters.length === 0) return data;
@@ -138,7 +140,10 @@ export function filterData<T>(
   return data.filter((item) => {
     return activeFilters.every(([key, value]) => {
       const cellValue = getField(item, key).toLowerCase();
-      return cellValue.includes(value.toLowerCase());
+      const needle = value.toLowerCase();
+      // 精确匹配的列避免「不合格」被「合格」误命中
+      if (exactKeys?.includes(key)) return cellValue === needle;
+      return cellValue.includes(needle);
     });
   });
 }
