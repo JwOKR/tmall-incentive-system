@@ -52,6 +52,17 @@ function parseNonNegativeInt(value: unknown): number | null {
   return n;
 }
 
+/**
+ * 归一化可选字符串字段：非字符串（含 null/undefined/数字）→ null；
+ * 字符串 trim 后为空串 → null，否则返回 trim 后的值。
+ * 用于「淘宝昵称」等选填文本，保证空值以 null 入库而非空串。
+ */
+function normalizeOptionalString(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed === '' ? null : trimmed;
+}
+
 /** 默认注册时间解析器：空值 → null，非法 → null */
 function defaultRegisterDateParser(value: unknown): Date | null {
   if (value === null || value === undefined || value === '') return null;
@@ -174,6 +185,7 @@ const LIST_SELECT = {
   id: true,
   wechatName: true,
   wechatId: true,
+  taobaoNickname: true,
   status: true,
   totalOrders: true,
   totalAmount: true,
@@ -199,6 +211,7 @@ export const getAllTakers = async (req: Request, res: Response) => {
       where.OR = [
         { wechatName: { contains: search as string } },
         { wechatId: { contains: search as string } },
+        { taobaoNickname: { contains: search as string } },
       ];
     }
 
@@ -295,6 +308,7 @@ export const createTaker = async (req: AuthRequest, res: Response) => {
     const data: Record<string, unknown> = {
       wechatName,
       wechatId,
+      taobaoNickname: normalizeOptionalString(req.body.taobaoNickname),
       ...account.data,
     };
     if (account.hasAnyField) {
@@ -362,6 +376,7 @@ export const updateTaker = async (req: AuthRequest, res: Response) => {
       wechatName,
       wechatId,
       status,
+      taobaoNickname: normalizeOptionalString(req.body.taobaoNickname),
       ...account.data,
     };
     if (account.hasAnyField) {

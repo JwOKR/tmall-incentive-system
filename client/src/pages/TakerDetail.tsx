@@ -99,6 +99,7 @@ export default function TakerDetail() {
         <div>
           <h2 className="text-3xl font-bold tracking-tight apple-text-title-1">{taker.wechatName}</h2>
           <p className="text-muted-foreground mt-1">{taker.wechatId} · {taker.status === 'active' ? '活跃' : '停用'}</p>
+          <p className="text-muted-foreground mt-0.5 text-sm">淘宝昵称：{taker.taobaoNickname || '—'}</p>
         </div>
       </div>
 

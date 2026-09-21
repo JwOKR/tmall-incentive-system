@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { Plus, Pencil, Trash2, Search, Eye, X, Users } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Eye, X, Users, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
@@ -14,11 +14,14 @@ import { useConfirm } from '@/components/ConfirmDialog';
 import { takerColumns } from '@/lib/export';
 import { CREDIT_LEVELS, COMPLIANCE_META, type ComplianceStatus } from '@/lib/takerConstants';
 import { usePermissions, NoPermission } from '@/lib/permissions';
+import { processImageFile } from '@/lib/imageCompress';
+import { parseFlexibleDate, parseFlexibleDateDetail } from '@/lib/dateInput';
 
 /** 接单人表单状态 */
 interface TakerFormState {
   wechatName: string;
   wechatId: string;
+  taobaoNickname: string;
   registerDate: string;
   /** 实名认证是硬性门槛：必须显式确认为「是」，未确认视为不通过 */
   isRealNameVerified: boolean;
@@ -34,6 +37,7 @@ interface TakerFormState {
 const EMPTY_FORM: TakerFormState = {
   wechatName: '',
   wechatId: '',
+  taobaoNickname: '',
   registerDate: '',
   isRealNameVerified: false,
   creditLevel: '',
@@ -43,6 +47,10 @@ const EMPTY_FORM: TakerFormState = {
   securityScreenshot: null,
   reviewScreenshot: null,
 };
+
+/** 粘贴截图时，按此优先级填入第一个空槽 */
+const PASTE_SLOTS = ['avatarScreenshot', 'securityScreenshot', 'reviewScreenshot'] as const;
+type PasteSlot = (typeof PASTE_SLOTS)[number];
 
 /** 将日期值截断为本地 'YYYY-MM-DD'（避免 toISOString 造成时区偏移） */
 function toDateInputValue(value: string | Date | null | undefined): string {
@@ -75,6 +83,66 @@ export default function Takers() {
   }, [showForm]);
   const [formData, setFormData] = useState<TakerFormState>({ ...EMPTY_FORM });
   const [prefilling, setPrefilling] = useState(false);
+  /** 注册时间「日缺省按 1 日」提示是否显示 */
+  const [registerDateAssumed, setRegisterDateAssumed] = useState(false);
+  /** 隐藏的 type=date 输入，供日历图标联动唤起原生日历 */
+  const dateInputRef = useRef<HTMLInputElement>(null);
+  /** formData 最新镜像：供全局 paste 监听（仅注册一次）读取当前空槽 */
+  const formDataRef = useRef(formData);
+  useEffect(() => {
+    formDataRef.current = formData;
+  }, [formData]);
+  /** 防连续粘贴导致的并发压缩 */
+  const pastingRef = useRef(false);
+
+  // 表单打开时监听全局 paste：剪贴板含图片则填入第一个空截图槽；无图片则放行（不影响文本粘贴）
+  useEffect(() => {
+    if (!showForm) return;
+
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      let file: File | null = null;
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          file = item.getAsFile();
+          break;
+        }
+      }
+      if (!file) return; // 剪贴板无图片 → 交由默认行为（文本粘贴不受影响）
+      const imageFile: File = file;
+
+      // 仅在确有图片时阻止默认，避免影响输入框文本粘贴
+      e.preventDefault();
+      if (pastingRef.current) return;
+
+      const current = formDataRef.current;
+      const slot: PasteSlot | undefined = PASTE_SLOTS.find((s) => !current[s]);
+      if (!slot) {
+        toastError('三张截图已满，请先删除后再粘贴');
+        return;
+      }
+
+      pastingRef.current = true;
+      try {
+        const dataUrl = await processImageFile(imageFile);
+        const nextForm: TakerFormState = { ...formDataRef.current };
+        nextForm[slot] = dataUrl;
+        formDataRef.current = nextForm;
+        setFormData(nextForm);
+        toastSuccess('已粘贴截图');
+      } catch (err) {
+        toastError((err as Error).message || '图片处理失败');
+      } finally {
+        pastingRef.current = false;
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [showForm, toastError, toastSuccess]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['takers', page, debouncedSearch],
@@ -123,10 +191,24 @@ export default function Takers() {
     e.preventDefault();
     // 预填未完成时禁止提交：此时截图字段还是空值，提交会把已存截图清空
     if (prefilling) return;
+
+    // 注册时间：空 → null；非空则按柔性格式解析，失败给出提示并中止提交
+    let registerDate: string | null = null;
+    const rawRegisterDate = formData.registerDate.trim();
+    if (rawRegisterDate) {
+      const parsed = parseFlexibleDate(rawRegisterDate);
+      if (!parsed) {
+        toastError('注册时间格式不正确，支持 2024-05-01 / 2024/5/1 / 2024年5月1日 等');
+        return;
+      }
+      registerDate = parsed;
+    }
+
     const payload = {
       wechatName: formData.wechatName,
       wechatId: formData.wechatId,
-      registerDate: formData.registerDate || null,
+      taobaoNickname: formData.taobaoNickname.trim() || null,
+      registerDate,
       isRealNameVerified: formData.isRealNameVerified,
       creditLevel: formData.creditLevel || null,
       weeklyReceiptCount: formData.weeklyReceiptCount === '' ? null : Number(formData.weeklyReceiptCount),
@@ -142,6 +224,41 @@ export default function Takers() {
     }
   };
 
+  /** 注册时间失焦：可解析则回写规范化 'YYYY-MM-DD'，并记录「日缺省」提示 */
+  const handleRegisterDateBlur = () => {
+    const raw = formData.registerDate.trim();
+    if (!raw) {
+      setRegisterDateAssumed(false);
+      return;
+    }
+    const detail = parseFlexibleDateDetail(raw);
+    if (detail) {
+      setFormData((prev) => ({ ...prev, registerDate: detail.date }));
+      setRegisterDateAssumed(detail.dayMissing);
+    }
+  };
+
+  /** 唤起原生日历：优先 showPicker，不支持或失败时回退 click */
+  const openDatePicker = () => {
+    const el = dateInputRef.current;
+    if (!el) return;
+    if (typeof el.showPicker === 'function') {
+      try {
+        el.showPicker();
+        return;
+      } catch {
+        // 非用户手势等场景下 showPicker 可能抛错，回退到 click
+      }
+    }
+    el.click();
+  };
+
+  /** 日历选择后回写（原生 date 输入恒为 'YYYY-MM-DD'） */
+  const handleCalendarPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, registerDate: e.target.value }));
+    setRegisterDateAssumed(false);
+  };
+
   // 列表数据不含截图，需先取完整记录再填表
   const handleEdit = async (taker: any) => {
     setEditingTaker(taker);
@@ -155,6 +272,7 @@ export default function Takers() {
       setFormData({
         wechatName: full.wechatName ?? '',
         wechatId: full.wechatId ?? '',
+        taobaoNickname: full.taobaoNickname ?? '',
         registerDate: toDateInputValue(full.registerDate),
         isRealNameVerified: !!full.isRealNameVerified,
         creditLevel: full.creditLevel ?? '',
@@ -244,6 +362,7 @@ export default function Takers() {
             columns={[
               { key: 'wechatName', label: '微信昵称', required: true },
               { key: 'wechatId', label: '微信号', required: true },
+              { key: 'taobaoNickname', label: '淘宝昵称', required: false },
               { key: 'registerDate', label: '注册时间' },
               { key: 'isRealNameVerified', label: '实名认证' },
               { key: 'creditLevel', label: '信誉等级' },
@@ -327,20 +446,35 @@ export default function Takers() {
             {/* Body */}
             <form onSubmit={handleSubmit}>
               <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
-                <div>
-                  <label className="flex items-center gap-2 text-sm font-medium mb-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    微信昵称
-                    <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.wechatName}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, wechatName: e.target.value }))}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200"
-                    placeholder="请输入微信昵称"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium mb-2">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      微信昵称
+                      <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formData.wechatName}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, wechatName: e.target.value }))}
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200"
+                      placeholder="请输入微信昵称"
+                    />
+                  </div>
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-medium mb-2">
+                      淘宝昵称
+                      <span className="text-xs text-muted-foreground">（选填）</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.taobaoNickname}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, taobaoNickname: e.target.value }))}
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200"
+                      placeholder="请输入淘宝昵称（选填）"
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="flex items-center gap-2 text-sm font-medium mb-2">
@@ -368,12 +502,41 @@ export default function Takers() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="mb-2 block text-sm font-medium">注册时间</label>
-                      <input
-                        type="date"
-                        value={formData.registerDate}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, registerDate: e.target.value }))}
-                        className="apple-input"
-                      />
+                      <div className="relative">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={formData.registerDate}
+                          onChange={(e) => {
+                            setFormData((prev) => ({ ...prev, registerDate: e.target.value }));
+                            setRegisterDateAssumed(false);
+                          }}
+                          onBlur={handleRegisterDateBlur}
+                          className="apple-input pr-9"
+                          placeholder="如 2024-05-01 / 2024年5月"
+                        />
+                        <button
+                          type="button"
+                          onClick={openDatePicker}
+                          title="选择日期"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-indigo-500"
+                        >
+                          <Calendar className="h-4 w-4" />
+                        </button>
+                        {/* 隐藏的原生日期输入，供日历图标联动唤起；选择后回写 */}
+                        <input
+                          ref={dateInputRef}
+                          type="date"
+                          tabIndex={-1}
+                          aria-hidden="true"
+                          value={/^\d{4}-\d{2}-\d{2}$/.test(formData.registerDate) ? formData.registerDate : ''}
+                          onChange={handleCalendarPick}
+                          className="pointer-events-none absolute left-0 top-full h-0 w-0 opacity-0"
+                        />
+                      </div>
+                      {registerDateAssumed && (
+                        <p className="mt-1 text-xs text-muted-foreground">已按 1 日登记</p>
+                      )}
                     </div>
                     <div>
                       <label className="mb-2 block text-sm font-medium">实名认证</label>
@@ -491,6 +654,10 @@ export default function Takers() {
                 <ColumnFilter value={columnFilters['wechatId'] || ''} onChange={(v) => setColFilter('wechatId', v)} />
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>淘宝昵称</div>
+                <ColumnFilter value={columnFilters['taobaoNickname'] || ''} onChange={(v) => setColFilter('taobaoNickname', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>状态</div>
                 <ColumnFilter type="select" value={columnFilters['status'] || ''} onChange={(v) => setColFilter('status', v)} options={[{ value: 'active', label: '活跃' }, { value: 'inactive', label: '停用' }]} />
               </th>
@@ -516,13 +683,13 @@ export default function Takers() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                   加载中...
                 </td>
               </tr>
             ) : filteredTakers.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
                   暂无匹配数据
                 </td>
               </tr>
@@ -539,6 +706,7 @@ export default function Takers() {
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{taker.wechatId}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{taker.taobaoNickname || '—'}</td>
                     <td className="px-4 py-3 text-sm">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${

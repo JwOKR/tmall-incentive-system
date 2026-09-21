@@ -6,6 +6,9 @@
  * 把资质截图存入数据库 LongText 字段。
  */
 
+/** 单张截图 base64 dataURL 长度上限（与后端 MAX_SCREENSHOT_LENGTH 相呼应） */
+export const MAX_DATAURL_LENGTH = 1_500_000;
+
 /** 支持 createImageBitmap 时优先使用，否则回退到 Image 元素 */
 async function loadBitmap(file: File): Promise<ImageBitmap | HTMLImageElement> {
   if (typeof createImageBitmap === 'function') {
@@ -79,6 +82,26 @@ export async function compressImage(file: File, maxEdge = 1600, quality = 0.82):
   }
 
   return canvas.toDataURL('image/jpeg', quality);
+}
+
+/**
+ * 处理用户提供的图片文件：校验类型 → 压缩 → 校验体积。
+ *
+ * 供「选择文件 / 拖拽 / 复制粘贴」三条入口共用，保证校验与压缩逻辑一致。
+ *
+ * @param file 用户提供的文件
+ * @returns 压缩后的 JPEG base64 dataURL
+ * @throws 中文 message：非图片 / 处理失败 / 体积超限
+ */
+export async function processImageFile(file: File): Promise<string> {
+  if (!file.type.startsWith('image/')) {
+    throw new Error('请选择图片文件');
+  }
+  const dataUrl = await compressImage(file);
+  if (dataUrl.length > MAX_DATAURL_LENGTH) {
+    throw new Error('图片过大，请选择更小的图片');
+  }
+  return dataUrl;
 }
 
 /**

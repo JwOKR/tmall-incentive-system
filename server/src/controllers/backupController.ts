@@ -103,6 +103,7 @@ export const importBackup = async (req: Request, res: Response) => {
               id: taker.id,
               wechatName: taker.wechatName,
               wechatId: taker.wechatId,
+              taobaoNickname: taker.taobaoNickname ?? null,
               status: taker.status || 'active',
               totalOrders: taker.totalOrders || 0,
               totalAmount: taker.totalAmount || 0,

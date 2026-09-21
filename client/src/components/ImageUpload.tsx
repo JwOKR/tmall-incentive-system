@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { ImagePlus, Trash2, RefreshCw, Loader2 } from 'lucide-react';
-import { compressImage, formatBytes } from '@/lib/imageCompress';
+import { processImageFile, formatBytes } from '@/lib/imageCompress';
 import { useToast } from '@/components/Toast';
 import ImageZoom from '@/components/ImageZoom';
 
@@ -11,44 +11,61 @@ interface ImageUploadProps {
   onChange: (v: string | null) => void;
 }
 
-/** 单张截图 base64 字符串长度上限（与后端 MAX_SCREENSHOT_LENGTH 相呼应） */
-const MAX_DATAURL_LENGTH = 1_500_000;
-
 /**
  * 单张资质截图上传组件。
  *
- * 选图后在前端压缩为 JPEG base64 dataURL，超过体积上限则拒绝并提示。
+ * 支持三种录入方式，共用同一套校验/压缩逻辑（processImageFile）：
+ *   1. 点击「选择图片」通过文件选择器选图
+ *   2. 拖拽图片到虚线空态区
+ *   3. 拖拽图片到已有预览区（直接替换当前图）
+ * 复制粘贴入口在父级（Takers 表单）统一处理，同样调用 processImageFile。
  */
 export default function ImageUpload({ label, hint, value, onChange }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { error: toastError } = useToast();
   const [busy, setBusy] = useState(false);
   const [zoom, setZoom] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    // 立即清空，保证同一文件再次选择也能触发 change
-    e.target.value = '';
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toastError('请选择图片文件');
-      return;
-    }
-
+  /** 共用处理：校验 + 压缩 + 体积校验，成功后回填 */
+  const processFile = async (file: File) => {
     setBusy(true);
     try {
-      const dataUrl = await compressImage(file);
-      if (dataUrl.length > MAX_DATAURL_LENGTH) {
-        toastError('图片过大，请选择更小的图片');
-        return;
-      }
+      const dataUrl = await processImageFile(file);
       onChange(dataUrl);
     } catch (err) {
       toastError((err as Error).message || '图片处理失败');
     } finally {
       setBusy(false);
     }
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // 立即清空，保证同一文件再次选择也能触发 change
+    e.target.value = '';
+    if (!file) return;
+    await processFile(file);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!busy) setDragOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    // 阻止浏览器默认行为（否则会直接打开/下载拖入的图片）
+    e.preventDefault();
+    setDragOver(false);
+    if (busy) return;
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    await processFile(file);
   };
 
   const approximateBytes = value ? Math.round(value.length * 0.75) : 0;
@@ -67,7 +84,14 @@ export default function ImageUpload({ label, hint, value, onChange }: ImageUploa
       />
 
       {value ? (
-        <div className="flex items-center gap-3">
+        <div
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+          className={`flex items-center gap-3 rounded-xl transition-colors ${
+            dragOver ? 'ring-2 ring-indigo-500/50 ring-offset-2 ring-offset-background' : ''
+          }`}
+        >
           <button
             type="button"
             onClick={() => setZoom(true)}
@@ -80,6 +104,7 @@ export default function ImageUpload({ label, hint, value, onChange }: ImageUploa
             <span className="text-xs text-muted-foreground tabular-nums">
               约 {formatBytes(approximateBytes)}
             </span>
+            <span className="text-xs text-muted-foreground">拖入图片可直接替换</span>
             <div className="flex gap-2">
               <button
                 type="button"
@@ -104,15 +129,22 @@ export default function ImageUpload({ label, hint, value, onChange }: ImageUploa
         <button
           type="button"
           onClick={() => inputRef.current?.click()}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
           disabled={busy}
-          className="flex h-[120px] w-[120px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-input text-muted-foreground transition-colors hover:border-indigo-400 hover:text-indigo-500 disabled:opacity-60"
+          className={`flex h-[120px] w-[120px] flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed text-muted-foreground transition-colors disabled:opacity-60 ${
+            dragOver
+              ? 'border-indigo-500 bg-indigo-500/5 text-indigo-500'
+              : 'border-input hover:border-indigo-400 hover:text-indigo-500'
+          }`}
         >
           {busy ? (
             <Loader2 className="h-5 w-5 animate-spin" />
           ) : (
             <ImagePlus className="h-5 w-5" />
           )}
-          <span className="text-xs">{busy ? '处理中...' : '选择图片'}</span>
+          <span className="text-xs">{busy ? '处理中...' : '选择 / 拖入图片'}</span>
         </button>
       )}
 

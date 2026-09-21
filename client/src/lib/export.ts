@@ -16,6 +16,7 @@ interface ExportOptions {
 export const takerColumns: ExportColumn[] = [
   { key: 'wechatName', label: '微信昵称', selected: true },
   { key: 'wechatId', label: '微信号', selected: true },
+  { key: 'taobaoNickname', label: '淘宝昵称', selected: true },
   { key: 'status', label: '状态', selected: true },
   { key: 'totalOrders', label: '总订单', selected: true },
   { key: 'totalAmount', label: '总金额', selected: true },
