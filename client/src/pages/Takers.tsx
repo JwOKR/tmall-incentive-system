@@ -128,10 +128,15 @@ export default function Takers() {
       pastingRef.current = true;
       try {
         const dataUrl = await processImageFile(imageFile);
-        const nextForm: TakerFormState = { ...formDataRef.current };
-        nextForm[slot] = dataUrl;
-        formDataRef.current = nextForm;
-        setFormData(nextForm);
+        // 函数式更新：压缩 await 期间用户可能已触发新的表单编辑（如继续输入昵称），
+        // 基于 React 传入的 prev 合并，避免「快照重建 + 整体替换」把用户刚敲的字符回退掉。
+        // updater 为纯计算（仅依赖 prev，不读外部可变状态做分支），StrictMode 双调用幂等；
+        // ref 同步回写保留，供全局 paste 监听「同步读取当前空槽」保持一致。
+        setFormData((prev) => {
+          const next: TakerFormState = { ...prev, [slot]: dataUrl };
+          formDataRef.current = next;
+          return next;
+        });
         toastSuccess('已粘贴截图');
       } catch (err) {
         toastError((err as Error).message || '图片处理失败');
@@ -238,7 +243,7 @@ export default function Takers() {
     }
   };
 
-  /** 唤起原生日历：优先 showPicker，不支持或失败时回退 click */
+  /** 唤起原生日历：优先 showPicker；不支持或失败时回退 click 并提示用户手输 */
   const openDatePicker = () => {
     const el = dateInputRef.current;
     if (!el) return;
@@ -250,7 +255,10 @@ export default function Takers() {
         // 非用户手势等场景下 showPicker 可能抛错，回退到 click
       }
     }
+    // 旧浏览器（Chrome<99 / Firefox<101 / Safari<16）无 showPicker：click() 对 type=date
+    // 仅聚焦、不会弹出日历，属静默无反应。此处兜底提示，指引用户直接输入日期。
     el.click();
+    toastError('当前浏览器不支持日历弹窗，请直接输入日期');
   };
 
   /** 日历选择后回写（原生 date 输入恒为 'YYYY-MM-DD'） */
