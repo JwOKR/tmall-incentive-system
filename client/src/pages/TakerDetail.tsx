@@ -15,7 +15,7 @@ import {
   ImageOff,
 } from 'lucide-react';
 import { usePermissions, NoPermission } from '@/lib/permissions';
-import { COMPLIANCE_META, type TakerCompliance } from '@/lib/takerConstants';
+import { COMPLIANCE_META, WEEKLY_RECEIPT_MAX, MONTHLY_RECEIPT_MAX, type TakerCompliance } from '@/lib/takerConstants';
 import ImageZoom from '@/components/ImageZoom';
 
 export default function TakerDetail() {
@@ -72,15 +72,38 @@ export default function TakerDetail() {
   ];
 
   // 账号资质判定：由服务端在 taker 上附带 compliance，前端不重复实现规则
-  const compliance: TakerCompliance = taker.compliance || { status: 'incomplete', fails: [] };
+  const compliance: TakerCompliance =
+    taker.compliance || { status: 'incomplete', fails: [], weeklyOk: null, monthlyOk: null };
   const complianceMeta = COMPLIANCE_META[compliance.status];
 
-  const accountItems = [
+  // 周 / 月收货次数已降级为参考信息：超限时标红提示，但不影响上方合格判定结果
+  const weeklyOverLimit = compliance.weeklyOk === false;
+  const monthlyOverLimit = compliance.monthlyOk === false;
+
+  const accountItems: { label: string; value: string; warn?: boolean }[] = [
     { label: '注册时间', value: taker.registerDate ? formatDate(taker.registerDate) : '未登记' },
     { label: '实名认证', value: taker.isRealNameVerified ? '是' : '否' },
     { label: '信誉等级', value: taker.creditLevel || '未登记' },
-    { label: '每周收货次数', value: taker.weeklyReceiptCount === null || taker.weeklyReceiptCount === undefined ? '未登记' : `${taker.weeklyReceiptCount} 单` },
-    { label: '每月收货次数', value: taker.monthlyReceiptCount === null || taker.monthlyReceiptCount === undefined ? '未登记' : `${taker.monthlyReceiptCount} 单` },
+    {
+      label: '每周收货次数',
+      value:
+        taker.weeklyReceiptCount === null || taker.weeklyReceiptCount === undefined
+          ? '未登记'
+          : weeklyOverLimit
+            ? `${taker.weeklyReceiptCount} 单（超出参考上限 ${WEEKLY_RECEIPT_MAX}）`
+            : `${taker.weeklyReceiptCount} 单`,
+      warn: weeklyOverLimit,
+    },
+    {
+      label: '每月收货次数',
+      value:
+        taker.monthlyReceiptCount === null || taker.monthlyReceiptCount === undefined
+          ? '未登记'
+          : monthlyOverLimit
+            ? `${taker.monthlyReceiptCount} 单（超出参考上限 ${MONTHLY_RECEIPT_MAX}）`
+            : `${taker.monthlyReceiptCount} 单`,
+      warn: monthlyOverLimit,
+    },
   ];
 
   const screenshots = [
@@ -135,7 +158,7 @@ export default function TakerDetail() {
           {accountItems.map(item => (
             <div key={item.label} className="flex items-center justify-between rounded-xl bg-muted/50 p-3">
               <span className="text-sm text-muted-foreground">{item.label}</span>
-              <span className="font-medium tabular-nums">{item.value}</span>
+              <span className={`font-medium tabular-nums${item.warn ? ' text-red-600 dark:text-red-400' : ''}`}>{item.value}</span>
             </div>
           ))}
         </div>

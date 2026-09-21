@@ -580,7 +580,7 @@ export default function Takers() {
 
                   <div className="mt-4 grid grid-cols-2 gap-4">
                     <div>
-                      <label className="mb-2 block text-sm font-medium">每周收货次数</label>
+                      <label className="mb-2 block text-sm font-medium">每周收货次数（参考）</label>
                       <input
                         type="number"
                         min={0}
@@ -591,7 +591,7 @@ export default function Takers() {
                       />
                     </div>
                     <div>
-                      <label className="mb-2 block text-sm font-medium">每月收货次数</label>
+                      <label className="mb-2 block text-sm font-medium">每月收货次数（参考）</label>
                       <input
                         type="number"
                         min={0}

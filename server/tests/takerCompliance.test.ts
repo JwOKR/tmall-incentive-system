@@ -4,9 +4,11 @@
  * 用法（在 server/ 目录下）：npm test
  *
  * 这些规则是「接单账号要求」的核心业务规则：
- *   1. 注册时间一年以上，且完成实名认证
- *   2. 信誉等级 3 心（含）以上
- *   3. 每周收货次数 <= 5 单，每月收货次数 <= 20 单
+ *   1. 注册时间一年以上
+ *   2. 完成实名认证
+ *   3. 信誉等级 3 心（含）以上
+ * 每周 / 每月收货次数已降级为「参考信息」：照常登记与展示，超限时仅标红提醒，
+ * 既不产生 fails，也不造成「待完善」。另需上传的 3 张资质截图同样不参与判定。
  * 规则一旦改动，请同步更新本文件的期望值。
  */
 import { evaluateTakerCompliance, creditLevelRank, countScreenshots } from '../src/utils/takerCompliance';
@@ -99,10 +101,14 @@ check('5冠 → qualified', evaluateTakerCompliance({ ...GOOD, creditLevel: '5�
 console.log('\n=== 7. 单项不通过 ===');
 check('2心 → 不合格', evaluateTakerCompliance({ ...GOOD, creditLevel: '2心' }).status, 'unqualified');
 check('2心 fails', evaluateTakerCompliance({ ...GOOD, creditLevel: '2心' }).fails, ['信誉等级不足3心']);
-check('周6 → 不合格', evaluateTakerCompliance({ ...GOOD, weeklyReceiptCount: 6 }).status, 'unqualified');
-check('周6 fails', evaluateTakerCompliance({ ...GOOD, weeklyReceiptCount: 6 }).fails, ['每周收货次数超过5单']);
-check('月21 → 不合格', evaluateTakerCompliance({ ...GOOD, monthlyReceiptCount: 21 }).status, 'unqualified');
-check('月21 fails', evaluateTakerCompliance({ ...GOOD, monthlyReceiptCount: 21 }).fails, ['每月收货次数超过20单']);
+// 周 / 月收货次数已降级为参考项：超限时仍返回 weeklyOk / monthlyOk = false 供前端标红，
+// 但不再产生 fails、不再改变 status
+check('周6 → 仍为合格（周收货不参与判定）', evaluateTakerCompliance({ ...GOOD, weeklyReceiptCount: 6 }).status, 'qualified');
+check('周6 fails 为空', evaluateTakerCompliance({ ...GOOD, weeklyReceiptCount: 6 }).fails, []);
+check('周6 weeklyOk = false（仅展示标红）', evaluateTakerCompliance({ ...GOOD, weeklyReceiptCount: 6 }).weeklyOk, false);
+check('月21 → 仍为合格（月收货不参与判定）', evaluateTakerCompliance({ ...GOOD, monthlyReceiptCount: 21 }).status, 'qualified');
+check('月21 fails 为空', evaluateTakerCompliance({ ...GOOD, monthlyReceiptCount: 21 }).fails, []);
+check('月21 monthlyOk = false（仅展示标红）', evaluateTakerCompliance({ ...GOOD, monthlyReceiptCount: 21 }).monthlyOk, false);
 check('未实名 fails', evaluateTakerCompliance({ ...GOOD, isRealNameVerified: false }).fails, ['未完成实名认证']);
 check(
   '注册 100 天 → 不合格',
@@ -120,7 +126,7 @@ check(
   'qualified'
 );
 
-console.log('\n=== 8. 多项同时不通过 → fails 累积 ===');
+console.log('\n=== 8. 多项同时不通过 → fails 累积（周/月超限已不计入）===');
 const multi = evaluateTakerCompliance({
   ...GOOD,
   isRealNameVerified: false,
@@ -129,12 +135,12 @@ const multi = evaluateTakerCompliance({
   monthlyReceiptCount: 30,
 });
 check('status = unqualified', multi.status, 'unqualified');
-check('fails 四项', multi.fails, [
+check('fails 仅两项核心（周9 / 月30 不再计入）', multi.fails, [
   '未完成实名认证',
   '信誉等级不足3心',
-  '每周收货次数超过5单',
-  '每月收货次数超过20单',
 ]);
+check('weeklyOk = false（仍返回，供展示标红）', multi.weeklyOk, false);
+check('monthlyOk = false（仍返回，供展示标红）', multi.monthlyOk, false);
 
 console.log('\n=== 9. 部分登记（缺 信誉/周/月）→ 待完善 ===');
 const partial = evaluateTakerCompliance({
@@ -247,6 +253,108 @@ check(
   evaluateTakerCompliance({ ...GOOD, isRealNameVerified: false }).status,
   'unqualified'
 );
+
+console.log('\n=== 14. 判定只看三项核心（注册时间 / 实名 / 信誉等级），周月收货次数仅作参考 ===');
+/** 三项核心全达标；截图为 0（截图不参与判定） */
+const CORE = {
+  registerDate: new Date(now - 500 * DAY),
+  isRealNameVerified: true,
+  creditLevel: '3心',
+  screenshotCount: 0,
+};
+
+// 14.1 三项核心全达标 + 周 / 月双双超出参考上限 → 仍判合格，但 weeklyOk / monthlyOk 返回 false 供标红
+const overLimit = evaluateTakerCompliance({
+  ...CORE,
+  weeklyReceiptCount: 8,
+  monthlyReceiptCount: 30,
+});
+check('周月超限 → status 仍为 qualified', overLimit.status, 'qualified');
+check('周月超限 → fails 为空', overLimit.fails, []);
+check('周月超限 → weeklyOk = false（供前端标红）', overLimit.weeklyOk, false);
+check('周月超限 → monthlyOk = false（供前端标红）', overLimit.monthlyOk, false);
+check('周月超限 → fails 不含「每周」', overLimit.fails.some(f => f.includes('每周')), false);
+check('周月超限 → fails 不含「每月」', overLimit.fails.some(f => f.includes('每月')), false);
+
+// 14.2 三项核心全达标 + 周 / 月未登记（null）→ 合格，且不再因周月缺失而变成「待完善」
+const noReceipt = evaluateTakerCompliance({
+  ...CORE,
+  weeklyReceiptCount: null,
+  monthlyReceiptCount: null,
+});
+check('周月未登记 → status 仍为 qualified', noReceipt.status, 'qualified');
+check('周月未登记 → weeklyOk = null', noReceipt.weeklyOk, null);
+check('周月未登记 → monthlyOk = null', noReceipt.monthlyOk, null);
+
+// 14.3 回归：周 / 月正常取值 → 仍合格
+const normalReceipt = evaluateTakerCompliance({
+  ...CORE,
+  weeklyReceiptCount: 5,
+  monthlyReceiptCount: 20,
+});
+check('周月正常 → status = qualified', normalReceipt.status, 'qualified');
+check('周月正常 → weeklyOk = true', normalReceipt.weeklyOk, true);
+check('周月正常 → monthlyOk = true', normalReceipt.monthlyOk, true);
+
+// 14.4 只填了周 / 月、三项核心全空 → 不能算「登记过资质」，判待完善且 fails 为空
+const onlyReceipt = evaluateTakerCompliance({
+  registerDate: null,
+  isRealNameVerified: false,
+  creditLevel: null,
+  weeklyReceiptCount: 3,
+  monthlyReceiptCount: 10,
+  screenshotCount: 0,
+});
+check('只填周月 → status = incomplete', onlyReceipt.status, 'incomplete');
+check('只填周月 → fails 为空', onlyReceipt.fails, []);
+
+// 14.5 三项核心全空（从未登记）→ 待完善
+const coreEmpty = evaluateTakerCompliance({
+  registerDate: null,
+  isRealNameVerified: false,
+  creditLevel: null,
+  weeklyReceiptCount: null,
+  monthlyReceiptCount: null,
+  screenshotCount: 0,
+});
+check('三项核心全空 → status = incomplete', coreEmpty.status, 'incomplete');
+check('三项核心全空 → fails 为空', coreEmpty.fails, []);
+
+// 14.6 注册时间 + 信誉等级已登记、实名选「否」→ 不合格，且 fails 恰为实名一项
+const realNameNo = evaluateTakerCompliance({ ...CORE, isRealNameVerified: false });
+check('已登记 + 实名否 → status = unqualified', realNameNo.status, 'unqualified');
+check('已登记 + 实名否 → fails 恰为「未完成实名认证」', realNameNo.fails, ['未完成实名认证']);
+
+// 14.7 三项核心中任一项未填写 + 实名「是」→ 待完善（实名不进 missingRequired）
+check(
+  '注册时间为空 + 实名是 → incomplete',
+  evaluateTakerCompliance({ ...CORE, registerDate: null }).status,
+  'incomplete'
+);
+check(
+  '信誉等级为空 + 实名是 → incomplete',
+  evaluateTakerCompliance({ ...CORE, creditLevel: null }).status,
+  'incomplete'
+);
+
+// 14.8 核心项不通过仍然照常判不合格（周月正常取值不影响）
+const shortRegister = evaluateTakerCompliance({
+  ...CORE,
+  registerDate: new Date(now - 100 * DAY),
+  weeklyReceiptCount: 5,
+  monthlyReceiptCount: 20,
+});
+check('注册未满一年 → status = unqualified', shortRegister.status, 'unqualified');
+check('注册未满一年 → fails 含「注册未满一年」', shortRegister.fails.includes('注册未满一年'), true);
+
+const lowCredit = evaluateTakerCompliance({
+  ...CORE,
+  creditLevel: '1心',
+  weeklyReceiptCount: 5,
+  monthlyReceiptCount: 20,
+});
+check('信誉 1心 → status = unqualified', lowCredit.status, 'unqualified');
+check('信誉 1心 → fails 含「信誉等级不足3心」', lowCredit.fails.includes('信誉等级不足3心'), true);
 
 console.log(`\n========== 结果：PASS=${passed}  FAIL=${failed} ==========`);
 process.exit(failed > 0 ? 1 : 0);

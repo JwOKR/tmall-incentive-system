@@ -19,7 +19,29 @@ export type ComplianceStatus = 'qualified' | 'unqualified' | 'incomplete';
 export interface TakerCompliance {
   status: ComplianceStatus;
   fails: string[];
+  /**
+   * 参考项：每周收货次数是否未超出参考上限。
+   * 为空 → null；false 表示超出参考上限，仅供展示标红，不参与 status 判定。
+   */
+  weeklyOk: boolean | null;
+  /**
+   * 参考项：每月收货次数是否未超出参考上限。
+   * 为空 → null；false 表示超出参考上限，仅供展示标红，不参与 status 判定。
+   */
+  monthlyOk: boolean | null;
 }
+
+/**
+ * 每周收货次数参考上限（与 server/src/utils/takerCompliance.ts 保持一致）。
+ * 仅用于展示提示，前端不重复实现判定规则。
+ */
+export const WEEKLY_RECEIPT_MAX = 5;
+
+/**
+ * 每月收货次数参考上限（与 server/src/utils/takerCompliance.ts 保持一致）。
+ * 仅用于展示提示，前端不重复实现判定规则。
+ */
+export const MONTHLY_RECEIPT_MAX = 20;
 
 interface ComplianceMetaItem {
   label: string;
