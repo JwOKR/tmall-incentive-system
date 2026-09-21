@@ -8,10 +8,54 @@ import { Link } from 'react-router-dom';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
+import ImageUpload from '@/components/ImageUpload';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { takerColumns } from '@/lib/export';
+import { CREDIT_LEVELS, COMPLIANCE_META, type ComplianceStatus } from '@/lib/takerConstants';
 import { usePermissions, NoPermission } from '@/lib/permissions';
+
+/** 接单人表单状态 */
+interface TakerFormState {
+  wechatName: string;
+  wechatId: string;
+  registerDate: string;
+  isRealNameVerified: boolean;
+  creditLevel: string;
+  weeklyReceiptCount: string;
+  monthlyReceiptCount: string;
+  avatarScreenshot: string | null;
+  securityScreenshot: string | null;
+  reviewScreenshot: string | null;
+}
+
+/** 空表单初始值（新增 / 成功重置 / 关闭重置复用） */
+const EMPTY_FORM: TakerFormState = {
+  wechatName: '',
+  wechatId: '',
+  registerDate: '',
+  isRealNameVerified: false,
+  creditLevel: '',
+  weeklyReceiptCount: '',
+  monthlyReceiptCount: '',
+  avatarScreenshot: null,
+  securityScreenshot: null,
+  reviewScreenshot: null,
+};
+
+/** 将日期值截断为本地 'YYYY-MM-DD'（避免 toISOString 造成时区偏移） */
+function toDateInputValue(value: string | Date | null | undefined): string {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** 将可选数值字段转为表单字符串 */
+function countToInput(value: number | null | undefined): string {
+  return value === null || value === undefined ? '' : String(value);
+}
 
 export default function Takers() {
   const queryClient = useQueryClient();
@@ -28,10 +72,7 @@ export default function Takers() {
   useEffect(() => {
     if (showForm && formModalRef.current) formModalRef.current.focus();
   }, [showForm]);
-  const [formData, setFormData] = useState({
-    wechatName: '',
-    wechatId: '',
-  });
+  const [formData, setFormData] = useState<TakerFormState>({ ...EMPTY_FORM });
 
   const { data, isLoading } = useQuery({
     queryKey: ['takers', page, debouncedSearch],
@@ -43,7 +84,7 @@ export default function Takers() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['takers'] });
       setShowForm(false);
-      setFormData({ wechatName: '', wechatId: '' });
+      setFormData({ ...EMPTY_FORM });
       toastSuccess('创建成功');
     },
     onError: (error: any) => {
@@ -57,7 +98,7 @@ export default function Takers() {
       queryClient.invalidateQueries({ queryKey: ['takers'] });
       setShowForm(false);
       setEditingTaker(null);
-      setFormData({ wechatName: '', wechatId: '' });
+      setFormData({ ...EMPTY_FORM });
       toastSuccess('更新成功');
     },
     onError: (error: any) => {
@@ -78,26 +119,66 @@ export default function Takers() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const payload = {
+      wechatName: formData.wechatName,
+      wechatId: formData.wechatId,
+      registerDate: formData.registerDate || null,
+      isRealNameVerified: formData.isRealNameVerified,
+      creditLevel: formData.creditLevel || null,
+      weeklyReceiptCount: formData.weeklyReceiptCount === '' ? null : Number(formData.weeklyReceiptCount),
+      monthlyReceiptCount: formData.monthlyReceiptCount === '' ? null : Number(formData.monthlyReceiptCount),
+      avatarScreenshot: formData.avatarScreenshot,
+      securityScreenshot: formData.securityScreenshot,
+      reviewScreenshot: formData.reviewScreenshot,
+    };
     if (editingTaker) {
-      updateMutation.mutate({ id: editingTaker.id, data: formData });
+      updateMutation.mutate({ id: editingTaker.id, data: payload });
     } else {
-      createMutation.mutate(formData);
+      createMutation.mutate(payload);
     }
   };
 
-  const handleEdit = (taker: any) => {
+  // 列表数据不含截图，需先取完整记录再填表
+  const handleEdit = async (taker: any) => {
     setEditingTaker(taker);
-    setFormData({
-      wechatName: taker.wechatName,
-      wechatId: taker.wechatId,
-    });
+    setFormData({ ...EMPTY_FORM, wechatName: taker.wechatName ?? '', wechatId: taker.wechatId ?? '' });
     setShowForm(true);
+    try {
+      const res: any = await takersApi.getById(taker.id);
+      const full = res?.data ?? res;
+      if (!full) return;
+      setFormData({
+        wechatName: full.wechatName ?? '',
+        wechatId: full.wechatId ?? '',
+        registerDate: toDateInputValue(full.registerDate),
+        isRealNameVerified: !!full.isRealNameVerified,
+        creditLevel: full.creditLevel ?? '',
+        weeklyReceiptCount: countToInput(full.weeklyReceiptCount),
+        monthlyReceiptCount: countToInput(full.monthlyReceiptCount),
+        avatarScreenshot: full.avatarScreenshot ?? null,
+        securityScreenshot: full.securityScreenshot ?? null,
+        reviewScreenshot: full.reviewScreenshot ?? null,
+      });
+    } catch (e) {
+      toastError('获取接单人资质信息失败');
+    }
   };
 
   const handleDelete = async (id: string) => {
     if (await confirm({ message: '确定要删除这个接单人吗？', variant: 'danger', confirmText: '删除' })) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const openCreate = () => {
+    setEditingTaker(null);
+    setFormData({ ...EMPTY_FORM });
+    setShowForm(true);
+  };
+
+  const closeForm = () => {
+    setShowForm(false);
+    setEditingTaker(null);
   };
 
   const takers = (data as any)?.data?.list || [];
@@ -107,6 +188,10 @@ export default function Takers() {
     return filterData(takers, columnFilters, (item: any, key: string) => {
       if (key === 'createdAt') return item.createdAt ? formatDate(item.createdAt) : '';
       if (key === 'totalAmount') return item.totalAmount ? formatCurrency(item.totalAmount) : '';
+      if (key === 'compliance') {
+        const meta = COMPLIANCE_META[(item.compliance?.status as ComplianceStatus) || 'incomplete'];
+        return meta ? meta.label : '';
+      }
       return String(item[key] ?? '');
     });
   }, [takers, columnFilters]);
@@ -147,6 +232,11 @@ export default function Takers() {
             columns={[
               { key: 'wechatName', label: '微信昵称', required: true },
               { key: 'wechatId', label: '微信号', required: true },
+              { key: 'registerDate', label: '注册时间' },
+              { key: 'isRealNameVerified', label: '实名认证' },
+              { key: 'creditLevel', label: '信誉等级' },
+              { key: 'weeklyReceiptCount', label: '每周收货次数' },
+              { key: 'monthlyReceiptCount', label: '每月收货次数' },
             ]}
             onImport={async (data) => {
               try {
@@ -163,11 +253,7 @@ export default function Takers() {
             buttonLabel="导入"
           />
           <button
-            onClick={() => {
-              setEditingTaker(null);
-              setFormData({ wechatName: '', wechatId: '' });
-              setShowForm(true);
-            }}
+            onClick={openCreate}
             className="apple-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-500/20"
           >
             <Plus className="h-4 w-4" />
@@ -194,8 +280,8 @@ export default function Takers() {
       {showForm && (
         <div
           className="modal-overlay"
-          onClick={() => { setShowForm(false); setEditingTaker(null); }}
-          onKeyDown={(e) => e.key === 'Escape' && (setShowForm(false), setEditingTaker(null))}
+          onClick={closeForm}
+          onKeyDown={(e) => e.key === 'Escape' && closeForm()}
           tabIndex={-1}
           ref={formModalRef}
         >
@@ -214,12 +300,12 @@ export default function Takers() {
                     {editingTaker ? '编辑接单人' : '添加接单人'}
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    {editingTaker ? '修改接单人信息' : '添加新的接单人到系统'}
+                    {editingTaker ? '修改接单人信息与账号资质' : '添加新的接单人到系统'}
                   </p>
                 </div>
               </div>
               <button
-                onClick={() => { setShowForm(false); setEditingTaker(null); }}
+                onClick={closeForm}
                 className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200 hover:scale-105 active:scale-95"
               >
                 <X className="h-5 w-5" />
@@ -227,43 +313,136 @@ export default function Takers() {
             </div>
 
             {/* Body */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-5">
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium mb-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  微信昵称
-                  <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.wechatName}
-                  onChange={(e) => setFormData({ ...formData, wechatName: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200"
-                  placeholder="请输入微信昵称"
-                />
-              </div>
-              <div>
-                <label className="flex items-center gap-2 text-sm font-medium mb-2">
-                  <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
-                  微信号
-                  <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formData.wechatId}
-                  onChange={(e) => setFormData({ ...formData, wechatId: e.target.value })}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200"
-                  placeholder="请输入微信号"
-                />
+            <form onSubmit={handleSubmit}>
+              <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium mb-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    微信昵称
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.wechatName}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, wechatName: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200"
+                    placeholder="请输入微信昵称"
+                  />
+                </div>
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium mb-2">
+                    <svg className="h-4 w-4 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" /></svg>
+                    微信号
+                    <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.wechatId}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, wechatId: e.target.value }))}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 transition-all duration-200"
+                    placeholder="请输入微信号"
+                  />
+                </div>
+
+                {/* 账号资质登记 */}
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-5">
+                  <h4 className="mb-1 text-sm font-semibold">账号资质登记</h4>
+                  <p className="mb-4 text-xs text-muted-foreground">
+                    接单要求：注册满一年并完成实名认证、信誉等级 3❤️ 以上、每周收货 ≤5 单、每月收货 ≤20 单
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">注册时间</label>
+                      <input
+                        type="date"
+                        value={formData.registerDate}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, registerDate: e.target.value }))}
+                        className="apple-input"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">实名认证</label>
+                      <select
+                        value={formData.isRealNameVerified ? 'true' : 'false'}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, isRealNameVerified: e.target.value === 'true' }))}
+                        className="apple-input"
+                      >
+                        <option value="false">否</option>
+                        <option value="true">是</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="mb-2 block text-sm font-medium">信誉等级</label>
+                    <select
+                      value={formData.creditLevel}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, creditLevel: e.target.value }))}
+                      className="apple-input"
+                    >
+                      <option value="">未登记</option>
+                      {CREDIT_LEVELS.map((level) => (
+                        <option key={level} value={level}>{level}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">每周收货次数</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={formData.weeklyReceiptCount}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, weeklyReceiptCount: e.target.value }))}
+                        className="apple-input tabular-nums"
+                        placeholder="≤ 5"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">每月收货次数</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={formData.monthlyReceiptCount}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, monthlyReceiptCount: e.target.value }))}
+                        className="apple-input tabular-nums"
+                        placeholder="≤ 20"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-5 space-y-4">
+                    <ImageUpload
+                      label="头像截图"
+                      hint="我的淘宝 → 点击左上角头像 → 截图"
+                      value={formData.avatarScreenshot}
+                      onChange={(v) => setFormData((prev) => ({ ...prev, avatarScreenshot: v }))}
+                    />
+                    <ImageUpload
+                      label="账号与安全截图"
+                      hint="我的淘宝 → 右上角设置 → 账号与安全 → 截图"
+                      value={formData.securityScreenshot}
+                      onChange={(v) => setFormData((prev) => ({ ...prev, securityScreenshot: v }))}
+                    />
+                    <ImageUpload
+                      label="待评价截图"
+                      hint="我的淘宝 → 待评价 → 截图"
+                      value={formData.reviewScreenshot}
+                      onChange={(v) => setFormData((prev) => ({ ...prev, reviewScreenshot: v }))}
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Footer */}
-              <div className="flex justify-end gap-3 pt-2">
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
                 <button
                   type="button"
-                  onClick={() => { setShowForm(false); setEditingTaker(null); }}
+                  onClick={closeForm}
                   className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
                 >
                   取消
@@ -298,6 +477,10 @@ export default function Takers() {
                 <ColumnFilter type="select" value={columnFilters['status'] || ''} onChange={(v) => setColFilter('status', v)} options={[{ value: 'active', label: '活跃' }, { value: 'inactive', label: '停用' }]} />
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>账号资质</div>
+                <ColumnFilter type="select" value={columnFilters['compliance'] || ''} onChange={(v) => setColFilter('compliance', v)} options={[{ value: '合格', label: '合格' }, { value: '不合格', label: '不合格' }, { value: '待完善', label: '待完善' }]} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>总订单</div>
                 <ColumnFilter value={columnFilters['totalOrders'] || ''} onChange={(v) => setColFilter('totalOrders', v)} />
               </th>
@@ -315,64 +498,82 @@ export default function Takers() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   加载中...
                 </td>
               </tr>
             ) : filteredTakers.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   暂无匹配数据
                 </td>
               </tr>
             ) : (
-              filteredTakers.map((taker: any) => (
-                <tr key={taker.id} className="table-row-hover table-row-zebra">
-                  <td className="px-4 py-3 text-sm font-medium">
-                    <Link to={`/takers/${taker.id}`} className="hover:text-indigo-500 hover:underline transition-colors">
-                      {taker.wechatName}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground">{taker.wechatId}</td>
-                  <td className="px-4 py-3 text-sm">
-                    <span
-                      className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                        taker.status === 'active'
-                          ? 'badge-success'
-                          : 'badge-neutral'
-                      }`}
-                    >
-                      {taker.status === 'active' ? '活跃' : '停用'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-sm tabular-nums">{taker.totalOrders}</td>
-                  <td className="px-4 py-3 text-sm tabular-nums">{formatCurrency(taker.totalAmount)}</td>
-                  <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">
-                    {formatDate(taker.createdAt)}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      to={`/takers/${taker.id}`}
-                      className="p-1 hover:bg-accent rounded-lg inline-block"
-                      title="查看详情"
-                    >
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                    </Link>
-                    <button
-                      onClick={() => handleEdit(taker)}
-                      className="p-1 hover:bg-accent rounded-lg"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(taker.id)}
-                      className="p-1 hover:bg-rose-500/10 rounded-lg ml-1"
-                    >
-                      <Trash2 className="h-4 w-4 text-rose-500" />
-                    </button>
-                  </td>
-                </tr>
-              ))
+              filteredTakers.map((taker: any) => {
+                const status = (taker.compliance?.status as ComplianceStatus) || 'incomplete';
+                const meta = COMPLIANCE_META[status];
+                const fails: string[] = taker.compliance?.fails || [];
+                return (
+                  <tr key={taker.id} className="table-row-hover table-row-zebra">
+                    <td className="px-4 py-3 text-sm font-medium">
+                      <Link to={`/takers/${taker.id}`} className="hover:text-indigo-500 hover:underline transition-colors">
+                        {taker.wechatName}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{taker.wechatId}</td>
+                    <td className="px-4 py-3 text-sm">
+                      <span
+                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                          taker.status === 'active'
+                            ? 'badge-success'
+                            : 'badge-neutral'
+                        }`}
+                      >
+                        {taker.status === 'active' ? '活跃' : '停用'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <div className="flex flex-col items-start gap-1">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${meta.className}`}
+                          title={status === 'unqualified' && fails.length > 0 ? fails.join('、') : undefined}
+                        >
+                          {meta.label}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground tabular-nums">
+                          截图 {taker.screenshotCount ?? 0}/3
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-sm tabular-nums">{taker.totalOrders}</td>
+                    <td className="px-4 py-3 text-sm tabular-nums">{formatCurrency(taker.totalAmount)}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">
+                      {formatDate(taker.createdAt)}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        to={`/takers/${taker.id}`}
+                        className="p-1 hover:bg-accent rounded-lg inline-block"
+                        title="查看详情"
+                      >
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      </Link>
+                      <button
+                        onClick={() => handleEdit(taker)}
+                        className="p-1 hover:bg-accent rounded-lg"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(taker.id)}
+                        className="p-1 hover:bg-rose-500/10 rounded-lg ml-1"
+                      >
+                        <Trash2 className="h-4 w-4 text-rose-500" />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

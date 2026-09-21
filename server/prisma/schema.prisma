@@ -35,7 +35,19 @@ model OrderTaker {
   totalAmount Float    @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @default(now())
-  
+
+  // 账号资质登记
+  registerDate          DateTime? // 淘宝账号注册时间
+  isRealNameVerified    Boolean   @default(false) // 是否完成实名认证
+  creditLevel           String?   // 信誉等级：'1心'..'5心' | '1钻'..'5钻' | '1冠'..'5冠'
+  weeklyReceiptCount    Int?      // 每周收货次数
+  monthlyReceiptCount   Int?      // 每月收货次数
+  screenshotCount       Int       @default(0) // 已上传截图数量 0-3（服务端维护，供列表低成本展示）
+  avatarScreenshot      String?   @db.LongText // 我的淘宝-头像截图（base64 dataURL）
+  securityScreenshot    String?   @db.LongText // 账号与安全截图（base64 dataURL）
+  reviewScreenshot      String?   @db.LongText // 待评价截图（base64 dataURL）
+  accountInfoUpdatedAt  DateTime? // 资质信息最近登记时间
+
   orders      Order[]
   
   @@index([status])

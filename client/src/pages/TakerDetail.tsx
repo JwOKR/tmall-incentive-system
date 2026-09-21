@@ -11,12 +11,17 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
+  ShieldCheck,
+  ImageOff,
 } from 'lucide-react';
 import { usePermissions, NoPermission } from '@/lib/permissions';
+import { COMPLIANCE_META, evaluateTakerComplianceClient } from '@/lib/takerConstants';
+import ImageZoom from '@/components/ImageZoom';
 
 export default function TakerDetail() {
   const { id } = useParams<{ id: string }>();
   const [page, setPage] = useState(1);
+  const [zoomSrc, setZoomSrc] = useState<string | null>(null);
   const { canView } = usePermissions();
 
   if (!canView('takers')) {
@@ -66,6 +71,24 @@ export default function TakerDetail() {
     { title: '距上次接单', value: summary.daysSinceLastOrder !== null ? `${summary.daysSinceLastOrder}天` : '-', icon: Clock, color: summary.daysSinceLastOrder && summary.daysSinceLastOrder > 7 ? 'text-rose-600 dark:text-rose-400' : 'text-violet-600 dark:text-violet-400', bg: summary.daysSinceLastOrder && summary.daysSinceLastOrder > 7 ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-violet-100 dark:bg-violet-900/30' },
   ];
 
+  // 账号资质判定（前端轻量计算，与后端规则一致）
+  const compliance = evaluateTakerComplianceClient(taker);
+  const complianceMeta = COMPLIANCE_META[compliance.status];
+
+  const accountItems = [
+    { label: '注册时间', value: taker.registerDate ? formatDate(taker.registerDate) : '未登记' },
+    { label: '实名认证', value: taker.isRealNameVerified ? '是' : '否' },
+    { label: '信誉等级', value: taker.creditLevel || '未登记' },
+    { label: '每周收货次数', value: taker.weeklyReceiptCount === null || taker.weeklyReceiptCount === undefined ? '未登记' : `${taker.weeklyReceiptCount} 单` },
+    { label: '每月收货次数', value: taker.monthlyReceiptCount === null || taker.monthlyReceiptCount === undefined ? '未登记' : `${taker.monthlyReceiptCount} 单` },
+  ];
+
+  const screenshots = [
+    { label: '头像截图', src: taker.avatarScreenshot as string | null },
+    { label: '账号与安全截图', src: taker.securityScreenshot as string | null },
+    { label: '待评价截图', src: taker.reviewScreenshot as string | null },
+  ];
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -94,6 +117,62 @@ export default function TakerDetail() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Account Qualification */}
+      <div className="rounded-2xl apple-card p-6">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-indigo-500" />
+            账号资质
+          </h3>
+          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${complianceMeta.className}`}>
+            {complianceMeta.label}
+          </span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {accountItems.map(item => (
+            <div key={item.label} className="flex items-center justify-between rounded-xl bg-muted/50 p-3">
+              <span className="text-sm text-muted-foreground">{item.label}</span>
+              <span className="font-medium tabular-nums">{item.value}</span>
+            </div>
+          ))}
+        </div>
+        {compliance.status === 'unqualified' && compliance.fails.length > 0 && (
+          <div className="mt-4 rounded-xl border border-rose-500/20 bg-rose-500/10 p-3">
+            <p className="mb-1 text-sm font-medium text-rose-600 dark:text-rose-400">未通过项</p>
+            <ul className="list-inside list-disc text-sm text-rose-600/90 dark:text-rose-400/90">
+              {compliance.fails.map(fail => <li key={fail}>{fail}</li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* Qualification Screenshots */}
+      <div className="rounded-2xl apple-card p-6">
+        <h3 className="mb-4 text-lg font-semibold">资质截图（{taker.screenshotCount ?? 0}/3）</h3>
+        <div className="grid gap-4 sm:grid-cols-3">
+          {screenshots.map(item => (
+            <div key={item.label}>
+              <p className="mb-2 text-sm text-muted-foreground">{item.label}</p>
+              {item.src ? (
+                <button
+                  type="button"
+                  onClick={() => setZoomSrc(item.src)}
+                  className="block h-40 w-full overflow-hidden rounded-xl border border-border/60 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                  title="点击查看大图"
+                >
+                  <img src={item.src} alt={item.label} className="h-full w-full object-cover" />
+                </button>
+              ) : (
+                <div className="flex h-40 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-input text-muted-foreground">
+                  <ImageOff className="h-5 w-5" />
+                  <span className="text-xs">未上传</span>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Commission Breakdown */}
@@ -225,6 +304,8 @@ export default function TakerDetail() {
           </div>
         )}
       </div>
+
+      {zoomSrc && <ImageZoom src={zoomSrc} onClose={() => setZoomSrc(null)} />}
     </div>
   );
 }

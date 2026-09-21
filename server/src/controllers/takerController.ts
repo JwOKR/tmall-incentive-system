@@ -2,12 +2,179 @@ import { Request, Response } from 'express';
 import prisma from '../utils/db';
 import { createAuditLog, getClientIp } from '../utils/auditLog';
 import { AuthRequest } from '../middleware/auth';
+import { parseExcelDate } from '../utils/parseExcelDate';
+import {
+  CREDIT_LEVELS,
+  countScreenshots,
+  evaluateTakerCompliance,
+} from '../utils/takerCompliance';
+
+/** 单个截图 base64 字符串的最大长度（约 2MB 字符，远小于 body 10mb 上限） */
+const MAX_SCREENSHOT_LENGTH = 2_000_000;
+
+/** 截图字段键名 */
+const SCREENSHOT_FIELDS = ['avatarScreenshot', 'securityScreenshot', 'reviewScreenshot'] as const;
+
+/**
+ * 布尔语义解析：'true' / '是' / '1' / 'yes' / 'y' 视为 true，其余为 false。
+ */
+function parseBooleanFlag(value: unknown): boolean {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  const s = String(value ?? '').trim().toLowerCase();
+  return s === 'true' || s === '是' || s === '1' || s === 'yes' || s === 'y';
+}
+
+/**
+ * 解析非负整数：非有限数、非整数或负数均视为非法并返回 null（调用方据此忽略该字段）。
+ */
+function parseNonNegativeInt(value: unknown): number | null {
+  const n = Number(value);
+  if (!Number.isFinite(n) || !Number.isInteger(n) || n < 0) return null;
+  return n;
+}
+
+/** 默认注册时间解析器：空值 → null，非法 → null */
+function defaultRegisterDateParser(value: unknown): Date | null {
+  if (value === null || value === undefined || value === '') return null;
+  const d = value instanceof Date ? value : new Date(value as string);
+  return isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * 统一解析并净化接单人「账号资质」入参，返回可直接展开进 Prisma `data` 的对象。
+ *
+ * 仅当请求体中出现资质字段时才纳入结果；非法值静默忽略（不覆盖已有值）。
+ *
+ * @param body 请求体
+ * @param registerDateParser 注册时间解析器（批量导入传 parseExcelDate 以支持 Excel 序列号）
+ */
+export function parseAccountInfo(
+  body: Record<string, unknown>,
+  registerDateParser: (value: unknown) => Date | null = defaultRegisterDateParser
+): { data: Record<string, unknown>; hasAnyField: boolean } {
+  const data: Record<string, unknown> = {};
+  let hasAnyField = false;
+
+  // 注册时间
+  if (Object.prototype.hasOwnProperty.call(body, 'registerDate')) {
+    hasAnyField = true;
+    const raw = body.registerDate;
+    if (raw === null || raw === undefined || raw === '') {
+      data.registerDate = null;
+    } else {
+      const parsed = registerDateParser(raw);
+      if (parsed) data.registerDate = parsed;
+    }
+  }
+
+  // 实名认证
+  if (Object.prototype.hasOwnProperty.call(body, 'isRealNameVerified')) {
+    hasAnyField = true;
+    data.isRealNameVerified = parseBooleanFlag(body.isRealNameVerified);
+  }
+
+  // 信誉等级：必须命中枚举，否则忽略
+  if (Object.prototype.hasOwnProperty.call(body, 'creditLevel')) {
+    hasAnyField = true;
+    const raw = body.creditLevel;
+    if (raw === null || raw === undefined || raw === '') {
+      data.creditLevel = null;
+    } else if (CREDIT_LEVELS.includes(String(raw))) {
+      data.creditLevel = String(raw);
+    }
+  }
+
+  // 每周 / 每月收货次数：空 → null，非法 → 忽略
+  for (const key of ['weeklyReceiptCount', 'monthlyReceiptCount'] as const) {
+    if (!Object.prototype.hasOwnProperty.call(body, key)) continue;
+    hasAnyField = true;
+    const raw = body[key];
+    if (raw === null || raw === undefined || raw === '') {
+      data[key] = null;
+      continue;
+    }
+    const parsed = parseNonNegativeInt(raw);
+    if (parsed !== null) data[key] = parsed;
+  }
+
+  // 三张截图：字符串则存（超限忽略），空 → null
+  for (const key of SCREENSHOT_FIELDS) {
+    if (!Object.prototype.hasOwnProperty.call(body, key)) continue;
+    hasAnyField = true;
+    const raw = body[key];
+    if (raw === null || raw === undefined || raw === '') {
+      data[key] = null;
+      continue;
+    }
+    if (typeof raw === 'string') {
+      if (raw.length <= MAX_SCREENSHOT_LENGTH) data[key] = raw;
+    }
+  }
+
+  return { data, hasAnyField };
+}
+
+/**
+ * 将解析结果与既有截图字段合并后统计截图数量，保证「仅部分字段更新」时计数正确。
+ */
+function resolveScreenshotCount(
+  parsed: Record<string, unknown>,
+  existing?: {
+    avatarScreenshot?: string | null;
+    securityScreenshot?: string | null;
+    reviewScreenshot?: string | null;
+  }
+): number {
+  const pick = (key: 'avatarScreenshot' | 'securityScreenshot' | 'reviewScreenshot') =>
+    Object.prototype.hasOwnProperty.call(parsed, key)
+      ? (parsed[key] as string | null)
+      : (existing?.[key] ?? null);
+  return countScreenshots({
+    avatarScreenshot: pick('avatarScreenshot'),
+    securityScreenshot: pick('securityScreenshot'),
+    reviewScreenshot: pick('reviewScreenshot'),
+  });
+}
+
+/** 提取资质变更的简短描述，供审计日志使用 */
+function describeAccountChange(parsed: Record<string, unknown>, hasAnyField: boolean): string {
+  if (!hasAnyField) return '';
+  const parts: string[] = [];
+  if ('registerDate' in parsed) parts.push(`注册时间:${parsed.registerDate ?? '空'}`);
+  if ('isRealNameVerified' in parsed) parts.push(`实名:${parsed.isRealNameVerified ? '是' : '否'}`);
+  if ('creditLevel' in parsed) parts.push(`信誉:${parsed.creditLevel ?? '空'}`);
+  if ('weeklyReceiptCount' in parsed) parts.push(`周收货:${parsed.weeklyReceiptCount ?? '空'}`);
+  if ('monthlyReceiptCount' in parsed) parts.push(`月收货:${parsed.monthlyReceiptCount ?? '空'}`);
+  const screenshotKeys = SCREENSHOT_FIELDS.filter((k) => k in parsed);
+  if (screenshotKeys.length > 0) parts.push(`截图更新:${screenshotKeys.length}张`);
+  return parts.join(' ');
+}
+
+/** 列表查询所需的显式字段（不含三个 LongText 截图字段，避免响应体积膨胀） */
+const LIST_SELECT = {
+  id: true,
+  wechatName: true,
+  wechatId: true,
+  status: true,
+  totalOrders: true,
+  totalAmount: true,
+  createdAt: true,
+  updatedAt: true,
+  registerDate: true,
+  isRealNameVerified: true,
+  creditLevel: true,
+  weeklyReceiptCount: true,
+  monthlyReceiptCount: true,
+  screenshotCount: true,
+  accountInfoUpdatedAt: true,
+} as const;
 
 // 获取所有接单人
 export const getAllTakers = async (req: Request, res: Response) => {
   try {
     const { page = 1, pageSize = 10, status, search } = req.query;
-    
+
     const where: any = {};
     if (status) where.status = status;
     if (search) {
@@ -20,6 +187,7 @@ export const getAllTakers = async (req: Request, res: Response) => {
     const [takers, total] = await Promise.all([
       prisma.orderTaker.findMany({
         where,
+        select: LIST_SELECT,
         skip: (Number(page) - 1) * Number(pageSize),
         take: Number(pageSize),
         orderBy: { createdAt: 'desc' },
@@ -27,10 +195,15 @@ export const getAllTakers = async (req: Request, res: Response) => {
       prisma.orderTaker.count({ where }),
     ]);
 
+    const list = takers.map((taker: any) => ({
+      ...taker,
+      compliance: evaluateTakerCompliance(taker),
+    }));
+
     res.json({
       success: true,
       data: {
-        list: takers,
+        list,
         total,
         page: Number(page),
         pageSize: Number(pageSize),
@@ -49,7 +222,7 @@ export const getAllTakers = async (req: Request, res: Response) => {
 export const getTakerById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     const taker = await prisma.orderTaker.findUnique({
       where: { id },
       include: {
@@ -69,7 +242,10 @@ export const getTakerById = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      data: taker,
+      data: {
+        ...taker,
+        compliance: evaluateTakerCompliance(taker),
+      },
     });
   } catch (error) {
     console.error('Error fetching taker:', error);
@@ -97,17 +273,24 @@ export const createTaker = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const taker = await prisma.orderTaker.create({
-      data: {
-        wechatName,
-        wechatId,
-      },
-    });
+    const account = parseAccountInfo(req.body);
+    const data: Record<string, unknown> = {
+      wechatName,
+      wechatId,
+      ...account.data,
+    };
+    if (account.hasAnyField) {
+      data.screenshotCount = resolveScreenshotCount(account.data);
+      data.accountInfoUpdatedAt = new Date();
+    }
 
+    const taker = await prisma.orderTaker.create({ data: data as any });
+
+    const accountDetail = describeAccountChange(account.data, account.hasAnyField);
     await createAuditLog({
       userId: req.userId,
       action: 'create',
-      detail: `创建接单人: ${wechatName} (${wechatId})`,
+      detail: `创建接单人: ${wechatName} (${wechatId})${accountDetail ? ` | ${accountDetail}` : ''}`,
       ipAddress: getClientIp(req),
     });
 
@@ -154,19 +337,28 @@ export const updateTaker = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    const account = parseAccountInfo(req.body);
+    const data: Record<string, unknown> = {
+      wechatName,
+      wechatId,
+      status,
+      ...account.data,
+    };
+    if (account.hasAnyField) {
+      data.screenshotCount = resolveScreenshotCount(account.data, existingTaker);
+      data.accountInfoUpdatedAt = new Date();
+    }
+
     const taker = await prisma.orderTaker.update({
       where: { id },
-      data: {
-        wechatName,
-        wechatId,
-        status,
-      },
+      data: data as any,
     });
 
+    const accountDetail = describeAccountChange(account.data, account.hasAnyField);
     await createAuditLog({
       userId: req.userId,
       action: 'update',
-      detail: `更新接单人: ${wechatName}`,
+      detail: `更新接单人: ${wechatName}${accountDetail ? ` | ${accountDetail}` : ''}`,
       ipAddress: getClientIp(req),
     });
 
@@ -187,7 +379,7 @@ export const updateTaker = async (req: AuthRequest, res: Response) => {
 export const batchCreateTakers = async (req: AuthRequest, res: Response) => {
   try {
     const { takers } = req.body;
-    
+
     if (!Array.isArray(takers) || takers.length === 0) {
       return res.status(400).json({
         success: false,
@@ -212,12 +404,22 @@ export const batchCreateTakers = async (req: AuthRequest, res: Response) => {
           continue;
         }
 
-        await prisma.orderTaker.create({
-          data: {
-            wechatName: taker.wechatName,
-            wechatId: taker.wechatId,
-          },
-        });
+        // 批量导入支持资质字段（截图除外）；此处按记录独立净化，非法值不阻断整批导入
+        const account = parseAccountInfo(taker, parseExcelDate as (value: unknown) => Date | null);
+        for (const key of SCREENSHOT_FIELDS) {
+          delete account.data[key];
+        }
+
+        const data: Record<string, unknown> = {
+          wechatName: taker.wechatName,
+          wechatId: taker.wechatId,
+          ...account.data,
+        };
+        if (account.hasAnyField) {
+          data.accountInfoUpdatedAt = new Date();
+        }
+
+        await prisma.orderTaker.create({ data: data as any });
         success++;
       } catch (error) {
         failed++;

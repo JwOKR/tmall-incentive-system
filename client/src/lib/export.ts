@@ -20,6 +20,11 @@ export const takerColumns: ExportColumn[] = [
   { key: 'totalOrders', label: '总订单', selected: true },
   { key: 'totalAmount', label: '总金额', selected: true },
   { key: 'createdAt', label: '创建时间', selected: true },
+  { key: 'registerDate', label: '注册时间', selected: true },
+  { key: 'isRealNameVerified', label: '实名认证', selected: true },
+  { key: 'creditLevel', label: '信誉等级', selected: true },
+  { key: 'weeklyReceiptCount', label: '每周收货次数', selected: true },
+  { key: 'monthlyReceiptCount', label: '每月收货次数', selected: true },
 ];
 
 export const taskColumns: ExportColumn[] = [
@@ -110,7 +115,8 @@ function formatCellValue(value: any, key: string): any {
   
   // 金额 - 返回原始数字类型，保留完整精度
   if (key.includes('price') || key.includes('Amount') || key.includes('Commission') ||
-      key.includes('Reward') || key.includes('Refund') || key.includes('Payment')) {
+      key.includes('Reward') || key.includes('Refund') || key.includes('Payment') ||
+      key.includes('Count')) {
     return Number(value);
   }
   
