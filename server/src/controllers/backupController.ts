@@ -1,6 +1,17 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
 import { createAuditLog, getClientIp } from '../utils/auditLog';
+import logger from '../utils/logger';
+
+/**
+ * 备份中的日期字段解析：空值 → null；无效日期字符串 → null（不抛错，
+ * 避免整条记录落库失败且失败原因被 catch 吞掉、运营看不到原因）。
+ */
+function parseDateOrNull(value: unknown): Date | null {
+  if (value === null || value === undefined || value === '') return null;
+  const d = value instanceof Date ? value : new Date(value as string);
+  return isNaN(d.getTime()) ? null : d;
+}
 
 // 导出全部数据（JSON）
 export const exportBackup = async (req: Request, res: Response) => {
@@ -58,6 +69,12 @@ export const exportBackup = async (req: Request, res: Response) => {
 // 导入备份数据
 export const importBackup = async (req: Request, res: Response) => {
   try {
+    // 请求体大小日志：备份含 base64 截图，体积可达百 MB 级，便于运营确认
+    const contentLength = Number(req.headers['content-length'] || 0);
+    if (contentLength > 0) {
+      logger.info(`[backup/import] 请求体大小: ${(contentLength / 1024 / 1024).toFixed(2)} MB`);
+    }
+
     const { data, mode = 'merge' } = req.body; // mode: merge | overwrite
 
     if (!data) {
@@ -65,7 +82,7 @@ export const importBackup = async (req: Request, res: Response) => {
     }
 
     const result = {
-      takers: { created: 0, skipped: 0, errors: 0 },
+      takers: { created: 0, skipped: 0, errors: 0, errorDetails: [] as string[] },
       tasks: { created: 0, skipped: 0, errors: 0 },
       orders: { created: 0, skipped: 0, errors: 0 },
       repeatDiscounts: { created: 0, skipped: 0, errors: 0 },
@@ -90,10 +107,29 @@ export const importBackup = async (req: Request, res: Response) => {
               totalOrders: taker.totalOrders || 0,
               totalAmount: taker.totalAmount || 0,
               createdAt: taker.createdAt ? new Date(taker.createdAt) : new Date(),
+              // 资质字段：与 exportBackup 的全字段导出对称；旧版（v1.0）备份缺失时用默认值
+              registerDate: parseDateOrNull(taker.registerDate),
+              isRealNameVerified: taker.isRealNameVerified ?? false,
+              creditLevel: taker.creditLevel ?? null,
+              weeklyReceiptCount: taker.weeklyReceiptCount ?? null,
+              monthlyReceiptCount: taker.monthlyReceiptCount ?? null,
+              screenshotCount: taker.screenshotCount ?? 0,
+              avatarScreenshot: taker.avatarScreenshot ?? null,
+              securityScreenshot: taker.securityScreenshot ?? null,
+              reviewScreenshot: taker.reviewScreenshot ?? null,
+              accountInfoUpdatedAt: parseDateOrNull(taker.accountInfoUpdatedAt),
             },
           });
           result.takers.created++;
-        } catch { result.takers.errors++; }
+        } catch (e) {
+          result.takers.errors++;
+          // 记录失败原因，便于排查（不再静默吞掉）
+          const reason = e instanceof Error ? e.message : String(e);
+          if (result.takers.errorDetails.length < 20) {
+            result.takers.errorDetails.push(`${taker.wechatName || taker.wechatId || '未知'}: ${reason}`);
+          }
+          console.error('[backup/import] 接单人导入失败:', taker.wechatName, reason);
+        }
       }
     }
 

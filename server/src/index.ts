@@ -39,6 +39,9 @@ app.use(cors({
   origin: true,
   credentials: true,
 }));
+// 备份导入含 base64 截图，请求体远大于普通接口：单独放宽。
+// 必须注册在全局 express.json 之前——body-parser 检测到 req._body 已置位会自动跳过，不会二次解析。
+app.use('/api/backup/import', authMiddleware, express.json({ limit: '200mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 

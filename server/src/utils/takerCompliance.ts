@@ -67,6 +67,10 @@ export interface TakerCompliance {
   creditLevelOk: boolean | null;
   weeklyOk: boolean | null;
   monthlyOk: boolean | null;
+  /**
+   * 3 张截图是否传齐。仅作展示，不参与合格判定
+   * （用户决策：截图是证据材料，Excel 批量导入必然为空，纳入判定会导致批量导入恒为待完善）。
+   */
   screenshotsComplete: boolean;
   fails: string[];
 }
@@ -124,7 +128,7 @@ function oneYearAgoFrom(now: Date): Date {
  * - status：
  *   1) 从未登记过任何资质信息 → 'incomplete'（历史数据不会被误判为不合格）
  *   2) 有 fails → 'unqualified'
- *   3) 任一必填项缺失（含 3 张截图未传齐）→ 'incomplete'
+ *   3) 任一必填项缺失 → 'incomplete'
  *   4) 否则 → 'qualified'
  */
 export function evaluateTakerCompliance(taker: TakerComplianceInput): TakerCompliance {
@@ -176,13 +180,14 @@ export function evaluateTakerCompliance(taker: TakerComplianceInput): TakerCompl
     hasValue(taker.monthlyReceiptCount) ||
     screenshotCount > 0;
 
-  // 3 张截图也是登记要求的一部分：未传齐视为资料未交齐（待完善），而非资质不合格
+  // 截图不参与「合格」判定（用户决策：截图是证据类材料，Excel 批量导入必然为空，
+  // 纳入判定会导致批量导入的接单人恒为「待完善」、列表合格数恒为 0）；
+  // screenshotsComplete 仅作展示。
   const missingRequired =
     registerDate === null ||
     !hasValue(taker.creditLevel) ||
     !hasValue(taker.weeklyReceiptCount) ||
-    !hasValue(taker.monthlyReceiptCount) ||
-    !screenshotsComplete;
+    !hasValue(taker.monthlyReceiptCount);
 
   const neverRegistered = !hasAnyRegistration;
 

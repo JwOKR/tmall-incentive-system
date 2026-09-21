@@ -121,6 +121,8 @@ export default function Takers() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // 预填未完成时禁止提交：此时截图字段还是空值，提交会把已存截图清空
+    if (prefilling) return;
     const payload = {
       wechatName: formData.wechatName,
       wechatId: formData.wechatId,

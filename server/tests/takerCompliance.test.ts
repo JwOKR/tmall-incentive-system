@@ -226,12 +226,27 @@ const substantiveNoRealName = evaluateTakerCompliance({
 check('资质齐全但未实名 → unqualified', substantiveNoRealName.status, 'unqualified');
 check('失败项仅「未完成实名认证」', substantiveNoRealName.fails, ['未完成实名认证']);
 
-console.log('\n=== 13. F2 回归：3 张截图未传齐 → 待完善（不是合格，也不是不合格）===');
-const dataOnlyNoShots = evaluateTakerCompliance({ ...GOOD, screenshotCount: 0 });
-check('数据齐但截图 0/3 → incomplete', dataOnlyNoShots.status, 'incomplete');
-check('截图未齐 → fails 为空（不是不合格）', dataOnlyNoShots.fails, []);
-check('截图 2/3 → incomplete', evaluateTakerCompliance({ ...GOOD, screenshotCount: 2 }).status, 'incomplete');
+console.log('\n=== 13. 截图不参与「合格」判定（回归保护，防止将来再被加回）===');
+// 用户决策：截图是证据类材料，Excel 批量导入必然为空，纳入判定会导致批量导入恒为「待完善」。
+// screenshotsComplete 字段仍返回（前端展示「截图 x/3」用），只是不影响 status。
+check('数据齐但截图 0/3 → qualified', evaluateTakerCompliance({ ...GOOD, screenshotCount: 0 }).status, 'qualified');
+check('截图 2/3 → qualified', evaluateTakerCompliance({ ...GOOD, screenshotCount: 2 }).status, 'qualified');
 check('截图 3/3 → qualified', evaluateTakerCompliance({ ...GOOD, screenshotCount: 3 }).status, 'qualified');
+check(
+  'screenshotsComplete 仍正确返回 false（0/3，仅展示用）',
+  evaluateTakerCompliance({ ...GOOD, screenshotCount: 0 }).screenshotsComplete,
+  false
+);
+check(
+  'screenshotsComplete 仍正确返回 true（3/3）',
+  evaluateTakerCompliance({ ...GOOD, screenshotCount: 3 }).screenshotsComplete,
+  true
+);
+check(
+  '数据齐 + 3/3 + 实名否 → unqualified（截图不豁免实名硬门槛）',
+  evaluateTakerCompliance({ ...GOOD, isRealNameVerified: false }).status,
+  'unqualified'
+);
 
 console.log(`\n========== 结果：PASS=${passed}  FAIL=${failed} ==========`);
 process.exit(failed > 0 ? 1 : 0);
