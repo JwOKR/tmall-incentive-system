@@ -156,9 +156,11 @@ export default function Tasks() {
 
   // 交给服务端做关键词匹配（后端同时支持微信昵称 / 微信号 / 淘宝昵称），
   // 避免原来「只取最新 100 条再在前端过滤」导致早期接单人永远搜不到的问题
+  // 页大小：带关键词时 50 条足够定位；不带关键词（纯翻着挑人）时维持改动前的 100 条，
+  // 否则无翻页入口的下拉会白白少掉一半可浏览的人
   const { data: takersData, isFetching: takersLoading } = useQuery({
     queryKey: ['takers-list', takerQuery],
-    queryFn: () => takersApi.getAll({ search: takerQuery || undefined, pageSize: 50 }),
+    queryFn: () => takersApi.getAll({ search: takerQuery || undefined, pageSize: takerQuery ? 50 : 100 }),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -1178,9 +1180,19 @@ export default function Tasks() {
                                   );
                                 })
                               }
+                              {!takersLoading && takers.length === 0 && (
+                                <div className="px-3 py-2 text-xs text-muted-foreground">
+                                  未找到匹配的接单人
+                                </div>
+                              )}
+                              {!takersLoading && takers.length > 0 && takerOptions.length === 0 && (
+                                <div className="px-3 py-2 text-xs text-muted-foreground">
+                                  当前 {takers.length} 条结果均非资质合格，已被「只看可接单」过滤
+                                </div>
+                              )}
                               {!takersLoading && takersTotal > takers.length && (
                                 <div className="border-t px-3 py-2 text-xs text-muted-foreground">
-                                  共 {takersTotal} 人匹配，已显示前 {takers.length} 人，请补充更多关键词缩小范围
+                                  共 {takersTotal} 人匹配，已显示前 {takerOptions.length} 人，请补充更多关键词缩小范围
                                 </div>
                               )}
                             </div>
