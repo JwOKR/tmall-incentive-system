@@ -50,7 +50,7 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
       {/* Drawer */}
       <div className="drawer-content flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b">
+        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0 gap-2">
           <h3 className="text-lg font-semibold flex items-center gap-2">
             <ShoppingCart className="h-5 w-5 text-primary" />
             订单详情
@@ -61,7 +61,9 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* min-h-0：允许该 flex 子项收缩到内容高度以下，滚动条才生效；
+            overflow-x-hidden + break-words：长订单号/淘口令/备注不撑破抽屉宽度 */}
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-6 space-y-6 break-words">
           {isLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 6 }).map((_, i) => (
@@ -74,7 +76,7 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
           ) : order ? (
             <>
               {/* Status Bar */}
-              <div className="flex gap-3">
+              <div className="flex flex-wrap gap-3">
                 <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${order.isRefunded ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'}`}>
                   {order.isRefunded ? <CheckCircle className="h-4 w-4" /> : <AlertCircle className="h-4 w-4" />}
                   {order.isRefunded ? '已返款' : '待返款'}
@@ -98,13 +100,13 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
                   <User className="h-4 w-4" /> 接单人信息
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">微信昵称</p>
-                    <p className="font-medium">{order.taker?.wechatName || '-'}</p>
+                    <p className="font-medium break-all">{order.taker?.wechatName || '-'}</p>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs text-muted-foreground">微信号</p>
-                    <p className="font-medium">{order.taker?.wechatId || '-'}</p>
+                    <p className="font-medium break-all">{order.taker?.wechatId || '-'}</p>
                   </div>
                 </div>
               </div>
@@ -122,12 +124,12 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
                     { label: '19订单号', value: order.orderNo19 || '-', copyable: !!order.orderNo19 },
                     { label: '订单编号', value: order.orderNo || '-', copyable: !!order.orderNo },
                   ].map(item => (
-                    <div key={item.label} className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">{item.label}</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-medium">{item.value}</span>
+                    <div key={item.label} className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-muted-foreground shrink-0">{item.label}</span>
+                      <div className="flex items-center gap-1 min-w-0">
+                        <span className="text-sm font-medium break-all text-right">{item.value}</span>
                         {item.copyable && (
-                          <button onClick={() => handleCopy(item.value)} className="p-0.5 hover:bg-accent rounded text-muted-foreground">
+                          <button onClick={() => handleCopy(item.value)} className="p-0.5 hover:bg-accent rounded text-muted-foreground shrink-0">
                             <Copy className="h-3 w-3" />
                           </button>
                         )}
@@ -135,8 +137,8 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
                     </div>
                   ))}
                   {order.orderLink && (
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">订单链接</span>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-muted-foreground shrink-0">订单链接</span>
                       <a
                         href={order.orderLink}
                         target="_blank"
@@ -162,9 +164,9 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
                     { label: '好评返佣', value: formatCurrency(order.reviewCommission), color: 'text-purple-600 dark:text-purple-400' },
                     { label: '总返款', value: formatCurrency(order.totalRefund), color: 'text-blue-600 dark:text-blue-400', bold: true },
                   ].map(item => (
-                    <div key={item.label} className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">{item.label}</span>
-                      <span className={`text-sm ${item.bold ? 'font-bold' : 'font-medium'} ${item.color || ''}`}>{item.value}</span>
+                    <div key={item.label} className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-muted-foreground shrink-0">{item.label}</span>
+                      <span className={`text-sm break-all text-right ${item.bold ? 'font-bold' : 'font-medium'} ${item.color || ''}`}>{item.value}</span>
                     </div>
                   ))}
                 </div>
@@ -182,9 +184,9 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
                     { label: '创建时间', value: formatDate(order.createdAt) },
                     { label: '更新时间', value: formatDate(order.updatedAt) },
                   ].map(item => (
-                    <div key={item.label} className="flex items-center justify-between">
-                      <span className="text-sm text-muted-foreground">{item.label}</span>
-                      <span className="text-sm">{item.value}</span>
+                    <div key={item.label} className="flex items-center justify-between gap-3">
+                      <span className="text-sm text-muted-foreground shrink-0">{item.label}</span>
+                      <span className="text-sm break-all text-right">{item.value}</span>
                     </div>
                   ))}
                 </div>
@@ -194,7 +196,7 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
               {order.remark && (
                 <div className="rounded-lg border p-4">
                   <h4 className="text-sm font-semibold text-muted-foreground mb-2">备注</h4>
-                  <p className="text-sm">{order.remark}</p>
+                  <p className="text-sm break-all whitespace-pre-wrap">{order.remark}</p>
                 </div>
               )}
             </>

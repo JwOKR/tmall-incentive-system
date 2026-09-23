@@ -329,9 +329,8 @@
   }
 
   /* ── Drawer (emil: ease-drawer curve) ── */
-  .drawer-content {
-    animation: drawerIn 320ms var(--ease-drawer) forwards;
-  }
+  /* 注意：.drawer-content 的完整定义在本文件下方「UNIFIED MODAL SYSTEM」段落，
+     此处刻意不再重复声明，避免两条同名规则互相覆盖。 */
   @keyframes drawerIn {
     from { transform: translateX(100%); }
     to   { transform: translateX(0); }
@@ -456,11 +455,17 @@
     right: 0 !important;
     bottom: 0 !important;
     left: 0 !important;
+    /* 显式高度：dvh 兜底移动端地址栏收起/展开造成的视口高度跳变，
+       同时让子元素的百分比 max-height 有确定的解析基准 */
+    height: 100vh;
+    height: 100dvh;
     z-index: 50 !important;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 2rem;
+    /* 兜底：即便弹窗异常变高，也让遮罩自身可滚动，而不是溢出到视口外 */
+    overflow-y: auto;
     background-color: rgba(0, 0, 0, 0.4);
     overscroll-behavior: contain;
     animation: modalOverlayIn 200ms var(--ease-out) both;
@@ -475,10 +480,12 @@
     position: relative;
     z-index: 51;
     width: auto;
-    min-width: 20rem;
+    /* min-width 也要参与自适应，否则窄屏（<384px）时会被顶出视口右侧 */
+    min-width: min(20rem, 100%);
     max-width: calc(100vw - 4rem);
     height: auto;
     max-height: calc(100vh - 4rem);
+    max-height: calc(100dvh - 4rem);
     overflow-y: auto;
     background-color: hsl(var(--card));
     border: 1px solid hsl(var(--border) / 0.5);
@@ -538,6 +545,11 @@
     z-index: 50;
     width: 100%;
     max-width: 28rem;
+    /* 高度上限：dvh 兜底移动端浏览器地址栏动态收起导致的「inset-y:0 超出可视区」 */
+    max-height: 100vh;
+    max-height: 100dvh;
+    /* 内容一律在抽屉内部滚动/裁剪，绝不溢出到视口之外 */
+    overflow: hidden;
     background-color: hsl(var(--card));
     border-left: 1px solid hsl(var(--border) / 0.5);
     box-shadow: -25px 0 50px -12px rgb(0 0 0 / 0.15);
@@ -559,7 +571,27 @@
   .modal-sm  { width: 24rem; max-height: min(85vh, 600px); }   /* 384px */
   .modal-md  { width: 28rem; max-height: min(85vh, 700px); }   /* 448px */
   .modal-lg  { width: 32rem; max-height: min(85vh, 800px); }   /* 512px */
-  .modal-xl  { width: 48rem; max-height: min(90vh, 90vh); }    /* 768px */
+  .modal-xl  { width: 48rem; max-height: min(90vh, 900px); }   /* 768px */
+
+  /* ── 硬约束：弹窗矩形永远落在遮罩可视区内 ── */
+  /* 选择器权重 (0,2,0) 高于上面的尺寸变体 (0,1,0)，
+     因此无论 modal-sm/md/lg/xl 写了多大的 max-height，
+     都会被这里的 100%（= 遮罩内容盒高度，已扣掉 2rem 上下内边距）压住，
+     矮屏 / 移动端地址栏场景下弹窗不会被顶出视口上下边缘。 */
+  .modal-overlay > .modal-content {
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  /* ── 窄屏适配：缩小遮罩内边距，去掉最小宽度，给弹窗留出更多空间 ── */
+  @media (max-width: 640px) {
+    .modal-overlay {
+      padding: 1rem;
+    }
+    .modal-content {
+      min-width: 0;
+    }
+  }
 
   /* ═══════════════════════════════════════════════════
      PREMIUM UTILITIES

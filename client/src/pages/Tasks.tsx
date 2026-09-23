@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect, useMemo, Fragment } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, Fragment } from 'react';
+import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi, takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
@@ -9,48 +10,92 @@ import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
 import { useToast } from '@/components/Toast';
 
-// 悬停预览组件
+/** 悬停浮层距视口四边的安全边距（px） */
+const PREVIEW_SAFE_MARGIN = 12;
+/** 悬停浮层与触发元素之间的间距（px） */
+const PREVIEW_TRIGGER_OFFSET = 8;
+
+/**
+ * 悬停预览组件（淘口令等长文本）。
+ *
+ * 定位策略：先以 (0,0) 渲染一帧但保持 visibility:hidden（visibility:hidden 的元素
+ * 依然参与布局，因此可以测到真实尺寸），随后在 useLayoutEffect 中读取浮层实际
+ * getBoundingClientRect() 做二次校正，把四边都 clamp 进视口安全边距内，
+ * 浏览器绘制前完成，用户看不到定位跳变。
+ *
+ * 另外：浮层通过 createPortal 挂到 document.body，而不是留在原地。原因是
+ * .apple-card:hover 会施加 transform: translateY(-2px)，带 transform 的祖先会成为
+ * position: fixed 的包含块，同时表格外层还有 overflow-x-auto —— 浮层会被重新锚定到
+ * 卡片坐标系并被裁掉（这正是淘口令预览「超出/被截断」的根因之一）。
+ */
 function HoverPreview({ content, children, className = '' }: { content: string; children: React.ReactNode; className?: string }) {
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [positioned, setPositioned] = useState(false);
   const triggerRef = useRef<HTMLDivElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
-  const handleMouseEnter = (e: React.MouseEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
-    let x = rect.left;
-    let y = rect.bottom + 8;
-    
-    // 确保不超出右边框
-    if (x + 400 > viewportWidth) {
-      x = viewportWidth - 410;
-    }
-    
-    // 确保不超出下边框
-    if (y + 100 > viewportHeight) {
-      y = rect.top - 108;
-    }
-    
-    setPosition({ x: Math.max(10, x), y: Math.max(10, y) });
+  const handleMouseEnter = () => {
+    setPositioned(false);
     setShow(true);
   };
+
+  const handleMouseLeave = () => {
+    setShow(false);
+    setPositioned(false);
+  };
+
+  // 渲染后实测浮层真实尺寸再校正位置，避免用估算值判断导致溢出视口
+  useLayoutEffect(() => {
+    if (!show) return;
+    const triggerEl = triggerRef.current;
+    const previewEl = previewRef.current;
+    if (!triggerEl || !previewEl) return;
+
+    const triggerRect = triggerEl.getBoundingClientRect();
+    const previewRect = previewEl.getBoundingClientRect();
+    // 用 clientWidth/clientHeight 而非 innerWidth/innerHeight，排除滚动条占位
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+
+    /** 把坐标限制在 [SAFE_MARGIN, max] 区间内 */
+    const clamp = (value: number, max: number): number =>
+      Math.min(Math.max(PREVIEW_SAFE_MARGIN, value), Math.max(PREVIEW_SAFE_MARGIN, max));
+
+    // 纵向：默认在触发元素下方展开；下方放不下则翻到上方；上下都放不下则贴住视口
+    let y = triggerRect.bottom + PREVIEW_TRIGGER_OFFSET;
+    if (y + previewRect.height > viewportHeight - PREVIEW_SAFE_MARGIN) {
+      const above = triggerRect.top - PREVIEW_TRIGGER_OFFSET - previewRect.height;
+      y = above >= PREVIEW_SAFE_MARGIN ? above : viewportHeight - PREVIEW_SAFE_MARGIN - previewRect.height;
+    }
+
+    // 横向：默认与触发元素左对齐；右侧放不下则改为右对齐
+    let x = triggerRect.left;
+    if (x + previewRect.width > viewportWidth - PREVIEW_SAFE_MARGIN) {
+      x = viewportWidth - PREVIEW_SAFE_MARGIN - previewRect.width;
+    }
+
+    setPosition({
+      x: clamp(x, viewportWidth - PREVIEW_SAFE_MARGIN - previewRect.width),
+      y: clamp(y, viewportHeight - PREVIEW_SAFE_MARGIN - previewRect.height),
+    });
+    setPositioned(true);
+  }, [show, content]);
 
   if (!content) return <>{children}</>;
 
   return (
-    <div ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={() => setShow(false)} className={`relative ${className}`}>
+    <div ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} className={`relative ${className}`}>
       {children}
-      {show && (
+      {show && createPortal(
         <div
           ref={previewRef}
-          className="fixed z-50 max-w-[400px] p-3 bg-popover border rounded-xl shadow-lg text-sm break-all animate-in fade-in-0 zoom-in-95"
-          style={{ left: position.x, top: position.y }}
+          className="fixed z-[60] max-w-[min(400px,calc(100vw-24px))] max-h-[min(50vh,320px)] overflow-y-auto overscroll-contain p-3 bg-popover border rounded-xl shadow-lg text-sm break-all animate-in fade-in-0 zoom-in-95"
+          style={{ left: position.x, top: position.y, visibility: positioned ? 'visible' : 'hidden' }}
         >
           {content}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
