@@ -47,9 +47,22 @@ export interface OrderListParams {
   columnFilters?: string | Record<string, string>;
 }
 
-// 值可以是本表字段名（string），也可以是接单人关联表字段 { taker: { 字段: 字段 } }。
-// 这里放宽为 Record<string, string>，避免每加一个关联排序字段就要扩一次联合类型。
-const ORDER_SORT_FIELDS: Record<string, string | { taker: Record<string, string> }> = {
+/** 允许按接单人关联表字段排序的字段白名单 */
+type TakerSortField = 'wechatName' | 'wechatId' | 'taobaoNickname';
+
+/**
+ * 排序字段白名单。
+ * - 值类型为本表字段名（string），直接按该字段排序；
+ * - 值类型为 { taker: TakerSortField } 时，按接单人关联表字段排序，
+ *   产出 { taker: { 字段: 方向 } }。
+ *
+ * 这里刻意**展平**存字段名而不存对象：早期版本存的是 { taker: { 字段: 字段 } }，
+ * 构造时不得不靠 Object.keys(...) 反推键名，而 Object.keys 取到的是外层键 'taker'，
+ * 产出非法的 { taker: { taker: 方向 } }（Prisma 报 Unknown field）。
+ * 直接存字段名后 Object.keys 彻底消失，该 bug 无法再现；同时 TakerSortField
+ * 是字面量联合，字段名打错会直接编译失败。
+ */
+const ORDER_SORT_FIELDS: Record<string, string | { taker: TakerSortField }> = {
   productId: 'productId',
   productCode: 'productCode',
   orderNo: 'orderNo',
@@ -64,9 +77,9 @@ const ORDER_SORT_FIELDS: Record<string, string | { taker: Record<string, string>
   baseCommission: 'baseCommission',
   reviewCommission: 'reviewCommission',
   remark: 'remark',
-  wechatName: { taker: { wechatName: 'wechatName' } },
-  wechatId: { taker: { wechatId: 'wechatId' } },
-  taobaoNickname: { taker: { taobaoNickname: 'taobaoNickname' } },
+  wechatName: { taker: 'wechatName' },
+  wechatId: { taker: 'wechatId' },
+  taobaoNickname: { taker: 'taobaoNickname' },
 };
 
 export interface BatchImportResult {
@@ -84,17 +97,16 @@ export async function getOrderList(params: OrderListParams) {
   const page = Number(params.page) || 1;
   const pageSize = Number(params.pageSize) || 10;
   const { search, isRefunded, isGoodReview, startDate, endDate } = params;
-  const sortField = params.sortField && ORDER_SORT_FIELDS[params.sortField] ? params.sortField : 'orderDate';
+  // 必须用 hasOwnProperty 而非真值判断：ORDER_SORT_FIELDS['__proto__'] 会沿原型链
+  // 返回 Object.prototype（truthy），真值判断会被穿透，导致非法字段不回落 orderDate。
+  const sortField = params.sortField && Object.prototype.hasOwnProperty.call(ORDER_SORT_FIELDS, params.sortField)
+    ? params.sortField : 'orderDate';
   const sortDirection = params.sortDirection === 'asc' ? 'asc' : 'desc';
-  // 排序字段：本表字段直接用字段名；关联表字段走 { taker: { 字段: 方向 } }。
-  // ⚠️ 必须取**内层**对象的键（ORDER_SORT_FIELDS[x].taker 的键）。
-  // 原写法 Object.keys(ORDER_SORT_FIELDS[sortField])[0] 取到的是外层的 'taker'，
-  // 会产出非法的 { taker: { taker: 方向 } }，Prisma 报 Unknown field —— 既有的
-  // 「微信昵称」排序因此一直是坏的，新增的「淘宝昵称」排序会踩同一个坑。
+  // 本表字段直接用字段名；关联表字段走 { taker: { 字段: 方向 } }
   const sortSpec = ORDER_SORT_FIELDS[sortField];
   const orderBy: Record<string, any> = typeof sortSpec === 'string'
     ? { [sortSpec]: sortDirection }
-    : { taker: { [Object.keys(sortSpec.taker)[0]]: sortDirection } };
+    : { taker: { [sortSpec.taker]: sortDirection } };
 
   // Build a Prisma-safe where clause from a strict field whitelist.
   const where: Record<string, any> = {};
