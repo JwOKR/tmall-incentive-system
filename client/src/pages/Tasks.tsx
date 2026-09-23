@@ -118,6 +118,12 @@ export default function Tasks() {
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [selectedTaker, setSelectedTaker] = useState('');
   const [takerSearch, setTakerSearch] = useState('');
+  // 接单人下拉的搜索词做 300ms 防抖（与列表搜索同一套手法），避免每敲一个字就打一次接口
+  const debouncedTakerSearch = useDebouncedValue(takerSearch, 300);
+  // ⚠️ takerSearch 同时承载「已选中接单人」的显示文本 —— 选中后会被写成「昵称（微信号）」这种含
+  //    全角括号的文本，若直接当作搜索词去查后端，必然零结果、下次打开下拉框一片空白。
+  //    因此：已选中接单人、或输入框已被清空时，都不带关键词（只拉默认列表）。
+  const takerQuery = selectedTaker || !takerSearch.trim() ? '' : debouncedTakerSearch;
   const [showTakerDropdown, setShowTakerDropdown] = useState(false);
   // 下拉里只展示资质合格的接单人（默认关闭：不合格的仍会列出，但置灰不可选）
   const [onlyQualifiedTaker, setOnlyQualifiedTaker] = useState(false);
@@ -148,9 +154,11 @@ export default function Tasks() {
     queryFn: () => tasksApi.getAll({ page, pageSize: 20, search: debouncedSearch, status: statusFilter }),
   });
 
-  const { data: takersData } = useQuery({
-    queryKey: ['takers-list'],
-    queryFn: () => takersApi.getAll({ pageSize: 100 }),
+  // 交给服务端做关键词匹配（后端同时支持微信昵称 / 微信号 / 淘宝昵称），
+  // 避免原来「只取最新 100 条再在前端过滤」导致早期接单人永远搜不到的问题
+  const { data: takersData, isFetching: takersLoading } = useQuery({
+    queryKey: ['takers-list', takerQuery],
+    queryFn: () => takersApi.getAll({ search: takerQuery || undefined, pageSize: 50 }),
     staleTime: 5 * 60 * 1000,
   });
 
@@ -311,6 +319,12 @@ export default function Tasks() {
   const tasks = (data as any)?.data?.list || [];
   const total = (data as any)?.data?.total || 0;
   const takers = (takersData as any)?.data?.list || [];
+  // 服务端返回的「匹配总数」，用于在列表被 pageSize 截断时给出「还有更多」提示
+  const takersTotal = Number((takersData as any)?.data?.total ?? takers.length) || 0;
+  // 下拉展示列表：关键词匹配已由服务端完成，这里只保留「只看可接单（资质合格）」这一客户端过滤
+  const takerOptions = takers.filter((t: any) =>
+    onlyQualifiedTaker ? isTakerOrderable((t.compliance ?? null) as TakerCompliance | null) : true
+  );
 
   const handleCellClick = (taskId: string, field: string, currentValue: any) => {
     if (editingCell?.taskId === taskId && editingCell?.field === field) return;
@@ -1091,7 +1105,7 @@ export default function Tasks() {
                                 setShowTakerDropdown(true);
                               }}
                               onFocus={() => setShowTakerDropdown(true)}
-                              placeholder="搜索接单人..."
+                              placeholder="搜索接单人（昵称/微信号/淘宝昵称）..."
                               className={`w-56 rounded-lg border bg-card px-3 py-2 text-sm pr-8 apple-input ${
                                 selectedTaker ? 'border-emerald-500' : 'border-input'
                               }`}
@@ -1116,17 +1130,10 @@ export default function Tasks() {
                                 />
                                 只看可接单（资质合格）
                               </label>
-                              {takers
-                                .filter((t: any) => {
-                                  if (onlyQualifiedTaker && !isTakerOrderable(t.compliance)) return false;
-                                  if (!takerSearch) return true;
-                                  const keyword = takerSearch.toLowerCase();
-                                  return (
-                                    (t.wechatName && t.wechatName.toLowerCase().includes(keyword)) ||
-                                    (t.wechatId && t.wechatId.toLowerCase().includes(keyword))
-                                  );
-                                })
-                                .slice(0, 30)
+                              {takersLoading && (
+                                <div className="px-3 py-2 text-xs text-muted-foreground">搜索中...</div>
+                              )}
+                              {takerOptions
                                 .map((taker: any) => {
                                   const compliance = (taker.compliance ?? null) as TakerCompliance | null;
                                   const orderable = isTakerOrderable(compliance);
@@ -1152,6 +1159,9 @@ export default function Tasks() {
                                       <div className="flex items-center justify-between gap-2">
                                         <span className="truncate">
                                           {taker.wechatName} <span className="text-xs text-muted-foreground">{taker.wechatId}</span>
+                                          {taker.taobaoNickname ? (
+                                            <span className="text-xs text-muted-foreground"> · 淘宝：{taker.taobaoNickname}</span>
+                                          ) : null}
                                         </span>
                                         <span
                                           className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.className}`}
@@ -1168,6 +1178,11 @@ export default function Tasks() {
                                   );
                                 })
                               }
+                              {!takersLoading && takersTotal > takers.length && (
+                                <div className="border-t px-3 py-2 text-xs text-muted-foreground">
+                                  共 {takersTotal} 人匹配，已显示前 {takers.length} 人，请补充更多关键词缩小范围
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
