@@ -329,12 +329,8 @@
   }
 
   /* ── Drawer (emil: ease-drawer curve) ── */
-  /* 注意：.drawer-content 的完整定义在本文件下方「UNIFIED MODAL SYSTEM」段落，
-     此处刻意不再重复声明，避免两条同名规则互相覆盖。 */
-  @keyframes drawerIn {
-    from { transform: translateX(100%); }
-    to   { transform: translateX(0); }
-  }
+  /* .drawer-content 与 @keyframes drawerIn 的完整定义均在本文件下方
+     「UNIFIED MODAL SYSTEM」段落，此处不再重复声明，避免同名规则互相覆盖。 */
 
   /* ── Slide Animations ── */
   .slide-in-left {
@@ -491,7 +487,12 @@
     border: 1px solid hsl(var(--border) / 0.5);
     border-radius: 1rem;
     box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
-    animation: modalContentIn 250ms var(--ease-out) both;
+    /* fill-mode 用 backwards 而非 both：both 含 forwards，动画结束后 to 帧的
+       transform: scale(1) translateY(0) 会长期填充，使 transform 恒为非 none，
+       令本元素成为 position:fixed 后代的包含块并被自身 overflow 裁剪
+       （受害者：弹窗内 ImageUpload 触发的 ImageZoom 全屏遮罩）。
+       to 帧与元素静止态（scale(1) translateY(0) = none）视觉等价，故零视觉变化。 */
+    animation: modalContentIn 250ms var(--ease-out) backwards;
   }
   @keyframes modalContentIn {
     from {
@@ -553,7 +554,9 @@
     background-color: hsl(var(--card));
     border-left: 1px solid hsl(var(--border) / 0.5);
     box-shadow: -25px 0 50px -12px rgb(0 0 0 / 0.15);
-    animation: drawerIn 300ms var(--ease-drawer) both;
+    /* 同 .modal-content：用 backwards 避免动画结束后残留 transform，
+       防止抽屉成为其内部 fixed 浮层的包含块（当前无受害者，属潜伏隐患） */
+    animation: drawerIn 300ms var(--ease-drawer) backwards;
   }
   @keyframes drawerIn {
     from { transform: translateX(100%); }

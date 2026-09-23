@@ -84,14 +84,28 @@ function HoverPreview({ content, children, className = '' }: { content: string; 
 
   if (!content) return <>{children}</>;
 
+  // 尺寸上限用与上面 clamp 完全相同的口径（documentElement.clientWidth/Height，
+  // 不含经典滚动条）。若这里改用 CSS 的 100vw（含滚动条），两个口径会差一个滚动条
+  // 宽度，窄窗口下浮层右边缘会被推出 layout viewport。
+  const viewportWidth = document.documentElement.clientWidth;
+  const viewportHeight = document.documentElement.clientHeight;
+  const previewMaxWidth = Math.max(120, Math.min(400, viewportWidth - PREVIEW_SAFE_MARGIN * 2));
+  const previewMaxHeight = Math.max(80, Math.min(320, Math.floor(viewportHeight * 0.5)));
+
   return (
     <div ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} className={`relative ${className}`}>
       {children}
       {show && createPortal(
         <div
           ref={previewRef}
-          className="fixed z-[60] max-w-[min(400px,calc(100vw-24px))] max-h-[min(50vh,320px)] overflow-y-auto overscroll-contain p-3 bg-popover border rounded-xl shadow-lg text-sm break-all animate-in fade-in-0 zoom-in-95"
-          style={{ left: position.x, top: position.y, visibility: positioned ? 'visible' : 'hidden' }}
+          className="fixed z-[60] overflow-y-auto overscroll-contain p-3 bg-popover border rounded-xl shadow-lg text-sm break-all animate-in fade-in-0 zoom-in-95"
+          style={{
+            left: position.x,
+            top: position.y,
+            maxWidth: previewMaxWidth,
+            maxHeight: previewMaxHeight,
+            visibility: positioned ? 'visible' : 'hidden',
+          }}
         >
           {content}
         </div>,
