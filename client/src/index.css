@@ -266,6 +266,14 @@
   }
 
   /* ── Stagger Animation (emil: 40-60ms between items) ── */
+  /* ⚠️ 固定陷阱（当前无受害者，请勿引入）：
+     base 就写死了 transform: translateY(12px)，且 fadeInUp 带 forwards
+     （动画结束后仍填充 to 帧的 translateY(0)）—— 因此**无论动画跑没跑**，
+     transform 恒为非 none，本元素恒为其 position:fixed 后代的包含块 + 层叠上下文。
+     后果：放在它内部的任何 fixed 浮层（弹窗 / 抽屉 / tooltip / 全屏看图）
+     都会被重新锚定到本元素的盒子坐标系，并可能被祖先的 overflow 裁掉。
+     如需在本元素内放浮层，必须用 createPortal 挂到 document.body。
+     现有正确做法参考：Tasks.tsx 的 HoverPreview、components/ImageZoom.tsx。 */
   .stagger-item {
     opacity: 0;
     transform: translateY(12px);
