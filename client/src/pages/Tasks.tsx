@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useLayoutEffect, useMemo, Fragment } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi, takersApi } from '@/lib/api';
@@ -53,7 +53,12 @@ function HoverPreview({ content, children, className = '' }: { content: string; 
     if (!triggerEl || !previewEl) return;
 
     const triggerRect = triggerEl.getBoundingClientRect();
-    const previewRect = previewEl.getBoundingClientRect();
+    // 量浮层自身必须用 offsetWidth/offsetHeight（布局盒），不能用 getBoundingClientRect：
+    // 浮层带 animate-in zoom-in-95，首帧 transform: scale(.95)，而 getBoundingClientRect
+    // 返回的是**变换后**的视觉矩形，会量到 95% 尺寸；动画还原到 100% 后底部会多溢出约 5%
+    // （320px 高的浮层约 16px）。offsetWidth/offsetHeight 不受 transform 影响。
+    const previewWidth = previewEl.offsetWidth;
+    const previewHeight = previewEl.offsetHeight;
     // 用 clientWidth/clientHeight 而非 innerWidth/innerHeight，排除滚动条占位
     const viewportWidth = document.documentElement.clientWidth;
     const viewportHeight = document.documentElement.clientHeight;
@@ -64,20 +69,20 @@ function HoverPreview({ content, children, className = '' }: { content: string; 
 
     // 纵向：默认在触发元素下方展开；下方放不下则翻到上方；上下都放不下则贴住视口
     let y = triggerRect.bottom + PREVIEW_TRIGGER_OFFSET;
-    if (y + previewRect.height > viewportHeight - PREVIEW_SAFE_MARGIN) {
-      const above = triggerRect.top - PREVIEW_TRIGGER_OFFSET - previewRect.height;
-      y = above >= PREVIEW_SAFE_MARGIN ? above : viewportHeight - PREVIEW_SAFE_MARGIN - previewRect.height;
+    if (y + previewHeight > viewportHeight - PREVIEW_SAFE_MARGIN) {
+      const above = triggerRect.top - PREVIEW_TRIGGER_OFFSET - previewHeight;
+      y = above >= PREVIEW_SAFE_MARGIN ? above : viewportHeight - PREVIEW_SAFE_MARGIN - previewHeight;
     }
 
     // 横向：默认与触发元素左对齐；右侧放不下则改为右对齐
     let x = triggerRect.left;
-    if (x + previewRect.width > viewportWidth - PREVIEW_SAFE_MARGIN) {
-      x = viewportWidth - PREVIEW_SAFE_MARGIN - previewRect.width;
+    if (x + previewWidth > viewportWidth - PREVIEW_SAFE_MARGIN) {
+      x = viewportWidth - PREVIEW_SAFE_MARGIN - previewWidth;
     }
 
     setPosition({
-      x: clamp(x, viewportWidth - PREVIEW_SAFE_MARGIN - previewRect.width),
-      y: clamp(y, viewportHeight - PREVIEW_SAFE_MARGIN - previewRect.height),
+      x: clamp(x, viewportWidth - PREVIEW_SAFE_MARGIN - previewWidth),
+      y: clamp(y, viewportHeight - PREVIEW_SAFE_MARGIN - previewHeight),
     });
     setPositioned(true);
   }, [show, content]);
@@ -188,6 +193,55 @@ export default function Tasks() {
   const [onlyQualifiedTaker, setOnlyQualifiedTaker] = useState(false);
   const [quickOrderForm, setQuickOrderForm] = useState({ orderNo: '', orderNo19: '', actualPayment: '' });
   const takerDropdownRef = useRef<HTMLDivElement>(null);
+  // 接单人下拉实测定位所需：锚点（输入框外层）与面板本体
+  const takerAnchorRef = useRef<HTMLDivElement>(null);
+  const takerPanelRef = useRef<HTMLDivElement>(null);
+  const [takerPanelStyle, setTakerPanelStyle] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    maxHeight: number;
+    visibility: 'visible' | 'hidden';
+  }>({ left: 0, top: 0, width: 224, maxHeight: 240, visibility: 'hidden' });
+
+  /**
+   * 实测计算接单人下拉面板的位置。
+   * 面板 portal 到 body 后用 fixed 定位，必须自己算坐标：
+   * 下方空间不足就翻到上方，并把 maxHeight 压进可用空间，保证整块落在视口内。
+   */
+  const layoutTakerPanel = useCallback(() => {
+    const anchorEl = takerAnchorRef.current;
+    if (!anchorEl) return;
+    const rect = anchorEl.getBoundingClientRect();
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+    const margin = PREVIEW_SAFE_MARGIN;
+    const gap = 4;
+
+    const width = Math.max(160, Math.min(rect.width, viewportWidth - margin * 2));
+    let left = rect.left;
+    if (left + width > viewportWidth - margin) {
+      left = viewportWidth - margin - width;
+    }
+    left = Math.max(margin, left);
+
+    const spaceBelow = viewportHeight - margin - (rect.bottom + gap);
+    const spaceAbove = rect.top - gap - margin;
+    let top = 0;
+    let maxHeight = 0;
+    if (spaceBelow >= 160 || spaceBelow >= spaceAbove) {
+      // 优先向下展开
+      top = rect.bottom + gap;
+      maxHeight = Math.max(120, Math.min(240, spaceBelow));
+    } else {
+      // 翻到上方，底边贴住锚点上沿
+      maxHeight = Math.max(120, Math.min(240, spaceAbove));
+      top = Math.max(margin, rect.top - gap - maxHeight);
+    }
+
+    setTakerPanelStyle({ left, top, width, maxHeight, visibility: 'visible' });
+  }, []);
+
   const batchFormModalRef = useRef<HTMLDivElement>(null);
   const [showBatchForm, setShowBatchForm] = useState(false);
   const [batchProductCodes, setBatchProductCodes] = useState('');
@@ -361,13 +415,32 @@ export default function Tasks() {
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (takerDropdownRef.current && !takerDropdownRef.current.contains(e.target as Node)) {
+      // 下拉面板已 portal 到 body，不再是 takerDropdownRef 的 DOM 后代，
+      // 因此点面板内部也要算「点内部」，否则点选项/复选框会被误判成点外部而提前关闭
+      const inTrigger = !!takerDropdownRef.current && takerDropdownRef.current.contains(e.target as Node);
+      const inPanel = !!takerPanelRef.current && takerPanelRef.current.contains(e.target as Node);
+      if (!inTrigger && !inPanel) {
         setShowTakerDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // 下拉面板 portal 到 body 后用 fixed 定位，页面/表格滚动或窗口尺寸变化时
+  // 需重新贴合锚点，否则会停在原地脱离输入框
+  useLayoutEffect(() => {
+    if (!showTakerDropdown) return;
+    layoutTakerPanel();
+    const reposition = () => layoutTakerPanel();
+    window.addEventListener('resize', reposition);
+    // capture=true：同时捕获表格容器等内部滚动容器的滚动
+    window.addEventListener('scroll', reposition, true);
+    return () => {
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+    };
+  }, [showTakerDropdown, layoutTakerPanel]);
 
 
 
@@ -1156,7 +1229,7 @@ export default function Tasks() {
                         </div>
                         <div className="relative" ref={takerDropdownRef}>
                           <label className="text-xs font-medium text-muted-foreground">接单人 *</label>
-                          <div className="relative mt-1">
+                          <div className="relative mt-1" ref={takerAnchorRef}>
                             <input
                               type="text"
                               value={takerSearch}
@@ -1179,8 +1252,22 @@ export default function Tasks() {
                               <svg className={`h-3 w-3 transition-transform ${showTakerDropdown ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                             </button>
                           </div>
-                          {showTakerDropdown && (
-                            <div className="absolute z-10 mt-1 w-full max-h-60 overflow-y-auto rounded-md border bg-card shadow-lg">
+                          {showTakerDropdown && createPortal(
+                            <div
+                              ref={takerPanelRef}
+                              // portal 到 body：内联接单行位于表格外层的
+                              // overflow-x-auto 容器内（一个轴 auto 会把另一个 visible
+                              // 计算成 auto，纵向同样裁剪），留在原地会被切掉。
+                              // z 取 45：高于页面内容，低于 .modal-overlay(50)/.drawer-content(50)
+                              className="fixed z-[45] overflow-y-auto overscroll-contain rounded-md border bg-card shadow-lg"
+                              style={{
+                                left: takerPanelStyle.left,
+                                top: takerPanelStyle.top,
+                                width: takerPanelStyle.width,
+                                maxHeight: takerPanelStyle.maxHeight,
+                                visibility: takerPanelStyle.visibility,
+                              }}
+                            >
                               <label className="flex cursor-pointer items-center gap-2 border-b px-3 py-1.5 text-xs text-muted-foreground select-none hover:bg-accent">
                                 <input
                                   type="checkbox"
@@ -1254,7 +1341,8 @@ export default function Tasks() {
                                   共 {takersTotal} 人匹配，已显示前 {takerOptions.length} 人，请补充更多关键词缩小范围
                                 </div>
                               )}
-                            </div>
+                            </div>,
+                            document.body,
                           )}
                         </div>
                         <div className="flex gap-2">
