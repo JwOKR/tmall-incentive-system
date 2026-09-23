@@ -393,6 +393,7 @@ export default function Orders() {
       const values: string[] = orders.map((o: any): string => {
         if (field === 'wechatName') return o.taker?.wechatName || '';
         if (field === 'wechatId') return o.taker?.wechatId || '';
+        if (field === 'taobaoNickname') return o.taker?.taobaoNickname || '';
         return String(o[field] ?? '');
       }).filter(Boolean);
       return [...new Set(values)].map(v => ({ value: v, label: v }));
@@ -760,15 +761,15 @@ export default function Orders() {
                 <ColumnFilter value={columnFilters['wechatName'] || ''} onChange={(v) => setColFilter('wechatName', v)} options={getUniqueValues('wechatName')} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
-                <button onClick={() => handleSort('wechatId')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
-                  微信号
-                  {sortConfig?.field === 'wechatId' ? (
+                <button onClick={() => handleSort('taobaoNickname')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
+                  淘宝昵称
+                  {sortConfig?.field === 'taobaoNickname' ? (
                     sortConfig.direction === 'asc' ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />
                   ) : (
                     <ArrowUpDown className="h-3 w-3 opacity-30" />
                   )}
                 </button>
-                <ColumnFilter value={columnFilters['wechatId'] || ''} onChange={(v) => setColFilter('wechatId', v)} options={getUniqueValues('wechatId')} />
+                <ColumnFilter value={columnFilters['taobaoNickname'] || ''} onChange={(v) => setColFilter('taobaoNickname', v)} options={getUniqueValues('taobaoNickname')} />
               </th>
               <th className="px-3 py-2 text-left font-medium"><div className="whitespace-nowrap">总返款</div></th>
               <th className="px-3 py-2 text-left font-medium">
@@ -953,7 +954,7 @@ export default function Orders() {
                     {order.taker?.wechatName}
                   </td>
                   <td className="px-3 py-2 text-muted-foreground">
-                    {order.taker?.wechatId}
+                    {order.taker?.taobaoNickname || '-'}
                   </td>
                   <td className="px-3 py-2 text-emerald-600 dark:text-emerald-400 font-medium">
                     <div title={`实付 ${formatCurrency(order.actualPayment)} + 基础返佣 ${formatCurrency(order.baseCommission)} + 好评返佣 ${formatCurrency(order.reviewCommission)}`}>

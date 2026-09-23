@@ -45,6 +45,7 @@ export const orderColumns: ExportColumn[] = [
   { key: 'orderDate', label: '接单日期', selected: true },
   { key: 'taker.wechatName', label: '微信昵称', selected: true },
   { key: 'taker.wechatId', label: '微信号', selected: true },
+  { key: 'taker.taobaoNickname', label: '淘宝昵称', selected: true },
   { key: 'totalRefund', label: '总返款', selected: true },
   { key: 'isRefunded', label: '是否已返款', selected: true },
   { key: 'refundDate', label: '返款日期', selected: true },

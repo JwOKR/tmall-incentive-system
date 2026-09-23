@@ -47,7 +47,9 @@ export interface OrderListParams {
   columnFilters?: string | Record<string, string>;
 }
 
-const ORDER_SORT_FIELDS: Record<string, string | { taker: { wechatName: string } } | { taker: { wechatId: string } }> = {
+// 值可以是本表字段名（string），也可以是接单人关联表字段 { taker: { 字段: 字段 } }。
+// 这里放宽为 Record<string, string>，避免每加一个关联排序字段就要扩一次联合类型。
+const ORDER_SORT_FIELDS: Record<string, string | { taker: Record<string, string> }> = {
   productId: 'productId',
   productCode: 'productCode',
   orderNo: 'orderNo',
@@ -64,6 +66,7 @@ const ORDER_SORT_FIELDS: Record<string, string | { taker: { wechatName: string }
   remark: 'remark',
   wechatName: { taker: { wechatName: 'wechatName' } },
   wechatId: { taker: { wechatId: 'wechatId' } },
+  taobaoNickname: { taker: { taobaoNickname: 'taobaoNickname' } },
 };
 
 export interface BatchImportResult {
@@ -83,9 +86,15 @@ export async function getOrderList(params: OrderListParams) {
   const { search, isRefunded, isGoodReview, startDate, endDate } = params;
   const sortField = params.sortField && ORDER_SORT_FIELDS[params.sortField] ? params.sortField : 'orderDate';
   const sortDirection = params.sortDirection === 'asc' ? 'asc' : 'desc';
-  const orderBy: Record<string, any> = typeof ORDER_SORT_FIELDS[sortField] === 'string'
-    ? { [ORDER_SORT_FIELDS[sortField] as string]: sortDirection }
-    : { taker: { [Object.keys(ORDER_SORT_FIELDS[sortField] as object)[0]]: sortDirection } };
+  // 排序字段：本表字段直接用字段名；关联表字段走 { taker: { 字段: 方向 } }。
+  // ⚠️ 必须取**内层**对象的键（ORDER_SORT_FIELDS[x].taker 的键）。
+  // 原写法 Object.keys(ORDER_SORT_FIELDS[sortField])[0] 取到的是外层的 'taker'，
+  // 会产出非法的 { taker: { taker: 方向 } }，Prisma 报 Unknown field —— 既有的
+  // 「微信昵称」排序因此一直是坏的，新增的「淘宝昵称」排序会踩同一个坑。
+  const sortSpec = ORDER_SORT_FIELDS[sortField];
+  const orderBy: Record<string, any> = typeof sortSpec === 'string'
+    ? { [sortSpec]: sortDirection }
+    : { taker: { [Object.keys(sortSpec.taker)[0]]: sortDirection } };
 
   // Build a Prisma-safe where clause from a strict field whitelist.
   const where: Record<string, any> = {};
@@ -102,6 +111,7 @@ export async function getOrderList(params: OrderListParams) {
     remark: 'remark', isRefunded: 'isRefunded', isGoodReview: 'isGoodReview',
     wechatName: { taker: { wechatName: { contains: '' } } },
     wechatId: { taker: { wechatId: { contains: '' } } },
+    taobaoNickname: { taker: { taobaoNickname: { contains: '' } } },
   };
   for (const [key, rawValue] of Object.entries(filterInput)) {
     const value = String(rawValue || '').trim();
@@ -139,7 +149,7 @@ export async function getOrderList(params: OrderListParams) {
     where.AND = searchTokens.map(token => ({ OR: [
       { orderNo: { contains: token } }, { orderNo19: { contains: token } },
       { productId: { contains: token } }, { productCode: { contains: token } }, { remark: { contains: token } },
-      { taker: { OR: [{ wechatName: { contains: token } }, { wechatId: { contains: token } }] } },
+      { taker: { OR: [{ wechatName: { contains: token } }, { wechatId: { contains: token } }, { taobaoNickname: { contains: token } }] } },
     ] }));
   }
 
@@ -170,7 +180,8 @@ export async function getOrderList(params: OrderListParams) {
       orderBy,
       include: {
         task: { select: { id: true, productId: true, productCode: true } },
-        taker: { select: { id: true, wechatName: true, wechatId: true } },
+        // wechatId 保留：导入/匹配接单人依赖它，且订单导出列仍在用
+        taker: { select: { id: true, wechatName: true, wechatId: true, taobaoNickname: true } },
       },
     }),
     prisma.order.count({ where }),
