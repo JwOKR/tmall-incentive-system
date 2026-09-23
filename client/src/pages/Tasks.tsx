@@ -227,17 +227,16 @@ export default function Tasks() {
 
     const spaceBelow = viewportHeight - margin - (rect.bottom + gap);
     const spaceAbove = rect.top - gap - margin;
-    let top = 0;
-    let maxHeight = 0;
-    if (spaceBelow >= 160 || spaceBelow >= spaceAbove) {
-      // 优先向下展开
-      top = rect.bottom + gap;
-      maxHeight = Math.max(120, Math.min(240, spaceBelow));
-    } else {
-      // 翻到上方，底边贴住锚点上沿
-      maxHeight = Math.max(120, Math.min(240, spaceAbove));
-      top = Math.max(margin, rect.top - gap - maxHeight);
-    }
+    // 优先向下展开（下方足够宽敞时）；否则翻到空间更大的一侧。
+    // ⚠️ maxHeight 绝不能设下限：下边距 = spaceBelow + margin − maxHeight，
+    // 一旦给 maxHeight 兜一个大于该侧可用空间的最小值（原写法兜 120），
+    // 面板就会越过视口边缘 —— 视口很矮时（底部停靠 DevTools 很容易压到 ~280px）
+    // 面板宁可矮一点，也绝不能溢出。
+    const expandBelow = spaceBelow >= 160 || spaceBelow >= spaceAbove;
+    const maxHeight = Math.max(0, Math.min(240, expandBelow ? spaceBelow : spaceAbove));
+    const top = expandBelow
+      ? rect.bottom + gap
+      : Math.max(margin, rect.top - gap - maxHeight);
 
     setTakerPanelStyle({ left, top, width, maxHeight, visibility: 'visible' });
   }, []);

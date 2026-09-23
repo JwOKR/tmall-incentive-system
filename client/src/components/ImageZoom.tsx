@@ -20,8 +20,11 @@ export default function ImageZoom({ src, alt = '截图预览', onClose }: ImageZ
   if (!src) return null;
   return createPortal(
     <div
-      // 挂到 body 后与 #root 内的弹窗处于同一层叠上下文，需要高于
-      // .modal-overlay(50) / .modal-content(51)；同时低于 ConfirmDialog(9998) 与 Toast(9999)
+      // 挂到 body 后与 #root 内的弹窗处于同一层叠上下文，需高于所有弹窗：
+      // .modal-overlay(z-index:50!important) / .modal-content(51)。
+      // 注意 ConfirmDialog 写了 inline `zIndex: 9998`，但内联样式没有 !important，
+      // 会被 .modal-overlay 的 `z-index: 50 !important` 覆盖，实际生效的同样是 50。
+      // 取 9997：稳居各弹窗之上，且低于 Toast 的 z-[9999]。
       className="fixed inset-0 z-[9997] flex items-center justify-center bg-black/70 p-4 animate-in fade-in"
       onClick={onClose}
     >
