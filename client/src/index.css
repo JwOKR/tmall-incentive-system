@@ -549,12 +549,17 @@
   /* ── Drawer Content — slide from right ── */
   .drawer-content {
     position: fixed;
-    inset-y: 0;
+    /* 注意：必须用 top/bottom（或 inset-block），不能写 inset-y:0 —— inset-y 是
+       Tailwind 的类名而非 CSS 属性，写成属性会被浏览器整条丢弃，导致 fixed 元素
+       失去垂直锚定、退化为「静态位置定位」，整个抽屉被渲染到页面内容末尾之后，
+       表现为「弹窗超出页面、底部看不到」（2026-09-23 实测复现并验证） */
+    top: 0;
+    bottom: 0;
     right: 0;
     z-index: 50;
     width: 100%;
     max-width: 28rem;
-    /* 高度上限：dvh 兜底移动端浏览器地址栏动态收起导致的「inset-y:0 超出可视区」 */
+    /* 高度上限：dvh 兜底移动端浏览器地址栏动态收起导致的超出可视区 */
     max-height: 100vh;
     max-height: 100dvh;
     /* 内容一律在抽屉内部滚动/裁剪，绝不溢出到视口之外 */
