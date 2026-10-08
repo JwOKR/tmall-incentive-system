@@ -160,7 +160,7 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
                 <div className="space-y-2">
                   {[
                     { label: '实付金额', value: formatCurrency(order.actualPayment) },
-                    { label: '基础返佣', value: formatCurrency(order.baseCommission), color: 'text-green-600 dark:text-green-400' },
+                    { label: '基础返佣', value: `${formatCurrency(order.baseCommission)} · ${order.isBaseCommissionRefunded ? '已返款' : '未返款'}`, color: 'text-green-600 dark:text-green-400' },
                     { label: '好评返佣', value: formatCurrency(order.reviewCommission), color: 'text-purple-600 dark:text-purple-400' },
                     { label: '总返款', value: formatCurrency(order.totalRefund), color: 'text-blue-600 dark:text-blue-400', bold: true },
                   ].map(item => (

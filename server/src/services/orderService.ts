@@ -87,6 +87,7 @@ const ORDER_SORT_FIELDS: Record<string, string | { taker: TakerSortField }> = {
   drawingDate: 'drawingDate',
   actualPayment: 'actualPayment',
   baseCommission: 'baseCommission',
+  isBaseCommissionRefunded: 'isBaseCommissionRefunded',
   reviewCommission: 'reviewCommission',
   remark: 'remark',
   wechatName: { taker: 'wechatName' },
@@ -131,6 +132,7 @@ export async function getOrderList(params: OrderListParams) {
   const columnMap: Record<string, string | { taker: Record<string, { contains: string }> }> = {
     orderDate: 'orderDate', refundDate: 'refundDate', productId: 'productId', productCode: 'productCode',
     orderNo19: 'orderNo19', orderNo: 'orderNo', actualPayment: 'actualPayment', baseCommission: 'baseCommission',
+    isBaseCommissionRefunded: 'isBaseCommissionRefunded',
     reviewCommission: 'reviewCommission', drawingDate: 'drawingDate', reviewCommissionDate: 'reviewCommissionDate',
     remark: 'remark', isRefunded: 'isRefunded', isGoodReview: 'isGoodReview',
     wechatName: { taker: { wechatName: { contains: '' } } },
@@ -142,6 +144,7 @@ export async function getOrderList(params: OrderListParams) {
     const mapped = columnMap[key];
     if (!value || !mapped) continue;
     if (key === 'isRefunded') { where.isRefunded = value === 'true'; continue; }
+    if (key === 'isBaseCommissionRefunded') { where.isBaseCommissionRefunded = value === 'true'; continue; }
     if (key === 'isGoodReview') { where.isGoodReview = value; continue; }
     if (typeof mapped === 'string') {
       const dateFields = new Set(['orderDate', 'refundDate', 'drawingDate', 'reviewCommissionDate']);
@@ -241,6 +244,7 @@ export interface UpdateOrderInput {
   isGoodReview?: boolean;
   drawingDate?: string;
   baseCommission?: number;
+  isBaseCommissionRefunded?: boolean;
   reviewCommission?: number;
   reviewCommissionDate?: string;
   remark?: string;
@@ -296,6 +300,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
       isGoodReview: input.isGoodReview !== undefined ? String(input.isGoodReview) : undefined,
       drawingDate: input.drawingDate !== undefined ? parseExcelDate(input.drawingDate) : undefined,
       baseCommission: input.baseCommission !== undefined ? Number(input.baseCommission) : undefined,
+      isBaseCommissionRefunded: input.isBaseCommissionRefunded !== undefined ? parseBoolValue(input.isBaseCommissionRefunded) : undefined,
       reviewCommission: writeReview ? newReview : undefined,
       reviewCommissionDate: input.reviewCommissionDate !== undefined ? parseExcelDate(input.reviewCommissionDate) : undefined,
       remark: input.remark,
@@ -394,6 +399,7 @@ export async function batchCreateOrders(rawOrders: any[]): Promise<BatchImportRe
             productCode: productCodeStr || (task ? task.productCode : ''),
             actualPayment,
             baseCommission,
+            isBaseCommissionRefunded: parseBoolValue(item.isBaseCommissionRefunded),
             reviewCommission,
             totalRefund: actualPayment + baseCommission + reviewCommission,
             isRefunded: parseBoolValue(item.isRefunded),
@@ -481,6 +487,7 @@ export async function batchUpdateOrders(rawOrders: any[]) {
 
         if (item.actualPayment !== '' && item.actualPayment != null) updateData.actualPayment = Number(item.actualPayment) || 0;
         if (item.baseCommission !== '' && item.baseCommission != null) updateData.baseCommission = Number(item.baseCommission) || 0;
+        if (item.isBaseCommissionRefunded !== '' && item.isBaseCommissionRefunded != null) updateData.isBaseCommissionRefunded = parseBoolValue(item.isBaseCommissionRefunded);
         if (item.reviewCommission !== '' && item.reviewCommission != null) updateData.reviewCommission = Number(item.reviewCommission) || 0;
         if (item.remark !== '' && item.remark !== undefined) updateData.remark = String(item.remark).trim() || null;
         if (item.isRefunded !== '' && item.isRefunded != null) updateData.isRefunded = parseBoolValue(item.isRefunded);
@@ -509,6 +516,8 @@ export async function batchUpdateOrders(rawOrders: any[]) {
           changes.push(`好评状态: ${existingOrder.isGoodReview ? '已好评' : '未好评'} → ${updateData.isGoodReview ? '已好评' : '未好评'}`);
         if (updateData.actualPayment !== undefined) changes.push(`实付款: ${existingOrder.actualPayment} → ${updateData.actualPayment}`);
         if (updateData.baseCommission !== undefined) changes.push(`基础返佣: ${existingOrder.baseCommission} → ${updateData.baseCommission}`);
+        if (updateData.isBaseCommissionRefunded !== undefined && updateData.isBaseCommissionRefunded !== existingOrder.isBaseCommissionRefunded)
+          changes.push(`基础返佣返款状态: ${existingOrder.isBaseCommissionRefunded ? '已返款' : '未返款'} → ${updateData.isBaseCommissionRefunded ? '已返款' : '未返款'}`);
         if (updateData.reviewCommission !== undefined) changes.push(`好评返佣: ${existingOrder.reviewCommission} → ${updateData.reviewCommission}`);
         if (updateData.remark !== undefined) changes.push(`备注: ${existingOrder.remark || '空'} → ${updateData.remark || '空'}`);
 
@@ -527,7 +536,7 @@ export async function batchUpdateOrders(rawOrders: any[]) {
 // ──────────────────────────────────────
 // 批量更新状态（事务内）
 // ──────────────────────────────────────
-export async function batchUpdateOrderStatus(ids: string[], field: 'isRefunded' | 'isGoodReview', value: boolean | string) {
+export async function batchUpdateOrderStatus(ids: string[], field: 'isRefunded' | 'isGoodReview' | 'isBaseCommissionRefunded', value: boolean | string) {
   const orders = await prisma.order.findMany({
     where: { id: { in: ids } },
     select: { id: true, actualPayment: true, baseCommission: true, reviewCommission: true },
@@ -541,6 +550,9 @@ export async function batchUpdateOrderStatus(ids: string[], field: 'isRefunded' 
   await prisma.$transaction(async (tx) => {
     for (const order of orders) {
       const updateData: any = { [field]: value };
+      // 基础返佣返款状态：必须落成真正的布尔值，避免前端传字符串 'true' 写坏。
+      // 该字段**不记录日期**（与订单级 isRefunded 不同），因此这里绝不写任何时间戳。
+      if (field === 'isBaseCommissionRefunded') updateData.isBaseCommissionRefunded = parseBoolValue(value);
       if (field === 'isRefunded' && value) updateData.refundDate = new Date();
 
       // 好评返佣金额的最终取值：标记「已好评」时一律覆盖为配置值，否则保持原值。

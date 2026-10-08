@@ -58,6 +58,7 @@ export const orderColumns: ExportColumn[] = [
   { key: 'isGoodReview', label: '是否好评', selected: true },
   { key: 'drawingDate', label: '作图时间', selected: true },
   { key: 'baseCommission', label: '基础返佣', selected: true },
+  { key: 'isBaseCommissionRefunded', label: '基础返佣已返款', selected: true },
   { key: 'reviewCommission', label: '好评返佣', selected: true },
   { key: 'reviewCommissionDate', label: '好评返佣日期', selected: true },
   { key: 'remark', label: '备注', selected: true },

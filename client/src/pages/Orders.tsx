@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api, { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Star, Calendar, Eye, ExternalLink, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Circle, Star, Calendar, Eye, ExternalLink, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter from '@/components/ColumnFilter';
@@ -153,7 +153,7 @@ export default function Orders() {
     let value = editValue;
     
     // 处理布尔字段
-    if (['isRefunded'].includes(field)) {
+    if (['isRefunded', 'isBaseCommissionRefunded'].includes(field)) {
       value = value === 'true';
     }
     // 处理数字字段
@@ -242,16 +242,22 @@ export default function Orders() {
     }
   };
 
-  const handleBatchStatus = async (field: 'isRefunded' | 'isGoodReview', value: boolean | string) => {
+  const handleBatchStatus = async (field: 'isRefunded' | 'isGoodReview' | 'isBaseCommissionRefunded', value: boolean | string) => {
     if (selectedIds.size === 0) {
       toastError('请先选择订单');
       return;
     }
-    const label = field === 'isRefunded' ? '返款' : '好评';
-    const statusLabel = typeof value === 'string' ? 
-      (value === 'reviewed' ? '已好评' : value === 'creating' ? '作图中' : value === 'returned' ? '已返图' : '未好评') : 
-      (value ? '已' : '未');
-    if (await confirm({ message: `确定要将选中的 ${selectedIds.size} 个订单标记为${statusLabel}${label}吗？`, variant: 'warning' })) {
+    // 基础返佣返款状态单独成句：现有模板会拼出「已基础返佣已返款」这种病句，故单独分支。
+    const message = field === 'isBaseCommissionRefunded'
+      ? `确定要将选中的 ${selectedIds.size} 个订单的基础返佣标记为已返款吗？`
+      : (() => {
+          const label = field === 'isRefunded' ? '返款' : '好评';
+          const statusLabel = typeof value === 'string'
+            ? (value === 'reviewed' ? '已好评' : value === 'creating' ? '作图中' : value === 'returned' ? '已返图' : '未好评')
+            : (value ? '已' : '未');
+          return `确定要将选中的 ${selectedIds.size} 个订单标记为${statusLabel}${label}吗？`;
+        })();
+    if (await confirm({ message, variant: 'warning' })) {
       batchStatusMutation.mutate({ ids: Array.from(selectedIds), field, value });
     }
   };
@@ -369,6 +375,26 @@ export default function Orders() {
         title="点击切换状态"
       >
         {currentOption?.label || '-'}
+      </div>
+    );
+  };
+
+  // 「基础返佣」列：左半是可点击编辑的金额（复用 renderEditableCell，行为不变），
+  // 右半是独立的基础返佣返款状态标记（点标记切换）。该状态与订单级 isRefunded 完全独立、互不影响。
+  const renderBaseCommissionCell = (order: any) => {
+    const paid = !!order.isBaseCommissionRefunded;
+    const editable = canEdit('orders');
+    return (
+      <div className={`flex items-center gap-1 rounded ${paid ? 'bg-green-100 dark:bg-green-900/30' : ''}`}>
+        <div className="flex-1 min-w-0">{renderEditableCell(order, 'baseCommission', 'number')}</div>
+        <button
+          onClick={(e) => { e.stopPropagation(); if (editable) updateMutation.mutate({ id: order.id, data: { isBaseCommissionRefunded: !paid } }); }}
+          disabled={!editable || updateMutation.isPending}
+          title={paid ? '基础返佣已返款，点击改为未返款' : '基础返佣未返款，点击标记为已返款'}
+          className={`shrink-0 p-0.5 rounded transition-colors ${paid ? 'text-green-600 dark:text-green-400 hover:bg-green-200/60' : 'text-muted-foreground hover:text-foreground hover:bg-accent'} disabled:opacity-60 disabled:cursor-not-allowed`}
+        >
+          {paid ? <CheckCircle className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+        </button>
       </div>
     );
   };
@@ -516,6 +542,7 @@ export default function Orders() {
                 { key: 'orderNo19', label: '19订单号' },
                 { key: 'actualPayment', label: '实付价' },
                 { key: 'baseCommission', label: '基础返佣' },
+                { key: 'isBaseCommissionRefunded', label: '基础返佣已返款' },
                 { key: 'reviewCommission', label: '好评返佣' },
                 { key: 'isRefunded', label: '是否已返款' },
                 { key: 'refundDate', label: '返款日期' },
@@ -553,6 +580,7 @@ export default function Orders() {
                 { key: 'wechatName', label: '微信昵称' },
                 { key: 'actualPayment', label: '实付价' },
                 { key: 'baseCommission', label: '基础返佣' },
+                { key: 'isBaseCommissionRefunded', label: '基础返佣已返款' },
                 { key: 'reviewCommission', label: '好评返佣' },
                 { key: 'isRefunded', label: '是否已返款' },
                 { key: 'refundDate', label: '返款日期' },
@@ -694,6 +722,14 @@ export default function Orders() {
           >
             <CheckCircle className="h-4 w-4" />
             批量已返款
+          </button>
+          <button
+            onClick={() => handleBatchStatus('isBaseCommissionRefunded', true)}
+            disabled={batchStatusMutation.isPending}
+            className="apple-btn inline-flex items-center gap-1.5 rounded-lg bg-teal-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-teal-600 disabled:opacity-50 transition-colors shadow-sm"
+          >
+            <CheckCircle className="h-4 w-4" />
+            批量基础返佣已返款
           </button>
           <button
             onClick={() => handleBatchStatus('isGoodReview', 'reviewed')}
@@ -870,7 +906,7 @@ export default function Orders() {
                     <ArrowUpDown className="h-3 w-3 opacity-30" />
                   )}
                 </button>
-                <ColumnFilter value={columnFilters['baseCommission'] || ''} onChange={(v) => setColFilter('baseCommission', v)} options={getUniqueValues('baseCommission')} />
+                <ColumnFilter type="select" value={columnFilters['isBaseCommissionRefunded'] || ''} onChange={(v) => setColFilter('isBaseCommissionRefunded', v)} options={[{ value: 'true', label: '已返款' }, { value: 'false', label: '未返款' }]} />
               </th>
               <th className="px-3 py-2 text-left font-medium">
                 <button onClick={() => handleSort('reviewCommission')} className="flex items-center gap-0.5 hover:text-primary whitespace-nowrap">
@@ -1067,7 +1103,7 @@ export default function Orders() {
                     {renderStatusSelect(order, 'isGoodReview', reviewOptions)}
                   </td>
                   <td className="px-3 py-2">
-                    {renderEditableCell(order, 'baseCommission', 'number')}
+                    {renderBaseCommissionCell(order)}
                   </td>
                   <td className="px-3 py-2">
                     {renderEditableCell(order, 'reviewCommission', 'number')}

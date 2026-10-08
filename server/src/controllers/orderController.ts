@@ -45,6 +45,7 @@ export const updateOrder = async (req: AuthRequest, res: Response) => {
     const fields: Record<string, string> = {
       orderNo: '订单编号', orderNo19: '19订单号', actualPayment: '实付款',
       isRefunded: '返款状态', baseCommission: '基础返佣',
+      isBaseCommissionRefunded: '基础返佣返款状态',
       reviewCommission: '好评返佣', drawingDate: '作图时间', remark: '备注',
     };
     
@@ -61,6 +62,8 @@ export const updateOrder = async (req: AuthRequest, res: Response) => {
       const newVal = (req.body as any)[key];
       if (newVal !== undefined && String(newVal) !== String(oldVal)) {
         if (key === 'isRefunded') {
+          changes.push(`${label}: ${oldVal ? '已返款' : '未返款'} → ${newVal ? '已返款' : '未返款'}`);
+        } else if (key === 'isBaseCommissionRefunded') {
           changes.push(`${label}: ${oldVal ? '已返款' : '未返款'} → ${newVal ? '已返款' : '未返款'}`);
         } else {
           changes.push(`${label}: ${oldVal || '空'} → ${newVal}`);
@@ -161,7 +164,7 @@ export const batchUpdateStatus = async (req: AuthRequest, res: Response) => {
     if (!Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ success: false, message: '请提供订单ID列表' });
     }
-    if (!['isRefunded', 'isGoodReview'].includes(field)) {
+    if (!['isRefunded', 'isGoodReview', 'isBaseCommissionRefunded'].includes(field)) {
       return res.status(400).json({ success: false, message: '不支持的字段' });
     }
 
@@ -178,6 +181,8 @@ export const batchUpdateStatus = async (req: AuthRequest, res: Response) => {
     let statusLabel = '';
     if (field === 'isRefunded') {
       statusLabel = value ? '已返款' : '未返款';
+    } else if (field === 'isBaseCommissionRefunded') {
+      statusLabel = value ? '基础返佣已返款' : '基础返佣未返款';
     } else {
       statusLabel = reviewStatusMap[String(value)] || String(value);
     }
