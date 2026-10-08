@@ -17,6 +17,7 @@ import {
   Trash2,
   X,
   Sparkles,
+  Banknote,
   Save,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
@@ -29,7 +30,7 @@ export default function Settings() {
   const { success: toastSuccess, error: toastError } = useToast();
   const { confirm } = useConfirm();
   const { canView } = usePermissions();
-  const [activeTab, setActiveTab] = useState<'account' | 'password' | 'shortcuts' | 'backup' | 'users' | 'ai'>('account');
+  const [activeTab, setActiveTab] = useState<'account' | 'password' | 'shortcuts' | 'backup' | 'users' | 'ai' | 'order'>('account');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -42,6 +43,11 @@ export default function Settings() {
   const [aiSettings, setAiSettings] = useState<Record<string, string>>({});
   const [loadingAi, setLoadingAi] = useState(false);
   const [savingAi, setSavingAi] = useState(false);
+
+  // 订单设置状态（好评返佣默认金额）
+  const [orderSettings, setOrderSettings] = useState<Record<string, string>>({});
+  const [loadingOrder, setLoadingOrder] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
 
   // 用户管理状态
   const [users, setUsers] = useState<any[]>([]);
@@ -96,6 +102,7 @@ export default function Settings() {
   useEffect(() => {
     if (activeTab === 'users') loadUsers();
     if (activeTab === 'ai') loadAiSettings();
+    if (activeTab === 'order') loadOrderSettings();
   }, [activeTab]);
 
   const loadAiSettings = async () => {
@@ -120,6 +127,31 @@ export default function Settings() {
       else toastError(res.message || '保存失败');
     } catch (err: any) { toastError(err?.response?.data?.message || '保存失败'); }
     finally { setSavingAi(false); }
+  };
+
+  // 加载「订单设置」：只关心好评返佣默认金额这一个键
+  const loadOrderSettings = async () => {
+    setLoadingOrder(true);
+    try {
+      const res: any = await settingsApi.get('general');
+      if (res.success) {
+        const map: Record<string, string> = {};
+        (res.data || []).forEach((s: any) => { map[s.key] = s.value; });
+        setOrderSettings(map);
+      }
+    } catch { toastError('加载订单设置失败'); }
+    finally { setLoadingOrder(false); }
+  };
+
+  const handleSaveOrderSettings = async () => {
+    setSavingOrder(true);
+    try {
+      const value = String(orderSettings['review_commission_amount'] ?? '3');
+      const res: any = await settingsApi.update([{ key: 'review_commission_amount', value }]);
+      if (res.success) toastSuccess('订单设置已保存');
+      else toastError(res.message || '保存失败');
+    } catch (err: any) { toastError(err?.response?.data?.message || '保存失败'); }
+    finally { setSavingOrder(false); }
   };
 
   const handleSaveUser = async () => {
@@ -215,6 +247,7 @@ export default function Settings() {
     { id: 'backup' as const, label: '数据备份', icon: Download },
     { id: 'users' as const, label: '用户管理', icon: Users },
     { id: 'ai' as const, label: 'AI模型', icon: Sparkles },
+    { id: 'order' as const, label: '订单设置', icon: Banknote },
     { id: 'shortcuts' as const, label: '快捷键', icon: Keyboard },
   ];
 
@@ -676,6 +709,56 @@ export default function Settings() {
                     <p><strong>豆包 (Doubao)：</strong>https://ark.cn-beijing.volces.com/api/v3/chat/completions · doubao-pro-32k</p>
                     <p><strong>OpenAI：</strong>https://api.openai.com/v1/chat/completions · gpt-4o</p>
                   </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'order' && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold">订单设置</h3>
+                <p className="text-sm text-muted-foreground mt-1">配置订单相关的默认值</p>
+              </div>
+              <button
+                onClick={handleSaveOrderSettings}
+                disabled={savingOrder}
+                className="apple-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
+              >
+                {savingOrder ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {savingOrder ? '保存中...' : '保存配置'}
+              </button>
+            </div>
+
+            {loadingOrder ? (
+              <div className="flex items-center gap-2 text-muted-foreground py-8">
+                <Loader2 className="h-4 w-4 animate-spin" /> 加载中...
+              </div>
+            ) : (
+              <div className="grid gap-5 max-w-xl">
+                <div className="rounded-xl border bg-muted/30 p-4">
+                  <p className="text-xs text-muted-foreground flex items-start gap-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-indigo-500" />
+                    <span>
+                      订单被标记为「已好评」时，好评返佣会默认填充为该金额（即便之前手工改过也会覆盖）。
+                      设为 0 表示不返好评返佣。
+                    </span>
+                  </p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">好评返佣默认金额（元）</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step="0.01"
+                    value={orderSettings['review_commission_amount'] ?? '3'}
+                    onChange={e => setOrderSettings(prev => ({ ...prev, review_commission_amount: e.target.value }))}
+                    placeholder="3"
+                    className="apple-input rounded-lg mt-1"
+                  />
                 </div>
               </div>
             )}

@@ -1,5 +1,6 @@
 import prisma from '../utils/db';
 import { parseExcelDate } from '../utils/parseExcelDate';
+import { getReviewCommissionAmount } from './systemSettingService';
 
 // ──────────────────────────────────────
 // 布尔值解析（支持 Excel 各种格式）
@@ -28,6 +29,17 @@ export function parseReviewStatus(value: unknown): string {
   if (typeof value === 'boolean') return value ? 'reviewed' : 'pending';
   if (typeof value === 'number') return value !== 0 ? 'reviewed' : 'pending';
   return 'pending';
+}
+
+/**
+ * 判断本次写入是否把订单标记为「已好评」。
+ *
+ * 说明：UpdateOrderInput.isGoodReview 的声明类型是 boolean，但前端下拉/批量接口
+ * 实际传的是状态字符串（'reviewed' / 'creating' / 'returned' / 'pending'）。
+ * 这里统一走 parseReviewStatus 归一化，既兼容字符串 'reviewed'，也兼容 true/1/'是' 等历史写法。
+ */
+function isMarkedReviewed(value: unknown): boolean {
+  return parseReviewStatus(value) === 'reviewed';
 }
 
 // ──────────────────────────────────────
@@ -250,7 +262,27 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
 
   const newActual = input.actualPayment !== undefined ? Number(input.actualPayment) : existing.actualPayment;
   const newBase = input.baseCommission !== undefined ? Number(input.baseCommission) : existing.baseCommission;
-  const newReview = input.reviewCommission !== undefined ? Number(input.reviewCommission) : existing.reviewCommission;
+
+  // 好评返佣金额的最终取值（本模块的单一判定点）：
+  //   1) 请求显式传了 reviewCommission（用户在单元格里手工改了金额）→ 尊重该值，不覆盖；
+  //   2) 否则若本次把订单标记为「已好评」→ 一律覆盖为系统设置里的好评返佣默认金额（默认 3 元），
+  //      即便该订单之前被手工改过，也覆盖（用户已确认口径）；
+  //   3) 其它情况 → 保持原值不变。
+  const explicitReview = input.reviewCommission !== undefined;
+  const reviewed = isMarkedReviewed(input.isGoodReview);
+  let newReview: number;
+  let writeReview: boolean;
+  if (explicitReview) {
+    newReview = Number(input.reviewCommission);
+    writeReview = true;
+  } else if (reviewed) {
+    newReview = await getReviewCommissionAmount();
+    writeReview = true;
+  } else {
+    newReview = existing.reviewCommission;
+    writeReview = false;
+  }
+
   const order = await prisma.order.update({
     where: { id },
     data: {
@@ -264,7 +296,7 @@ export async function updateOrder(id: string, input: UpdateOrderInput) {
       isGoodReview: input.isGoodReview !== undefined ? String(input.isGoodReview) : undefined,
       drawingDate: input.drawingDate !== undefined ? parseExcelDate(input.drawingDate) : undefined,
       baseCommission: input.baseCommission !== undefined ? Number(input.baseCommission) : undefined,
-      reviewCommission: input.reviewCommission !== undefined ? Number(input.reviewCommission) : undefined,
+      reviewCommission: writeReview ? newReview : undefined,
       reviewCommissionDate: input.reviewCommissionDate !== undefined ? parseExcelDate(input.reviewCommissionDate) : undefined,
       remark: input.remark,
     },
@@ -501,12 +533,26 @@ export async function batchUpdateOrderStatus(ids: string[], field: 'isRefunded' 
     select: { id: true, actualPayment: true, baseCommission: true, reviewCommission: true },
   });
 
+  // 是否本次批量标记为「已好评」：与单条路径同一口径（parseReviewStatus 归一化）。
+  const markReviewed = field === 'isGoodReview' && isMarkedReviewed(value);
+  // 好评返佣默认金额只查一次（循环外 hoist），不要在 for 里重复查库。
+  const reviewAmount = markReviewed ? await getReviewCommissionAmount() : null;
+
   await prisma.$transaction(async (tx) => {
     for (const order of orders) {
       const updateData: any = { [field]: value };
       if (field === 'isRefunded' && value) updateData.refundDate = new Date();
-      if (field === 'isGoodReview' && value === 'reviewed') updateData.reviewCommissionDate = new Date();
-      updateData.totalRefund = order.actualPayment + order.baseCommission + order.reviewCommission;
+
+      // 好评返佣金额的最终取值：标记「已好评」时一律覆盖为配置值，否则保持原值。
+      let review = order.reviewCommission;
+      if (markReviewed) {
+        updateData.reviewCommissionDate = new Date();
+        review = reviewAmount as number;
+        updateData.reviewCommission = review;
+      }
+
+      // totalRefund 必须用最终的 reviewCommission 重算（而不是旧的 order.reviewCommission）。
+      updateData.totalRefund = order.actualPayment + order.baseCommission + review;
 
       await tx.order.update({ where: { id: order.id }, data: updateData });
     }

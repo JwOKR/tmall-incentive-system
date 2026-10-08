@@ -1,4 +1,9 @@
 import prisma from '../utils/db';
+import {
+  DEFAULT_REVIEW_COMMISSION,
+  REVIEW_COMMISSION_SETTING_KEY,
+  parseReviewCommissionSetting,
+} from '../utils/reviewCommission';
 
 // ──────────────────────────────────────
 // 默认AI配置
@@ -12,15 +17,28 @@ const AI_DEFAULTS: Record<string, { value: string; label: string }> = {
 };
 
 // ──────────────────────────────────────
+// 默认通用配置（group = 'general'）
+// 这些键在数据库还没有对应行时，也会由 getSettings('general') 合并出来，
+// 保证界面能显示默认值（默认好评返佣金额 = 3 元）。
+// ──────────────────────────────────────
+const GENERAL_DEFAULTS: Record<string, { value: string; label: string }> = {
+  [REVIEW_COMMISSION_SETTING_KEY]: {
+    value: String(DEFAULT_REVIEW_COMMISSION),
+    label: '好评返佣默认金额（元）',
+  },
+};
+
+// ──────────────────────────────────────
 // 获取指定分组的所有设置
 // ──────────────────────────────────────
 export async function getSettings(group: string) {
-  const settings = await prisma.systemSetting.findMany({
+  // 显式标注行类型：Prisma Client 未生成时 findMany 的回调参数会退化为隐式 any（noImplicitAny 报错）
+  const settings: { key: string; value: string; group: string }[] = await prisma.systemSetting.findMany({
     where: { group },
     orderBy: { key: 'asc' },
   });
 
-  // 如果是 ai 分组，合并默认值
+  // 如果是 ai 分组，保持历史行为：只返回默认表里的键（按默认表顺序），值优先用库里的
   if (group === 'ai') {
     const map = new Map(settings.map(s => [s.key, s.value]));
     return Object.entries(AI_DEFAULTS).map(([key, def]) => ({
@@ -29,6 +47,26 @@ export async function getSettings(group: string) {
       label: def.label,
       group: 'ai',
     }));
+  }
+
+  // general 分组：默认值与数据库行合并，保证数据库还没有该行时界面也能显示默认值。
+  // 硬约束：数据库里存在、但不在默认表里的历史键必须原样保留，否则会让老设置项凭空消失。
+  if (group === 'general') {
+    const map = new Map(settings.map(s => [s.key, s.value]));
+    const merged: { key: string; value: string; label?: string; group: string }[] =
+      Object.entries(GENERAL_DEFAULTS).map(([key, def]) => ({
+        key,
+        // 用 ?? 而非 ||：空字符串是用户显式保存的值，不能回落到默认值
+        value: map.get(key) ?? def.value,
+        label: def.label,
+        group: 'general',
+      }));
+    for (const s of settings) {
+      if (!(s.key in GENERAL_DEFAULTS)) {
+        merged.push({ key: s.key, value: s.value, group: 'general' });
+      }
+    }
+    return merged;
   }
 
   return settings;
@@ -56,6 +94,15 @@ export async function updateSettings(updates: { key: string; value: string }[]) 
 export async function getSettingValue(key: string): Promise<string | null> {
   const setting = await prisma.systemSetting.findUnique({ where: { key } });
   return setting?.value ?? null;
+}
+
+// ──────────────────────────────────────
+// 获取「好评返佣默认金额」（元）
+// 供 orderService 在标记「已好评」时取值；缺省 / 非法时回退默认 3。
+// ──────────────────────────────────────
+export async function getReviewCommissionAmount(): Promise<number> {
+  const raw = await getSettingValue(REVIEW_COMMISSION_SETTING_KEY);
+  return parseReviewCommissionSetting(raw);
 }
 
 // ──────────────────────────────────────
