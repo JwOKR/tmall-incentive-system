@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import prisma from '../utils/db';
 import { createAuditLog, getClientIp } from '../utils/auditLog';
 import logger from '../utils/logger';
+import { parseBoolValue } from '../services/orderService';
 
 /**
  * 备份中的日期字段解析：空值 → null；无效日期字符串 → null（不抛错，
@@ -189,11 +190,11 @@ export const importBackup = async (req: Request, res: Response) => {
               orderLink: order.orderLink || null,
               actualPayment: order.actualPayment ?? 0,
               totalRefund: order.totalRefund ?? 0,
-              isRefunded: order.isRefunded ?? false,
+              isRefunded: parseBoolValue(order.isRefunded),
               refundDate: order.refundDate ? new Date(order.refundDate) : null,
               isGoodReview: order.isGoodReview ?? 'pending',
               baseCommission: order.baseCommission ?? 5,
-              isBaseCommissionRefunded: order.isBaseCommissionRefunded ?? false,
+              isBaseCommissionRefunded: parseBoolValue(order.isBaseCommissionRefunded),
               reviewCommission: order.reviewCommission ?? 0,
               reviewCommissionDate: order.reviewCommissionDate ? new Date(order.reviewCommissionDate) : null,
               remark: order.remark || null,

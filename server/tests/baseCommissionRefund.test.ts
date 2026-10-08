@@ -95,6 +95,8 @@ const fakePrisma: any = {
   },
   task: { findUnique: async () => null, findFirst: async () => null, update: async () => ({}) },
   orderTaker: { findFirst: async () => null, update: async () => ({}) },
+  // 供真实 createAuditLog 使用（backupController.importBackup 末尾会写审计日志）
+  log: { create: async () => ({}) },
   $transaction: async (arg: any) => {
     if (typeof arg === 'function') return arg(fakePrisma);
     return Promise.all(arg);
@@ -116,6 +118,24 @@ require.cache[dbPath.replace(/\\/g, '/')] = fakeDbEntry;
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const orderService = require('../src/services/orderService');
+
+// 备份导入测试：驱动**真实的** backupController.importBackup。
+// 仅给「纯副作用基础设施」logger 做桩（它在 import 时会 mkdir logs/ 并注册文件 transport）；
+// 其它依赖（db / auditLog）保持真实，db 复用上面的 fakePrisma（已补 log.create）。
+const loggerPath = require.resolve('../src/utils/logger');
+const fakeLoggerEntry = {
+  id: loggerPath,
+  filename: loggerPath,
+  loaded: true,
+  exports: { __esModule: true, default: { info() {}, warn() {}, error() {}, debug() {} } },
+  children: [],
+  paths: [],
+} as unknown as NodeModule;
+require.cache[loggerPath] = fakeLoggerEntry;
+require.cache[loggerPath.replace(/\\/g, '/')] = fakeLoggerEntry;
+
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const backupController = require('../src/controllers/backupController');
 
 /* ============================================================
  * 主要用例
@@ -299,6 +319,51 @@ const orderService = require('../src/services/orderService');
   check('parseBoolValue(undefined) === false', orderService.parseBoolValue(undefined), false);
   check('parseBoolValue("true") === true', orderService.parseBoolValue('true'), true);
   check('parseBoolValue(true) === true', orderService.parseBoolValue(true), true);
+
+  /* ============================================================
+   * 7. 备份导入 importBackup：布尔字段必须走 parseBoolValue
+   *    修复背景：原写法 `order.xxx ?? false` 不解析字符串，备份 JSON 里若是 '是'，
+   *    真 Prisma 对布尔列会抛 PrismaClientValidationError → 被 try/catch 吞掉 →
+   *    该条订单静默导入失败、只进 errors 计数。改为与 batchCreateOrders/batchUpdateOrders 一致的 parseBoolValue。
+   * ============================================================ */
+  console.log('\n=== 7. 备份导入 importBackup 布尔解析 ===');
+
+  const runImport = async (orders: any[]) => {
+    state.findFirstResult = null;      // 无重复，全部走 create
+    state.orderCreateArgs = [];
+    const req: any = { headers: {}, body: { data: { orders }, mode: 'merge' }, ip: '127.0.0.1', socket: { remoteAddress: '127.0.0.1' } };
+    const res: any = {
+      statusCode: 200,
+      body: null,
+      status(c: number) { this.statusCode = c; return this; },
+      setHeader() { /* noop */ },
+      json(o: any) { this.body = o; return this; },
+    };
+    await backupController.importBackup(req, res);
+    return { res, data: state.orderCreateArgs.map((a: any) => a?.data) };
+  };
+
+  const { res: importRes, data: imported } = await runImport([
+    { orderNo19: 'B1', isRefunded: undefined, isBaseCommissionRefunded: undefined },
+    { orderNo19: 'B2', isRefunded: '是', isBaseCommissionRefunded: '是' },
+    { orderNo19: 'B3', isRefunded: '否', isBaseCommissionRefunded: '否' },
+    { orderNo19: 'B4', isRefunded: true, isBaseCommissionRefunded: true },
+  ]);
+  const byNo = (no: string) => imported.find((d: any) => d.orderNo19 === no) || {};
+
+  check('[备份] 导入无错误（errors = 0）', importRes.body?.data?.orders?.errors, 0);
+  check('[备份] 4 条全部创建成功', importRes.body?.data?.orders?.created, 4);
+  // isBaseCommissionRefunded：本次修复的核心
+  check('[备份] 缺字段(undefined) → false', byNo('B1').isBaseCommissionRefunded, false);
+  check('[备份] "是" → 布尔 true', byNo('B2').isBaseCommissionRefunded, true);
+  check('[备份] "是" 落库确为 boolean 类型', typeof byNo('B2').isBaseCommissionRefunded, 'boolean');
+  check('[备份] "否" → 布尔 false', byNo('B3').isBaseCommissionRefunded, false);
+  check('[备份] 布尔 true → true', byNo('B4').isBaseCommissionRefunded, true);
+  // isRefunded：同类型字段必须同一套解析规则（两字段一起改）
+  check('[备份] isRefunded 缺字段 → false', byNo('B1').isRefunded, false);
+  check('[备份] isRefunded "是" → 布尔 true', byNo('B2').isRefunded, true);
+  check('[备份] isRefunded "否" → 布尔 false', byNo('B3').isRefunded, false);
+  check('[备份] isRefunded 布尔 true → true', byNo('B4').isRefunded, true);
 
   console.log(`\n========== 结果：PASS=${passed}  FAIL=${failed} ==========`);
   process.exit(failed > 0 ? 1 : 0);
