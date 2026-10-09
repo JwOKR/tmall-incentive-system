@@ -28,6 +28,11 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
     queryKey: ['order-detail', orderId],
     queryFn: () => ordersApi.getById(orderId!),
     enabled: !!orderId,
+    // 抽屉是按需打开的单个记录详情，语义上应「每次打开都取最新」：
+    // 全局 staleTime 为 5 分钟且此键从不被 invalidate，若沿用缓存会导致
+    // 抽屉内数据（如总返款/基础返佣状态）与列表口径不一致。
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   if (!orderId) return null;
