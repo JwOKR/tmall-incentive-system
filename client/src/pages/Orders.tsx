@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api, { ordersApi } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, calcDisplayTotalRefund } from '@/lib/utils';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Circle, Star, Calendar, Eye, ExternalLink, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
@@ -341,11 +341,6 @@ export default function Orders() {
     );
   };
 
-  // 计算总返款 = 实付款 + 基础返佣 + 好评返佣
-  const calculateTotalRefund = (order: any) => {
-    return (order.actualPayment || 0) + (order.baseCommission || 0) + (order.reviewCommission || 0);
-  };
-
   const renderStatusSelect = (order: any, field: string, options: { value: string; label: string; color: string }[]) => {
     const editing = isEditing(order.id, field);
     const value = order[field];
@@ -491,7 +486,7 @@ export default function Orders() {
     const reviewPending = sortedOrders.filter((o: any) => o.isGoodReview === 'pending').length;
     const totalAmount = sortedOrders.reduce((sum: number, o: any) => sum + (o.actualPayment || 0), 0);
     const totalRefund = sortedOrders.reduce((sum: number, o: any) =>
-      sum + (o.actualPayment || 0) + (o.baseCommission || 0) + (o.reviewCommission || 0), 0);
+      sum + calcDisplayTotalRefund(o), 0);
     return { refundPending, reviewPending, totalAmount, totalRefund, count: total };
   }, [sortedOrders, total]);
 
@@ -993,8 +988,10 @@ export default function Orders() {
                     {order.taker?.taobaoNickname || '-'}
                   </td>
                   <td className="px-3 py-2 text-emerald-600 dark:text-emerald-400 font-medium">
-                    <div title={`实付 ${formatCurrency(order.actualPayment)} + 基础返佣 ${formatCurrency(order.baseCommission)} + 好评返佣 ${formatCurrency(order.reviewCommission)}`}>
-                      {renderReadOnlyCell(calculateTotalRefund(order), 'number')}
+                    <div title={order.isBaseCommissionRefunded
+                      ? `实付 ${formatCurrency(order.actualPayment)} + 好评返佣 ${formatCurrency(order.reviewCommission)} + 基础返佣 ${formatCurrency(order.baseCommission)}`
+                      : `实付 ${formatCurrency(order.actualPayment)} + 好评返佣 ${formatCurrency(order.reviewCommission)}（基础返佣 ${formatCurrency(order.baseCommission)} 未返款，未计入）`}>
+                      {renderReadOnlyCell(calcDisplayTotalRefund(order), 'number')}
                     </div>
                   </td>
                   <td className="px-3 py-2">

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { ordersApi } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, calcDisplayTotalRefund } from '@/lib/utils';
 import {
   X,
   ShoppingCart,
@@ -162,7 +162,7 @@ export default function OrderDrawer({ orderId, onClose }: OrderDrawerProps) {
                     { label: '实付金额', value: formatCurrency(order.actualPayment) },
                     { label: '基础返佣', value: `${formatCurrency(order.baseCommission)} · ${order.isBaseCommissionRefunded ? '已返款' : '未返款'}`, color: 'text-green-600 dark:text-green-400' },
                     { label: '好评返佣', value: formatCurrency(order.reviewCommission), color: 'text-purple-600 dark:text-purple-400' },
-                    { label: '总返款', value: formatCurrency(order.totalRefund), color: 'text-blue-600 dark:text-blue-400', bold: true },
+                    { label: '总返款', value: formatCurrency(calcDisplayTotalRefund(order)), color: 'text-blue-600 dark:text-blue-400', bold: true },
                   ].map(item => (
                     <div key={item.label} className="flex items-center justify-between gap-3">
                       <span className="text-sm text-muted-foreground shrink-0">{item.label}</span>
