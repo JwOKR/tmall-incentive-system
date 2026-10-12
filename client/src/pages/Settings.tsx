@@ -19,10 +19,56 @@ import {
   Sparkles,
   Banknote,
   Save,
+  BookOpen,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { formatDate } from '@/lib/utils';
+import HelpDictionary from '@/components/HelpDictionary';
+
+type ModulePermission = { view: boolean; edit: boolean };
+type PermissionMap = Record<string, ModulePermission>;
+
+// 权限勾选区模块清单（与 client/src/lib/permissions.tsx 的 moduleMap 对齐；
+// settings 仅管理员使用，不在勾选列表内，预设也不生成该键）
+const PERMISSION_MODULES: { key: string; label: string }[] = [
+  { key: 'dashboard', label: '数据汇总' },
+  { key: 'orders', label: '订单明细' },
+  { key: 'takers', label: '接单人' },
+  { key: 'tasks', label: '任务' },
+  { key: 'intervals', label: '接单间隔' },
+  { key: 'commissions', label: '佣金分析' },
+  { key: 'logs', label: '操作日志' },
+  { key: 'anomalies', label: '异常预警' },
+  { key: 'export', label: '数据导出' },
+  { key: 'repeatDiscounts', label: '回头客立减' },
+];
+
+// 由「可编辑模块集合」生成预设：全部模块给 view，命中集合的再给 edit（P2-1，纯前端）
+const buildPermissions = (editableKeys: string[]): PermissionMap => {
+  const map: PermissionMap = {};
+  for (const { key } of PERMISSION_MODULES) {
+    map[key] = { view: true, edit: editableKeys.includes(key) };
+  }
+  return map;
+};
+
+// 角色预设：仅填充勾选状态作为起点，用户仍需手动保存落库
+const ROLE_PRESETS: { key: string; label: string; description: string; editableKeys: string[] }[] = [
+  { key: 'readonly', label: '只读', description: '10 个模块全部仅可查看', editableKeys: [] },
+  {
+    key: 'clerk',
+    label: '录入员',
+    description: '订单明细 / 接单人 / 任务 / 回头客立减可编辑，其余仅查看',
+    editableKeys: ['orders', 'takers', 'tasks', 'repeatDiscounts'],
+  },
+  {
+    key: 'finance',
+    label: '财务',
+    description: '订单明细 / 任务 / 佣金分析 / 数据导出可编辑，其余仅查看（含操作日志可查）',
+    editableKeys: ['orders', 'tasks', 'commissions', 'export'],
+  },
+];
 
 export default function Settings() {
   const { user } = useAuth();
@@ -36,6 +82,8 @@ export default function Settings() {
   const [backingUp, setBackingUp] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importMode, setImportMode] = useState<'merge' | 'overwrite'>('merge');
+  // 数据字典 / 帮助浮层（P2-10）
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // AI配置状态
   const [aiSettings, setAiSettings] = useState<Record<string, string>>({});
@@ -254,9 +302,19 @@ export default function Settings() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-3xl font-bold tracking-tight apple-text-title-1">系统设置</h2>
-        <p className="text-muted-foreground mt-1">管理账户、备份数据和系统配置</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-3xl font-bold tracking-tight apple-text-title-1">系统设置</h2>
+          <p className="text-muted-foreground mt-1">管理账户、备份数据和系统配置</p>
+        </div>
+        <button
+          onClick={() => setHelpOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium hover:bg-accent transition-colors shrink-0"
+          title="查看信誉等级、资质判定、接单间隔与状态枚举说明"
+        >
+          <BookOpen className="h-4 w-4 text-indigo-500" />
+          帮助 / 数据字典
+        </button>
       </div>
 
       {/* Tab nav */}
@@ -574,19 +632,24 @@ export default function Settings() {
                       <div>
                         <label className="text-sm font-medium">权限设置</label>
                         <p className="text-xs text-muted-foreground mb-2">为普通用户设置模块访问和编辑权限</p>
+                        {/* P2-1 角色预设：仅填充前端勾选状态，保存仍需用户手动触发 */}
+                        <div className="flex items-center gap-2 flex-wrap mb-2">
+                          <span className="text-xs text-muted-foreground shrink-0">角色预设：</span>
+                          {ROLE_PRESETS.map((preset) => (
+                            <button
+                              key={preset.key}
+                              type="button"
+                              onClick={() => setUserForm((prev) => ({ ...prev, permissions: buildPermissions(preset.editableKeys) }))}
+                              title={preset.description}
+                              className="inline-flex items-center rounded-lg border px-2.5 py-1 text-xs font-medium hover:bg-accent transition-colors"
+                            >
+                              {preset.label}
+                            </button>
+                          ))}
+                          <span className="text-xs text-muted-foreground">预设仅填充勾选（可手动微调），点「保存修改 / 创建用户」后才落库</span>
+                        </div>
                         <div className="space-y-2 rounded-xl border p-3 bg-muted/30">
-                          {[
-                            { key: 'dashboard', label: '数据汇总' },
-                            { key: 'orders', label: '订单明细' },
-                            { key: 'takers', label: '接单人' },
-                            { key: 'tasks', label: '任务' },
-                            { key: 'intervals', label: '接单间隔' },
-                            { key: 'commissions', label: '佣金分析' },
-                            { key: 'logs', label: '操作日志' },
-                            { key: 'anomalies', label: '异常预警' },
-                            { key: 'export', label: '数据导出' },
-                            { key: 'repeatDiscounts', label: '回头客立减' },
-                          ].map(({ key, label }) => {
+                          {PERMISSION_MODULES.map(({ key, label }) => {
                             const perm = userForm.permissions?.[key] || { view: false, edit: false };
                             return (
                               <div key={key} className="flex items-center justify-between">
@@ -809,6 +872,9 @@ export default function Settings() {
           </div>
         )}
       </div>
+
+      {/* P2-10 数据字典 / 帮助浮层（无 Hook 组件，open=false 时自身渲染 null） */}
+      <HelpDictionary open={helpOpen} onClose={() => setHelpOpen(false)} />
     </div>
   );
 }

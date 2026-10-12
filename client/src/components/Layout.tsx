@@ -30,6 +30,8 @@ import {
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/lib/permissions';
+import { useQuery } from '@tanstack/react-query';
+import { anomalyApi } from '@/lib/api';
 
 interface LayoutProps {
   children: ReactNode;
@@ -63,6 +65,22 @@ export default function AppleLayout({ children }: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+
+  // P2-6 异常角标：取真实异常数（GET /api/anomalies → data.summary.totalAnomalies）。
+  // 看板类查询：staleTime 0 + refetchOnMount 'always'（覆盖全局 5 分钟 staleTime）；
+  // 轮询 5 分钟一次，且页面隐藏（document.hidden）时跳过，避免后台空转；
+  // enabled 由 canView('anomalies') 门控：无权限用户完全不发该请求（不会每 5 分钟一个 403）。
+  // 仅做 JSX 条件渲染角标，不在组件内做权限早退（避免 Hook 顺序违规）。
+  const { data: anomalyData } = useQuery({
+    queryKey: ['anomaly-summary-badge'],
+    queryFn: () => anomalyApi.getAnomalies(),
+    enabled: canView('anomalies'),
+    staleTime: 0,
+    refetchOnMount: 'always',
+    retry: false,
+    refetchInterval: () => (document.hidden ? false : 5 * 60 * 1000),
+  });
+  const anomalyCount = Number((anomalyData as any)?.data?.summary?.totalAnomalies ?? 0);
 
   // 键盘快捷键：[ 键折叠/展开侧边栏
   useEffect(() => {
@@ -385,7 +403,15 @@ export default function AppleLayout({ children }: LayoutProps) {
               title="操作日志"
             >
               <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white dark:ring-slate-900" />
+              {/* P2-6 真实异常数角标：>0 才显示；=0 或无权限时不渲染 */}
+              {canView('anomalies') && anomalyCount > 0 && (
+                <span
+                  className="absolute top-0.5 right-0.5 min-w-[16px] h-4 px-1 inline-flex items-center justify-center rounded-full bg-rose-500 text-white text-[10px] font-semibold leading-none tabular-nums ring-2 ring-white dark:ring-slate-900"
+                  title={`异常预警：当前 ${anomalyCount} 条待处理异常`}
+                >
+                  {anomalyCount > 99 ? '99+' : anomalyCount}
+                </span>
+              )}
             </Link>
             
             {/* User Avatar */}
