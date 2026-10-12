@@ -10,11 +10,9 @@ import {
   CheckCircle,
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
-import { usePermissions, NoPermission } from '@/lib/permissions';
 
 export default function AnomalyAlerts() {
   const { success: toastSuccess } = useToast();
-  const { canView } = usePermissions();
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['anomalies'],
@@ -30,8 +28,6 @@ export default function AnomalyAlerts() {
     navigator.clipboard.writeText(text);
     toastSuccess('已复制');
   };
-
-  if (!canView('anomalies')) return <NoPermission module="anomalies" />;
 
   return (
     <div className="space-y-6">

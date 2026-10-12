@@ -4,11 +4,9 @@ import { Download, FileSpreadsheet } from 'lucide-react';
 import { takersApi, tasksApi, ordersApi, logsApi, repeatDiscountApi } from '@/lib/api';
 import { useToast } from '@/components/Toast';
 import { takerColumns, taskColumns, orderColumns, logColumns, repeatDiscountColumns, exportCombined } from '@/lib/export';
-import { usePermissions, NoPermission } from '@/lib/permissions';
 
 export default function ExportPage() {
   const { error: toastError } = useToast();
-  const { canView } = usePermissions();
   const [selectedSheets, setSelectedSheets] = useState({
     takers: true,
     tasks: true,
@@ -127,8 +125,6 @@ export default function ExportPage() {
     { key: 'repeatDiscounts', label: '回头客立减', count: (repeatDiscountsData as any)?.data?.total || 0 },
     { key: 'logs', label: '操作日志', count: (logsData as any)?.data?.total || 0 },
   ];
-
-  if (!canView('export')) return <NoPermission module="export" />;
 
   return (
     <div className="space-y-6">

@@ -14,7 +14,6 @@ import {
   ShieldCheck,
   ImageOff,
 } from 'lucide-react';
-import { usePermissions, NoPermission } from '@/lib/permissions';
 import { COMPLIANCE_META, WEEKLY_RECEIPT_MAX, MONTHLY_RECEIPT_MAX, type TakerCompliance } from '@/lib/takerConstants';
 import ImageZoom from '@/components/ImageZoom';
 
@@ -22,11 +21,6 @@ export default function TakerDetail() {
   const { id } = useParams<{ id: string }>();
   const [page, setPage] = useState(1);
   const [zoomSrc, setZoomSrc] = useState<string | null>(null);
-  const { canView } = usePermissions();
-
-  if (!canView('takers')) {
-    return <NoPermission />;
-  }
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['taker-detail', id, page],

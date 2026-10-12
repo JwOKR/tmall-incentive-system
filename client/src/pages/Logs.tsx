@@ -4,10 +4,8 @@ import { logsApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
 import { Filter, Search, ChevronDown, ChevronRight } from 'lucide-react';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
-import { usePermissions, NoPermission } from '@/lib/permissions';
 
 export default function Logs() {
-  const { canView } = usePermissions();
   const [page, setPage] = useState(1);
   const [actionFilter, setActionFilter] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -94,8 +92,6 @@ export default function Logs() {
     }).filter(Boolean);
     return changes.length > 0 ? { header, changes } : null;
   };
-
-  if (!canView('logs')) return <NoPermission module="logs" />;
 
   return (
     <div className="space-y-6">

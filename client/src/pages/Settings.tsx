@@ -23,13 +23,11 @@ import {
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { formatDate } from '@/lib/utils';
-import { usePermissions, NoPermission } from '@/lib/permissions';
 
 export default function Settings() {
   const { user } = useAuth();
   const { success: toastSuccess, error: toastError } = useToast();
   const { confirm } = useConfirm();
-  const { canView } = usePermissions();
   const [activeTab, setActiveTab] = useState<'account' | 'password' | 'shortcuts' | 'backup' | 'users' | 'ai' | 'order'>('account');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -250,8 +248,6 @@ export default function Settings() {
     { id: 'order' as const, label: '订单设置', icon: Banknote },
     { id: 'shortcuts' as const, label: '快捷键', icon: Keyboard },
   ];
-
-  if (!canView('settings')) return <NoPermission module="settings" />;
 
   return (
     <div className="space-y-6">

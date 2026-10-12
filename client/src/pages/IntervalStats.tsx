@@ -10,7 +10,6 @@ import {
   AlertCircle,
   Search,
 } from 'lucide-react';
-import { usePermissions, NoPermission } from '@/lib/permissions';
 
 interface TakerInterval {
   takerId: string;
@@ -62,7 +61,6 @@ function getIntervalLabel(days: number | null): string {
 }
 
 export default function IntervalStats() {
-  const { canView } = usePermissions();
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -149,8 +147,6 @@ export default function IntervalStats() {
       iconColor: 'text-emerald-600 dark:text-emerald-400',
     },
   ];
-
-  if (!canView('intervals')) return <NoPermission module="intervals" />;
 
   return (
     <div className="space-y-6">

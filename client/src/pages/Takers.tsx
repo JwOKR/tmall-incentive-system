@@ -13,7 +13,6 @@ import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { takerColumns } from '@/lib/export';
 import { CREDIT_LEVELS, COMPLIANCE_META, type ComplianceStatus } from '@/lib/takerConstants';
-import { usePermissions, NoPermission } from '@/lib/permissions';
 import { processImageFile } from '@/lib/imageCompress';
 import { parseFlexibleDate, parseFlexibleDateDetail } from '@/lib/dateInput';
 
@@ -70,7 +69,6 @@ export default function Takers() {
   const queryClient = useQueryClient();
   const { success: toastSuccess, error: toastError } = useToast();
   const { confirm } = useConfirm();
-  const { canView, canEdit } = usePermissions();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebouncedValue(search, 300);
@@ -342,8 +340,6 @@ export default function Takers() {
       return next;
     });
   };
-
-  if (!canView('takers')) return <NoPermission module="takers" />;
 
   return (
     <div className="space-y-6">

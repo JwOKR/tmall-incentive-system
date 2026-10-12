@@ -6,7 +6,6 @@ import { formatCurrency, formatNumber } from '@/lib/utils';
 import { useToast } from '@/components/Toast';
 import { DashboardSkeleton } from '@/components/Skeleton';
 import { Link, useNavigate } from 'react-router-dom';
-import { usePermissions, NoPermission } from '@/lib/permissions';
 import {
   ShoppingCart,
   Users,
@@ -58,7 +57,6 @@ export default function AppleDashboard() {
   const { success: toastSuccess, error: toastError } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const { canView } = usePermissions();
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -70,10 +68,6 @@ export default function AppleDashboard() {
   const remindModalRef = useRef<HTMLDivElement>(null);
   const trendChartRef = useRef<any>(null);
   const topTakersChartRef = useRef<any>(null);
-
-  if (!canView('dashboard')) {
-    return <NoPermission />;
-  }
 
   const handleRefresh = async () => {
     setIsRefreshing(true);

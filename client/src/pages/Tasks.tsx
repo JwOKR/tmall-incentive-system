@@ -121,7 +121,6 @@ function HoverPreview({ content, children, className = '' }: { content: string; 
 }
 import { useConfirm } from '@/components/ConfirmDialog';
 import { taskColumns } from '@/lib/export';
-import { usePermissions, NoPermission } from '@/lib/permissions';
 import {
   COMPLIANCE_META,
   describeComplianceReason,
@@ -173,7 +172,6 @@ export default function Tasks() {
   const queryClient = useQueryClient();
   const { success: toastSuccess, error: toastError } = useToast();
   const { confirm } = useConfirm();
-  const { canView, canEdit } = usePermissions();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
@@ -756,8 +754,6 @@ export default function Tasks() {
       return next;
     });
   };
-
-  if (!canView('tasks')) return <NoPermission module="tasks" />;
 
   return (
     <div className="space-y-6">

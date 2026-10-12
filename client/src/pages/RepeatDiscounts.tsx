@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
-import { usePermissions, NoPermission } from '@/lib/permissions';
 import {
   Chart as ChartJS, CategoryScale, LinearScale, BarElement, LineElement,
   PointElement, Tooltip as ChartTooltip, Legend, Filler,
@@ -137,7 +136,6 @@ export default function RepeatDiscounts() {
   const queryClient = useQueryClient();
   const { success: toastSuccess, error: toastError } = useToast();
   const { confirm } = useConfirm();
-  const { canView, canEdit } = usePermissions();
 
   const [activeTab, setActiveTab] = useState<TabKey>('entry');
   const [form, setForm] = useState<FormState>(emptyForm);
@@ -1634,8 +1632,6 @@ export default function RepeatDiscounts() {
   };
 
   // ─── Render ──────────────────────────────────────────────────────────────
-
-  if (!canView('repeatDiscounts')) return <NoPermission module="repeatDiscounts" />;
 
   return (
     <div className="space-y-6">

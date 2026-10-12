@@ -8,6 +8,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useBodyScrollLock } from './hooks/useBodyScrollLock';
 import Layout from './components/Layout';
+import { RequirePermission } from './lib/permissions';
 import { Loader2 } from 'lucide-react';
 
 // 路由懒加载
@@ -88,7 +89,9 @@ function AppRoutes() {
           path="/dashboard"
           element={
             <ProtectedLayout>
-              <Dashboard />
+              <RequirePermission module="dashboard">
+                <Dashboard />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
@@ -96,7 +99,9 @@ function AppRoutes() {
           path="/takers"
           element={
             <ProtectedLayout>
-              <Takers />
+              <RequirePermission module="takers">
+                <Takers />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
@@ -104,7 +109,9 @@ function AppRoutes() {
           path="/tasks"
           element={
             <ProtectedLayout>
-              <Tasks />
+              <RequirePermission module="tasks">
+                <Tasks />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
@@ -112,7 +119,9 @@ function AppRoutes() {
           path="/orders"
           element={
             <ProtectedLayout>
-              <Orders />
+              <RequirePermission module="orders">
+                <Orders />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
@@ -120,7 +129,9 @@ function AppRoutes() {
           path="/logs"
           element={
             <ProtectedLayout>
-              <Logs />
+              <RequirePermission module="logs">
+                <Logs />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
@@ -128,7 +139,9 @@ function AppRoutes() {
           path="/intervals"
           element={
             <ProtectedLayout>
-              <IntervalStats />
+              <RequirePermission module="intervals">
+                <IntervalStats />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
@@ -136,7 +149,9 @@ function AppRoutes() {
           path="/commissions"
           element={
             <ProtectedLayout>
-              <CommissionStats />
+              <RequirePermission module="commissions">
+                <CommissionStats />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
@@ -144,7 +159,9 @@ function AppRoutes() {
           path="/export"
           element={
             <ProtectedLayout>
-              <ExportPage />
+              <RequirePermission module="export">
+                <ExportPage />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
@@ -152,7 +169,9 @@ function AppRoutes() {
           path="/anomalies"
           element={
             <ProtectedLayout>
-              <AnomalyAlerts />
+              <RequirePermission module="anomalies">
+                <AnomalyAlerts />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
@@ -160,7 +179,9 @@ function AppRoutes() {
           path="/repeat-discounts"
           element={
             <ProtectedLayout>
-              <RepeatDiscounts />
+              <RequirePermission module="repeatDiscounts">
+                <RepeatDiscounts />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
@@ -168,7 +189,9 @@ function AppRoutes() {
           path="/takers/:id"
           element={
             <ProtectedLayout>
-              <TakerDetail />
+              <RequirePermission module="takers">
+                <TakerDetail />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
@@ -176,7 +199,9 @@ function AppRoutes() {
           path="/settings"
           element={
             <ProtectedLayout>
-              <Settings />
+              <RequirePermission module="settings">
+                <Settings />
+              </RequirePermission>
             </ProtectedLayout>
           }
         />
