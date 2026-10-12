@@ -1,7 +1,20 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import logger from '../utils/logger';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'tmall-incentive-secret-key-2026';
+const FALLBACK_JWT_SECRET = 'tmall-incentive-secret-key-2026';
+
+// 启动时一次性检测。兜底密钥在源码中公开，任何人均可据此伪造任意用户（含管理员）的 JWT。
+// 刻意不 throw：NAS 上容器重启是常态，一旦环境变量漏配就 throw 会让整个系统无法登录，
+// 可用性风险大于收益。改为 ERROR 级强告警，让运维在日志里立刻发现。
+const JWT_SECRET = (() => {
+  if (process.env.JWT_SECRET) return process.env.JWT_SECRET;
+  logger.error(
+    '[SECURITY] JWT_SECRET 环境变量未设置！正在使用源码内置的公开兜底密钥，' +
+    '任何人均可据此伪造任意用户（含管理员）的 JWT。请立即在部署环境配置 JWT_SECRET 并重启服务。'
+  );
+  return FALLBACK_JWT_SECRET;
+})();
 
 export interface AuthRequest extends Request {
   userId?: string;

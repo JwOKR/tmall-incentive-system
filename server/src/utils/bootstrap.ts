@@ -24,7 +24,12 @@ export async function ensureAdminUser() {
           role: 'admin',
         },
       });
-      logger.info(`Default admin user created: ${adminUsername} / ${adminPassword}`);
+      logger.info(`Default admin user created: ${adminUsername}`);
+      if (!process.env.ADMIN_PASSWORD) {
+        logger.warn(
+          'ADMIN_PASSWORD 环境变量未设置，管理员口令使用了源码内置的默认值。请登录后立即在「系统设置」中修改口令。'
+        );
+      }
     } else {
       logger.info('Admin user already exists');
     }

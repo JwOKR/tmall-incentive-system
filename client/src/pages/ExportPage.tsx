@@ -3,14 +3,30 @@ import { useQuery } from '@tanstack/react-query';
 import { Download, FileSpreadsheet } from 'lucide-react';
 import { takersApi, tasksApi, ordersApi, logsApi, repeatDiscountApi } from '@/lib/api';
 import { useToast } from '@/components/Toast';
+import { usePermissions } from '@/lib/permissions';
 import { takerColumns, taskColumns, orderColumns, logColumns, repeatDiscountColumns, exportCombined } from '@/lib/export';
+
+// 各 sheet 对应的权限模块（与后端模块名 / Settings 勾选列表一致）
+const SHEETS = [
+  { key: 'takers', label: '接单人', module: 'takers' },
+  { key: 'tasks', label: '任务', module: 'tasks' },
+  { key: 'orders', label: '接单明细', module: 'orders' },
+  { key: 'repeatDiscounts', label: '回头客立减', module: 'repeatDiscounts' },
+  { key: 'logs', label: '操作日志', module: 'logs' },
+] as const;
+
+// 本地日期（避免 toISOString() 的 UTC 跨日偏移：东八区凌晨 0–8 点会得到前一天）
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 export default function ExportPage() {
   const { error: toastError } = useToast();
+  const { canView } = usePermissions();
   const [selectedSheets, setSelectedSheets] = useState({
-    takers: true,
-    tasks: true,
-    orders: true,
+    takers: canView('takers'),
+    tasks: canView('tasks'),
+    orders: canView('orders'),
     logs: false,
     repeatDiscounts: false,
   });
@@ -20,31 +36,31 @@ export default function ExportPage() {
   const { data: takersData } = useQuery({
     queryKey: ['takers-export'],
     queryFn: () => takersApi.getAll({ pageSize: 10000 }),
-    enabled: selectedSheets.takers,
+    enabled: selectedSheets.takers && canView('takers'),
   });
 
   const { data: tasksData } = useQuery({
     queryKey: ['tasks-export'],
     queryFn: () => tasksApi.getAll({ pageSize: 10000 }),
-    enabled: selectedSheets.tasks,
+    enabled: selectedSheets.tasks && canView('tasks'),
   });
 
   const { data: ordersData } = useQuery({
     queryKey: ['orders-export'],
     queryFn: () => ordersApi.getAll({ pageSize: 10000 }),
-    enabled: selectedSheets.orders,
+    enabled: selectedSheets.orders && canView('orders'),
   });
 
   const { data: logsData } = useQuery({
     queryKey: ['logs-export'],
     queryFn: () => logsApi.getAll({ pageSize: 10000 }),
-    enabled: selectedSheets.logs,
+    enabled: selectedSheets.logs && canView('logs'),
   });
 
   const { data: repeatDiscountsData } = useQuery({
     queryKey: ['repeatDiscounts-export'],
     queryFn: () => repeatDiscountApi.getAll({ pageSize: 10000 }),
-    enabled: selectedSheets.repeatDiscounts,
+    enabled: selectedSheets.repeatDiscounts && canView('repeatDiscounts'),
   });
 
   const handleToggleSheet = (sheet: keyof typeof selectedSheets) => {
@@ -104,9 +120,9 @@ export default function ExportPage() {
 
     setExporting(true);
 
-    // 生成带日期的文件名
+    // 生成带日期的文件名（本地日期，避免 UTC 跨日偏移）
     const now = new Date();
-    const dateStr = now.toISOString().split('T')[0]; // YYYY-MM-DD
+    const dateStr = localDateStr(now); // YYYY-MM-DD
     const finalFilename = `${dateStr}_${filename || '天猫激励数据导出'}`;
 
     setTimeout(() => {
@@ -118,13 +134,14 @@ export default function ExportPage() {
     }, 500);
   };
 
-  const sheets = [
-    { key: 'takers', label: '接单人', count: (takersData as any)?.data?.total || 0 },
-    { key: 'tasks', label: '任务', count: (tasksData as any)?.data?.total || 0 },
-    { key: 'orders', label: '接单明细', count: (ordersData as any)?.data?.total || 0 },
-    { key: 'repeatDiscounts', label: '回头客立减', count: (repeatDiscountsData as any)?.data?.total || 0 },
-    { key: 'logs', label: '操作日志', count: (logsData as any)?.data?.total || 0 },
-  ];
+  const counts: Record<string, number> = {
+    takers: (takersData as any)?.data?.total || 0,
+    tasks: (tasksData as any)?.data?.total || 0,
+    orders: (ordersData as any)?.data?.total || 0,
+    repeatDiscounts: (repeatDiscountsData as any)?.data?.total || 0,
+    logs: (logsData as any)?.data?.total || 0,
+  };
+  const sheetRows = SHEETS.map(s => ({ ...s, count: counts[s.key], permitted: canView(s.module) }));
 
   return (
     <div className="space-y-6">
@@ -153,23 +170,28 @@ export default function ExportPage() {
             <div>
               <label className="text-sm font-medium mb-3 block">选择要导出的表格</label>
               <div className="space-y-3">
-                {sheets.map(sheet => (
+                {sheetRows.map(sheet => (
                   <label
                     key={sheet.key}
-                    className="flex items-center justify-between p-3 border rounded-xl hover:bg-accent cursor-pointer transition-colors"
+                    className={`flex items-center justify-between p-3 border rounded-xl transition-colors ${sheet.permitted ? 'hover:bg-accent cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
                   >
                     <div className="flex items-center gap-3">
                       <input
                         type="checkbox"
                         checked={selectedSheets[sheet.key as keyof typeof selectedSheets]}
                         onChange={() => handleToggleSheet(sheet.key as keyof typeof selectedSheets)}
+                        disabled={!sheet.permitted}
                         className="rounded w-4 h-4 accent-indigo-500"
                       />
                       <div>
                         <span className="font-medium">{sheet.label}</span>
-                        <span className="text-xs text-muted-foreground ml-2 tabular-nums">
-                          {sheet.count}条数据
-                        </span>
+                        {sheet.permitted ? (
+                          <span className="text-xs text-muted-foreground ml-2 tabular-nums">
+                            {sheet.count}条数据
+                          </span>
+                        ) : (
+                          <span className="text-xs text-amber-600 dark:text-amber-400 ml-2">无权限</span>
+                        )}
                       </div>
                     </div>
                     <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
@@ -187,13 +209,13 @@ export default function ExportPage() {
           <div className="space-y-4">
             <div className="p-4 bg-muted/50 rounded-xl">
               <p className="text-sm text-muted-foreground mb-2">文件名</p>
-              <p className="font-medium">{new Date().toISOString().split('T')[0]}_{filename || '天猫激励数据导出'}.xlsx</p>
+              <p className="font-medium">{localDateStr()}_{filename || '天猫激励数据导出'}.xlsx</p>
             </div>
 
             <div className="p-4 bg-muted/50 rounded-xl">
               <p className="text-sm text-muted-foreground mb-2">包含工作表</p>
               <div className="space-y-1">
-                {sheets
+                {sheetRows
                   .filter(sheet => selectedSheets[sheet.key as keyof typeof selectedSheets])
                   .map(sheet => (
                     <div key={sheet.key} className="flex items-center gap-2">
