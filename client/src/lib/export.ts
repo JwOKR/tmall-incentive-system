@@ -39,6 +39,7 @@ export const taskColumns: ExportColumn[] = [
   { key: 'currentOrders', label: '已接人数', selected: true },
   { key: 'status', label: '状态', selected: true },
   { key: 'publishDate', label: '发布日期', selected: true },
+  { key: 'deadline', label: '截止日期', selected: true }, // P2-5 任务超时提醒
 ];
 
 export const orderColumns: ExportColumn[] = [
@@ -84,6 +85,70 @@ export const logColumns: ExportColumn[] = [
 // 获取嵌套对象的值
 function getNestedValue(obj: any, path: string): any {
   return path.split('.').reduce((current, key) => current?.[key], obj);
+}
+
+/** 本地日期 YYYY-MM-DD（避免 toISOString() 的 UTC 跨日偏移：东八区凌晨 0–8 点会得到前一天） */
+export function localDateStr(d = new Date()): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** 分页循环拉取：每页条数（替代一次性 pageSize: 10000，降低单请求内存并解除 1 万行静默截断） */
+export const EXPORT_PAGE_SIZE = 500;
+
+/** 分页循环拉取的安全页数上限（防止接口异常导致死循环；500×200 = 10 万行封顶） */
+export const EXPORT_MAX_PAGES = 200;
+
+export interface PagedResult {
+  list: any[];
+  total?: number;
+}
+
+/**
+ * 分页循环拉取全部数据。
+ *
+ * 终止条件（任一满足即停）：
+ *  1. 某页返回 0 条；
+ *  2. 响应带 total 且累计条数 ≥ total；
+ *  3. 响应无 total 且某页条数 < pageSize；
+ *  4. 达到 maxPages 安全上限。
+ *
+ * 用 total 兜底而非只看「本页不足 pageSize」，是为了兼容服务端对 pageSize 做钳制的情况
+ * （钳制时「本页不足 pageSize」会误判为取完而静默截断）。
+ */
+export async function fetchAllPages(
+  fetchPage: (page: number) => Promise<PagedResult | undefined | null>,
+  options?: { pageSize?: number; maxPages?: number }
+): Promise<any[]> {
+  const pageSize = options?.pageSize ?? EXPORT_PAGE_SIZE;
+  const maxPages = options?.maxPages ?? EXPORT_MAX_PAGES;
+  const all: any[] = [];
+
+  for (let page = 1; page <= maxPages; page++) {
+    const res = await fetchPage(page);
+    const list = Array.isArray(res?.list) ? res.list : [];
+    const total = typeof res?.total === 'number' ? res.total : undefined;
+    all.push(...list);
+    if (list.length === 0) break;
+    if (total !== undefined && all.length >= total) break;
+    if (total === undefined && list.length < pageSize) break;
+  }
+
+  return all;
+}
+
+/** 各 sheet 的列配置（key 与 ExportPage 的 SHEETS 对应） */
+export const sheetColumnMap: Record<string, ExportColumn[]> = {
+  takers: takerColumns,
+  tasks: taskColumns,
+  orders: orderColumns,
+  repeatDiscounts: repeatDiscountColumns,
+  logs: logColumns,
+};
+
+/** 按 key 白名单筛选列（保持原有列顺序；默认全选时传入全部 key） */
+export function pickColumns(all: ExportColumn[], selectedKeys: string[]): ExportColumn[] {
+  const set = new Set(selectedKeys);
+  return all.filter(col => set.has(col.key));
 }
 
 // 格式化单元格值

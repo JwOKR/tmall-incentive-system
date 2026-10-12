@@ -1,26 +1,32 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { logsApi } from '@/lib/api';
+import { logsApi, adminApi } from '@/lib/api';
 import { formatDate } from '@/lib/utils';
-import { Filter, Search, ChevronDown, ChevronRight } from 'lucide-react';
+import { Filter, Search, ChevronDown, ChevronRight, Download, User } from 'lucide-react';
 import ColumnFilter, { filterData } from '@/components/ColumnFilter';
+import { useToast } from '@/components/Toast';
+import { logColumns, exportToExcel, fetchAllPages, EXPORT_PAGE_SIZE, localDateStr } from '@/lib/export';
 
 export default function Logs() {
+  const { error: toastError, success: toastSuccess } = useToast();
   const [page, setPage] = useState(1);
   const [actionFilter, setActionFilter] = useState('');
+  const [userIdFilter, setUserIdFilter] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [detailSearch, setDetailSearch] = useState('');
+  const [exporting, setExporting] = useState(false);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['logs', page, actionFilter, startDate, endDate],
+    queryKey: ['logs', page, actionFilter, userIdFilter, startDate, endDate],
     queryFn: () =>
       logsApi.getAll({
         page,
         pageSize: 20,
-        action: actionFilter,
+        action: actionFilter || undefined,
+        userId: userIdFilter || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
       }),
@@ -28,6 +34,28 @@ export default function Logs() {
 
   const logs = (data as any)?.data?.list || [];
   const total = (data as any)?.data?.total || 0;
+
+  // 操作人下拉数据源：复用管理员用户列表接口（GET /api/admin，仅管理员可访问）。
+  // 非管理员访问返回 403 → 退化为「从当前已加载日志中去重出的操作人」，并在 UI 上注明。
+  const { data: usersResp } = useQuery({
+    queryKey: ['admin-users-for-logs'],
+    queryFn: async () => {
+      const res: any = await adminApi.getAllUsers();
+      return res?.data || [];
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  const adminUsers: any[] = Array.isArray(usersResp) ? usersResp : [];
+  const fallbackUsers = useMemo(() => {
+    const map = new Map<string, string>();
+    logs.forEach((l: any) => {
+      if (l.user?.id) map.set(l.user.id, l.user.username || l.user.id);
+    });
+    return [...map.entries()].map(([id, username]) => ({ id, username }));
+  }, [logs]);
+  const userOptions = adminUsers.length > 0 ? adminUsers : fallbackUsers;
+  const isUserListLimited = adminUsers.length === 0;
 
   // 本地搜索详情
   const searchedLogs = useMemo(() => {
@@ -56,6 +84,38 @@ export default function Logs() {
       else delete next[key];
       return next;
     });
+  };
+
+  // 导出当前筛选条件下的全部日志（分页循环拉取；detail 为自由文本，原样导出不解析）
+  const handleExportLogs = async () => {
+    setExporting(true);
+    try {
+      const rows = await fetchAllPages(async (p) => {
+        const res: any = await logsApi.getAll({
+          page: p,
+          pageSize: EXPORT_PAGE_SIZE,
+          action: actionFilter || undefined,
+          userId: userIdFilter || undefined,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+        });
+        return res?.data ?? {};
+      });
+      if (rows.length === 0) {
+        toastError('当前筛选条件下没有可导出的日志');
+        return;
+      }
+      exportToExcel({
+        filename: `${localDateStr()}_操作日志`,
+        columns: logColumns,
+        data: rows,
+      });
+      toastSuccess(`已导出 ${rows.length} 条日志`);
+    } catch {
+      toastError('导出失败，请稍后重试');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const actionColors: Record<string, string> = {
@@ -120,6 +180,25 @@ export default function Logs() {
           </select>
         </div>
         <div className="relative max-w-xs">
+          <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <select
+            value={userIdFilter}
+            onChange={(e) => { setUserIdFilter(e.target.value); setPage(1); }}
+            className="apple-input rounded-lg pl-10"
+            title={isUserListLimited ? '受权限限制，仅列出当前已加载日志中出现过的操作人' : '按操作人筛选'}
+          >
+            <option value="">全部操作人</option>
+            {userOptions.map((u: any) => (
+              <option key={u.id} value={u.id}>{u.username || u.id}</option>
+            ))}
+          </select>
+        </div>
+        {isUserListLimited && (
+          <span className="text-xs text-muted-foreground">
+            受权限限制，操作人选项来自当前已加载日志
+          </span>
+        )}
+        <div className="relative max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
@@ -144,14 +223,26 @@ export default function Logs() {
             className="apple-input rounded-lg"
           />
         </div>
-        {(actionFilter || startDate || endDate || detailSearch) && (
+        {(actionFilter || userIdFilter || startDate || endDate || detailSearch) && (
           <button
-            onClick={() => { setActionFilter(''); setStartDate(''); setEndDate(''); setDetailSearch(''); setPage(1); }}
+            onClick={() => { setActionFilter(''); setUserIdFilter(''); setStartDate(''); setEndDate(''); setDetailSearch(''); setPage(1); }}
             className="text-sm text-muted-foreground hover:text-rose-500 transition-colors"
           >
             清除筛选
           </button>
         )}
+        <button
+          onClick={handleExportLogs}
+          disabled={exporting}
+          className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm hover:bg-accent transition-colors disabled:opacity-50 ml-auto"
+        >
+          {exporting ? (
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+          ) : (
+            <Download className="h-4 w-4" />
+          )}
+          {exporting ? '导出中...' : '导出日志'}
+        </button>
       </div>
 
       {/* Table */}
