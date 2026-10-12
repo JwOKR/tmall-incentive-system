@@ -109,6 +109,8 @@ export const commissionApi = {
 export const remindApi = {
   getList: (params?: { type?: string }) =>
     api.get('/reminds', { params }),
+  // 超期未返款看板：days 语义是「超过 N 天」（不传则后端读系统设置 refund_alert_days）
+  getRefundAlerts: (days?: number) => api.get('/reminds/refund-alerts', { params: { days } }),
 };
 
 // Anomaly API

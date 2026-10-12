@@ -144,8 +144,11 @@ export default function Settings() {
   const handleSaveOrderSettings = async () => {
     setSavingOrder(true);
     try {
-      const value = String(orderSettings['review_commission_amount'] ?? '3');
-      const res: any = await settingsApi.update([{ key: 'review_commission_amount', value }]);
+      // 一次提交两个键：好评返佣默认金额 + 超期未返款预警天数
+      const res: any = await settingsApi.update([
+        { key: 'review_commission_amount', value: String(orderSettings['review_commission_amount'] ?? '3') },
+        { key: 'refund_alert_days', value: String(orderSettings['refund_alert_days'] ?? '30') },
+      ]);
       if (res.success) toastSuccess('订单设置已保存');
       else toastError(res.message || '保存失败');
     } catch (err: any) { toastError(err?.response?.data?.message || '保存失败'); }
@@ -742,6 +745,7 @@ export default function Settings() {
                     <span>
                       订单被标记为「已好评」时，好评返佣会默认填充为该金额（即便之前手工改过也会覆盖）。
                       设为 0 表示不返好评返佣。
+                      另：超过「超期未返款预警天数」仍未返款的订单，会进入数据汇总页的「超期未返款」看板。
                     </span>
                   </p>
                 </div>
@@ -755,6 +759,19 @@ export default function Settings() {
                     value={orderSettings['review_commission_amount'] ?? '3'}
                     onChange={e => setOrderSettings(prev => ({ ...prev, review_commission_amount: e.target.value }))}
                     placeholder="3"
+                    className="apple-input rounded-lg mt-1"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm font-medium">超期未返款预警天数（天）</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={orderSettings['refund_alert_days'] ?? '30'}
+                    onChange={e => setOrderSettings(prev => ({ ...prev, refund_alert_days: e.target.value }))}
+                    placeholder="30"
                     className="apple-input rounded-lg mt-1"
                   />
                 </div>

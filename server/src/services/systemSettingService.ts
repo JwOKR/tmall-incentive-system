@@ -17,14 +17,26 @@ const AI_DEFAULTS: Record<string, { value: string; label: string }> = {
 };
 
 // ──────────────────────────────────────
+// 超期未返款预警天数：系统设置键与默认值
+// ──────────────────────────────────────
+/** 保存「超期未返款预警天数」的系统设置键 */
+export const REFUND_ALERT_DAYS_KEY = 'refund_alert_days';
+/** 默认预警天数（天）：超过该天数仍未返款的订单进入「超期未返款」看板 */
+export const DEFAULT_REFUND_ALERT_DAYS = 30;
+
+// ──────────────────────────────────────
 // 默认通用配置（group = 'general'）
 // 这些键在数据库还没有对应行时，也会由 getSettings('general') 合并出来，
-// 保证界面能显示默认值（默认好评返佣金额 = 3 元）。
+// 保证界面能显示默认值（默认好评返佣金额 = 3 元、默认超期未返款预警天数 = 30 天）。
 // ──────────────────────────────────────
 const GENERAL_DEFAULTS: Record<string, { value: string; label: string }> = {
   [REVIEW_COMMISSION_SETTING_KEY]: {
     value: String(DEFAULT_REVIEW_COMMISSION),
     label: '好评返佣默认金额（元）',
+  },
+  [REFUND_ALERT_DAYS_KEY]: {
+    value: String(DEFAULT_REFUND_ALERT_DAYS),
+    label: '超期未返款预警天数（天）',
   },
 };
 
@@ -103,6 +115,37 @@ export async function getSettingValue(key: string): Promise<string | null> {
 export async function getReviewCommissionAmount(): Promise<number> {
   const raw = await getSettingValue(REVIEW_COMMISSION_SETTING_KEY);
   return parseReviewCommissionSetting(raw);
+}
+
+/**
+ * 把系统设置里保存的「超期未返款预警天数」原始值解析为整数天数。
+ *
+ * 回退规则：null / undefined / 空串 / 非有限数字 / <= 0 一律回退 DEFAULT_REFUND_ALERT_DAYS（30）。
+ * 合法值取整后夹在 1..365（避免 0 天或超大值把看板查成全量/空集）。
+ *
+ * @param raw 系统设置原始值（字符串 / 数字 / null / undefined）
+ * @returns 解析后的天数（1..365）
+ */
+export function parseRefundAlertDays(raw: unknown): number {
+  if (raw === null || raw === undefined) return DEFAULT_REFUND_ALERT_DAYS;
+
+  const trimmed = String(raw).trim();
+  if (trimmed === '') return DEFAULT_REFUND_ALERT_DAYS;
+
+  const value = Number(trimmed);
+  // Number('') 已在上面拦截；!Number.isFinite 覆盖 NaN / Infinity / -Infinity
+  if (!Number.isFinite(value) || value <= 0) return DEFAULT_REFUND_ALERT_DAYS;
+
+  const intValue = Math.round(value);
+  return Math.min(365, Math.max(1, intValue));
+}
+
+/**
+ * 获取「超期未返款预警天数」（天）；缺省 / 非法时回退默认 30。
+ * 供 remindController.getRefundAlerts 在未显式传 days 时取值。
+ */
+export async function getRefundAlertDays(): Promise<number> {
+  return parseRefundAlertDays(await getSettingValue(REFUND_ALERT_DAYS_KEY));
 }
 
 // ──────────────────────────────────────

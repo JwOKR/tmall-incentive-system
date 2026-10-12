@@ -13,6 +13,9 @@ import { useConfirm } from '@/components/ConfirmDialog';
 import { orderColumns } from '@/lib/export';
 import { usePermissions } from '@/lib/permissions';
 
+const PAGE_SIZE_OPTIONS = [20, 50, 100];
+const PAGE_SIZE_STORAGE_KEY = 'tmall_orders_page_size';
+
 interface EditingCell {
   orderId: string;
   field: string;
@@ -24,6 +27,14 @@ export default function Orders() {
   const { confirm } = useConfirm();
   const { canEdit } = usePermissions();
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState<number>(() => {
+    try {
+      const saved = Number(localStorage.getItem(PAGE_SIZE_STORAGE_KEY));
+      return PAGE_SIZE_OPTIONS.includes(saved) ? saved : 20;
+    } catch {
+      return 20;
+    }
+  });
   const [search, setSearch] = useState('');
   const [refundFilter, setRefundFilter] = useState('');
   const [reviewFilter, setReviewFilter] = useState('');
@@ -41,10 +52,10 @@ export default function Orders() {
   const debouncedSearch = useDebouncedValue(search, 300);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['orders', page, debouncedSearch, refundFilter, reviewFilter, startDate, endDate, sortConfig, columnFilters],
+    queryKey: ['orders', page, pageSize, debouncedSearch, refundFilter, reviewFilter, startDate, endDate, sortConfig, columnFilters],
     queryFn: () => ordersApi.getAll({
       page,
-      pageSize: 20,
+      pageSize,
       search: debouncedSearch,
       isRefunded: refundFilter || undefined,
       isGoodReview: reviewFilter || undefined,
@@ -392,9 +403,20 @@ export default function Orders() {
 
   const orders = (data as any)?.data?.list || [];
   const total = (data as any)?.data?.total || 0;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   // Filtering and sorting are performed by the server before pagination.
   const sortedOrders = orders;
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setPage(1);
+    try {
+      localStorage.setItem(PAGE_SIZE_STORAGE_KEY, String(size));
+    } catch {
+      /* localStorage 不可用时静默忽略，仅本次会话生效 */
+    }
+  };
 
   const handleSort = (field: string) => {
     setPage(1);
@@ -1142,8 +1164,9 @@ export default function Orders() {
       </div>
 
       {/* Pagination */}
-      {total > 20 && (
-        <div className="flex justify-center items-center gap-3">
+      {total > 0 && (
+        <div className="flex justify-center items-center gap-3 flex-wrap">
+          <span className="text-sm text-muted-foreground tabular-nums">共 {total} 条</span>
           <button
             onClick={() => setPage(p => Math.max(1, p - 1))}
             disabled={page === 1}
@@ -1152,15 +1175,24 @@ export default function Orders() {
             上一页
           </button>
           <span className="flex items-center px-4 text-sm text-muted-foreground tabular-nums">
-            第 {page} 页 / 共 {Math.ceil(total / 20)} 页
+            第 {page} 页 / 共 {totalPages} 页
           </span>
           <button
             onClick={() => setPage(p => p + 1)}
-            disabled={page >= Math.ceil(total / 20)}
+            disabled={page >= totalPages}
             className="apple-btn rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
             下一页
           </button>
+          <select
+            value={pageSize}
+            onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+            className="apple-btn rounded-xl border bg-card px-3 py-2 text-sm font-medium hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+          >
+            {PAGE_SIZE_OPTIONS.map(n => (
+              <option key={n} value={n}>{n} 条/页</option>
+            ))}
+          </select>
         </div>
       )}
 

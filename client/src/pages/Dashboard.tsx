@@ -5,6 +5,7 @@ import { dashboardApi, remindApi } from '@/lib/api';
 import { formatCurrency, formatNumber } from '@/lib/utils';
 import { useToast } from '@/components/Toast';
 import { DashboardSkeleton } from '@/components/Skeleton';
+import RefundAlertModal from '@/components/RefundAlertModal';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ShoppingCart,
@@ -61,6 +62,7 @@ export default function AppleDashboard() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showRemind, setShowRemind] = useState(false);
+  const [showRefundAlerts, setShowRefundAlerts] = useState(false);
   const [summaryText, setSummaryText] = useState('');
   const [showSummary, setShowSummary] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -256,6 +258,13 @@ export default function AppleDashboard() {
             >
               <ListTodo className="h-4 w-4" />
               催单列表
+            </button>
+            <button
+              onClick={() => setShowRefundAlerts(true)}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-red-600 text-white text-sm font-medium shadow-lg shadow-rose-500/25 hover:shadow-xl hover:shadow-rose-500/30 hover:from-rose-600 hover:to-red-700 transition-all duration-200 transform hover:scale-105 active:scale-95"
+            >
+              <AlertCircle className="h-4 w-4" />
+              超期未返款
             </button>
           </div>
           <button
@@ -786,6 +795,9 @@ export default function AppleDashboard() {
           </table>
         </div>
       </div>
+
+      {/* 超期未返款看板 */}
+      <RefundAlertModal open={showRefundAlerts} onClose={() => setShowRefundAlerts(false)} />
     </div>
   );
 }
