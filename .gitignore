@@ -23,6 +23,9 @@ yarn-debug.log*
 yarn-error.log*
 logs/
 
+# Auto-backup output (contains full DB snapshot incl. sensitive fields — never commit)
+backups/
+
 # IDE
 .idea/
 .vscode/

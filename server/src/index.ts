@@ -26,6 +26,7 @@ import { authMiddleware } from './middleware/auth';
 // Import utils
 import logger from './utils/logger';
 import { ensureAdminUser, autoCheckAnomalies } from './utils/bootstrap';
+import { startScheduler, stopScheduler } from './utils/scheduler';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -103,11 +104,14 @@ server.listen(PORT, () => {
   ensureAdminUser();
   // 启动时自动检查异常接单人
   autoCheckAnomalies();
+  // 启动时注册自动维护定时任务（自动备份 + 日志保留；默认关闭，见 utils/scheduler）
+  startScheduler();
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
   logger.info('SIGTERM received. Shutting down gracefully...');
+  stopScheduler();
   server.close(() => {
     logger.info('Process terminated');
     process.exit(0);

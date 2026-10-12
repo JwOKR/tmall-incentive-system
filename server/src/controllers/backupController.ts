@@ -3,6 +3,10 @@ import prisma from '../utils/db';
 import { createAuditLog, getClientIp } from '../utils/auditLog';
 import logger from '../utils/logger';
 import { parseBoolValue } from '../services/orderService';
+import { buildBackupSnapshot } from '../services/backupService';
+
+// 单一数据源：手动导出与「定时自动备份」共用同一份快照构建函数（见 services/backupService）
+export { buildBackupSnapshot };
 
 /**
  * 备份中的日期字段解析：空值 → null；无效日期字符串 → null（不抛错，
@@ -17,46 +21,16 @@ function parseDateOrNull(value: unknown): Date | null {
 // 导出全部数据（JSON）
 export const exportBackup = async (req: Request, res: Response) => {
   try {
-    const [users, takers, tasks, orders, logs, repeatDiscounts] = await Promise.all([
-      prisma.user.findMany({
-        select: { id: true, username: true, role: true, createdAt: true },
-      }),
-      prisma.orderTaker.findMany(),
-      prisma.task.findMany(),
-      prisma.order.findMany(),
-      prisma.log.findMany(),
-      prisma.repeatDiscount.findMany(),
-    ]);
+    // 与定时自动备份共用同一份快照构建逻辑（services/backupService.buildBackupSnapshot）
+    const backup = await buildBackupSnapshot();
 
-    const backup = {
-      version: '1.1',
-      exportedAt: new Date().toISOString(),
-      data: {
-        users: users.map(u => ({ ...u, password: '[REDACTED]' })), // 不导出密码
-        orderTakers: takers,
-        tasks,
-        orders,
-        logs,
-        repeatDiscounts,
-      },
-      summary: {
-        users: users.length,
-        takers: takers.length,
-        tasks: tasks.length,
-        orders: orders.length,
-        logs: logs.length,
-        repeatDiscounts: repeatDiscounts.length,
-      },
-    };
-
-    // 设置下载响应头
     const filename = `tmall-backup-${new Date().toISOString().slice(0, 10)}.json`;
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
     await createAuditLog({
       action: 'backup_export',
-      detail: `导出数据备份: ${takers.length}接单人, ${tasks.length}任务, ${orders.length}订单, ${logs.length}日志, ${repeatDiscounts.length}回头客立减`,
+      detail: `导出数据备份: ${backup.summary.takers}接单人, ${backup.summary.tasks}任务, ${backup.summary.orders}订单, ${backup.summary.logs}日志, ${backup.summary.repeatDiscounts}回头客立减`,
       ipAddress: getClientIp(req),
     });
 
