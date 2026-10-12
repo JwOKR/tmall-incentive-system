@@ -7,6 +7,7 @@ import {
   describeComplianceBlock,
   canTakeOrders,
 } from '../utils/takerCompliance';
+import { evaluateTakerRisk, describeRiskBlock } from '../utils/takerRisk';
 import { AuthRequest } from '../middleware/auth';
 
 // 获取所有任务
@@ -423,6 +424,20 @@ export const quickOrder = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({
         success: false,
         message: '接单人不存在',
+      });
+    }
+
+    // 【风控硬拦截】被风控标记（riskFlag === true）或被拉黑/暂停（status === 'suspended'）的接单人一律拒绝。
+    // 与下方资质门槛并列、同属「快速接单」入口的硬门槛：force 只用于绕过 7 天间隔，**不得绕过风控**。
+    // 拦截点在 $transaction 之前，不产生任何副作用。判定由 takerRisk.evaluateTakerRisk 统一给出（单一数据源），
+    // 响应体同时回带 blacklistReason 供前端展示。
+    const risk = evaluateTakerRisk(taker);
+    if (risk.blocked) {
+      return res.status(403).json({
+        success: false,
+        code: 'TAKER_RISK_BLOCKED',
+        message: describeRiskBlock(taker),
+        blacklistReason: taker.blacklistReason ?? null,
       });
     }
 

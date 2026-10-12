@@ -49,6 +49,12 @@ model OrderTaker {
   reviewScreenshot      String?   @db.LongText // 待评价截图（base64 dataURL）
   accountInfoUpdatedAt  DateTime? // 资质信息最近登记时间
 
+  // 收款信息（返款闭环）——payeeAccount 为敏感信息，仅详情/单条接口返回，不进列表 select
+  payeeName             String?  // 收款人姓名
+  payeeAccount          String?  // 收款账号（支付宝/银行卡号）
+  riskFlag              Boolean  @default(false) // 风控标记（true = 硬拦截快速接单）
+  blacklistReason       String?  // 黑名单/风控原因
+
   orders      Order[]
   
   @@index([status])

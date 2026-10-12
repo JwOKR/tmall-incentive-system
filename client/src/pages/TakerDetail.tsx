@@ -13,6 +13,9 @@ import {
   Clock,
   ShieldCheck,
   ImageOff,
+  Wallet,
+  Ban,
+  Copy,
 } from 'lucide-react';
 import { COMPLIANCE_META, WEEKLY_RECEIPT_MAX, MONTHLY_RECEIPT_MAX, type TakerCompliance } from '@/lib/takerConstants';
 import ImageZoom from '@/components/ImageZoom';
@@ -21,6 +24,8 @@ export default function TakerDetail() {
   const { id } = useParams<{ id: string }>();
   const [page, setPage] = useState(1);
   const [zoomSrc, setZoomSrc] = useState<string | null>(null);
+  /** 收款账号「已复制」反馈 */
+  const [copiedAccount, setCopiedAccount] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['taker-detail', id, page],
@@ -106,6 +111,22 @@ export default function TakerDetail() {
     { label: '待评价截图', src: taker.reviewScreenshot as string | null },
   ];
 
+  // 风控判定由服务端统一给出（taker.risk，单一数据源），前端只消费结果、不复制等价判定
+  const riskBlocked: boolean = !!(taker as any).risk?.blocked;
+  const riskReasons: string[] = (taker as any).risk?.reasons || [];
+
+  const copyPayeeAccount = () => {
+    const account = taker.payeeAccount as string | null;
+    if (!account) return;
+    navigator.clipboard?.writeText(account).then(
+      () => {
+        setCopiedAccount(true);
+        setTimeout(() => setCopiedAccount(false), 2000);
+      },
+      () => {}
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -115,10 +136,28 @@ export default function TakerDetail() {
         </Link>
         <div>
           <h2 className="text-3xl font-bold tracking-tight apple-text-title-1">{taker.wechatName}</h2>
-          <p className="text-muted-foreground mt-1">{taker.wechatId} · {taker.status === 'active' ? '活跃' : '停用'}</p>
+          <p className="text-muted-foreground mt-1">
+            {taker.wechatId} · {taker.status === 'suspended' ? '已拉黑' : taker.status === 'active' ? '活跃' : '停用'}
+          </p>
           <p className="text-muted-foreground mt-0.5 text-sm">淘宝昵称：{taker.taobaoNickname || '—'}</p>
         </div>
       </div>
+
+      {/* 风控 / 黑名单横幅（判定来自服务端 taker.risk，前端只展示） */}
+      {riskBlocked && (
+        <div className="flex items-start gap-3 rounded-2xl border border-rose-500/20 bg-rose-500/10 p-4">
+          <Ban className="mt-0.5 h-5 w-5 shrink-0 text-rose-600 dark:text-rose-400" />
+          <div>
+            <p className="text-sm font-semibold text-rose-600 dark:text-rose-400">该接单人已被风控拦截，无法快速接单</p>
+            {riskReasons.length > 0 && (
+              <p className="mt-0.5 text-sm text-rose-600/90 dark:text-rose-400/90">{riskReasons.join('、')}</p>
+            )}
+            {taker.blacklistReason && (
+              <p className="mt-0.5 text-sm text-rose-600/90 dark:text-rose-400/90">原因：{taker.blacklistReason}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stat Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -163,6 +202,40 @@ export default function TakerDetail() {
               {compliance.fails.map(fail => <li key={fail}>{fail}</li>)}
             </ul>
           </div>
+        )}
+      </div>
+
+      {/* 收款信息（返款转账用） */}
+      <div className="rounded-2xl apple-card p-6">
+        <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+          <Wallet className="h-5 w-5 text-emerald-500" />
+          收款信息
+        </h3>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex items-center justify-between rounded-xl bg-muted/50 p-3">
+            <span className="text-sm text-muted-foreground">收款人姓名</span>
+            <span className="font-medium">{taker.payeeName || '未登记'}</span>
+          </div>
+          <div className="flex items-center justify-between rounded-xl bg-muted/50 p-3">
+            <span className="text-sm text-muted-foreground">收款账号</span>
+            <span className="flex items-center gap-2">
+              <span className="font-medium tabular-nums break-all">{taker.payeeAccount || '未登记'}</span>
+              {taker.payeeAccount && (
+                <button
+                  type="button"
+                  onClick={copyPayeeAccount}
+                  className="rounded-lg p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-emerald-600"
+                  title="复制收款账号"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+              )}
+            </span>
+          </div>
+        </div>
+        {copiedAccount && <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400">已复制收款账号</p>}
+        {!taker.payeeName && !taker.payeeAccount && (
+          <p className="mt-3 text-xs text-muted-foreground">尚未登记收款信息，返款前请先在「接单人管理」中补全。</p>
         )}
       </div>
 

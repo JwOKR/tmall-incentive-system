@@ -120,6 +120,11 @@ export const importBackup = async (req: Request, res: Response) => {
               securityScreenshot: taker.securityScreenshot ?? null,
               reviewScreenshot: taker.reviewScreenshot ?? null,
               accountInfoUpdatedAt: parseDateOrNull(taker.accountInfoUpdatedAt),
+              // 收款信息 / 风控：与 exportBackup 全字段导出对称；旧版备份缺失时用默认值
+              payeeName: taker.payeeName ?? null,
+              payeeAccount: taker.payeeAccount ?? null,
+              riskFlag: parseBoolValue(taker.riskFlag),
+              blacklistReason: taker.blacklistReason ?? null,
             },
           });
           result.takers.created++;

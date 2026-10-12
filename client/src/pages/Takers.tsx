@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { takersApi } from '@/lib/api';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { Plus, Pencil, Trash2, Search, Eye, X, Users, Calendar } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Eye, X, Users, Calendar, Ban, ShieldOff, Wallet, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
@@ -30,6 +30,14 @@ interface TakerFormState {
   avatarScreenshot: string | null;
   securityScreenshot: string | null;
   reviewScreenshot: string | null;
+  /** 收款人姓名（返款用） */
+  payeeName: string;
+  /** 收款账号（支付宝/银行卡号，敏感） */
+  payeeAccount: string;
+  /** 风控标记（true = 硬拦截快速接单） */
+  riskFlag: boolean;
+  /** 黑名单/风控原因 */
+  blacklistReason: string;
 }
 
 /** 空表单初始值（新增 / 成功重置 / 关闭重置复用） */
@@ -45,6 +53,10 @@ const EMPTY_FORM: TakerFormState = {
   avatarScreenshot: null,
   securityScreenshot: null,
   reviewScreenshot: null,
+  payeeName: '',
+  payeeAccount: '',
+  riskFlag: false,
+  blacklistReason: '',
 };
 
 /** 粘贴截图时，按此优先级填入第一个空槽 */
@@ -75,6 +87,10 @@ export default function Takers() {
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [showForm, setShowForm] = useState(false);
   const [editingTaker, setEditingTaker] = useState<any>(null);
+  /** 「拉黑/风控」弹窗目标接单人（null = 未打开） */
+  const [riskTarget, setRiskTarget] = useState<any>(null);
+  /** 拉黑/风控原因输入 */
+  const [riskReasonInput, setRiskReasonInput] = useState('');
   const formModalRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (showForm && formModalRef.current) formModalRef.current.focus();
@@ -219,6 +235,12 @@ export default function Takers() {
       avatarScreenshot: formData.avatarScreenshot,
       securityScreenshot: formData.securityScreenshot,
       reviewScreenshot: formData.reviewScreenshot,
+      // 收款信息：空 → null
+      payeeName: formData.payeeName.trim() || null,
+      payeeAccount: formData.payeeAccount.trim() || null,
+      // 风控：riskFlag 是真布尔（false 是合法值），blacklistReason 空 → null
+      riskFlag: formData.riskFlag,
+      blacklistReason: formData.blacklistReason.trim() || null,
     };
     if (editingTaker) {
       updateMutation.mutate({ id: editingTaker.id, data: payload });
@@ -287,6 +309,10 @@ export default function Takers() {
         avatarScreenshot: full.avatarScreenshot ?? null,
         securityScreenshot: full.securityScreenshot ?? null,
         reviewScreenshot: full.reviewScreenshot ?? null,
+        payeeName: full.payeeName ?? '',
+        payeeAccount: full.payeeAccount ?? '',
+        riskFlag: !!full.riskFlag,
+        blacklistReason: full.blacklistReason ?? '',
       });
     } catch (e) {
       toastError('获取接单人资质信息失败');
@@ -313,6 +339,48 @@ export default function Takers() {
     setShowForm(false);
     setEditingTaker(null);
     setPrefilling(false);
+  };
+
+  /** 打开「拉黑/风控」弹窗（预填已有原因） */
+  const openRiskModal = (taker: any) => {
+    setRiskTarget(taker);
+    setRiskReasonInput(taker.blacklistReason ?? '');
+  };
+
+  const closeRiskModal = () => {
+    setRiskTarget(null);
+    setRiskReasonInput('');
+  };
+
+  /** 提交拉黑：status='suspended' + riskFlag=true + blacklistReason（硬拦截快速接单） */
+  const submitBlacklist = () => {
+    if (!riskTarget) return;
+    updateMutation.mutate({
+      id: riskTarget.id,
+      data: {
+        wechatName: riskTarget.wechatName,
+        wechatId: riskTarget.wechatId,
+        status: 'suspended',
+        riskFlag: true,
+        blacklistReason: riskReasonInput.trim() || null,
+      },
+    });
+    closeRiskModal();
+  };
+
+  /** 解除风控/拉黑：status='active' + riskFlag=false + blacklistReason=null */
+  const releaseRisk = async (taker: any) => {
+    if (!(await confirm({ message: `确定解除「${taker.wechatName}」的风控/拉黑吗？`, confirmText: '解除' }))) return;
+    updateMutation.mutate({
+      id: taker.id,
+      data: {
+        wechatName: taker.wechatName,
+        wechatId: taker.wechatId,
+        status: 'active',
+        riskFlag: false,
+        blacklistReason: null,
+      },
+    });
   };
 
   const takers = (data as any)?.data?.list || [];
@@ -372,6 +440,8 @@ export default function Takers() {
               { key: 'creditLevel', label: '信誉等级' },
               { key: 'weeklyReceiptCount', label: '每周收货次数' },
               { key: 'monthlyReceiptCount', label: '每月收货次数' },
+              { key: 'payeeName', label: '收款人姓名' },
+              { key: 'payeeAccount', label: '收款账号' },
             ]}
             onImport={async (data) => {
               try {
@@ -621,6 +691,69 @@ export default function Takers() {
                     />
                   </div>
                 </div>
+
+                {/* 收款信息（返款闭环） */}
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-5">
+                  <h4 className="mb-1 flex items-center gap-2 text-sm font-semibold">
+                    <Wallet className="h-4 w-4 text-muted-foreground" />
+                    收款信息
+                  </h4>
+                  <p className="mb-4 text-xs text-muted-foreground">
+                    返款转账按此账号进行；收款账号属敏感信息，仅详情页展示，不进入列表接口。
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">收款人姓名</label>
+                      <input
+                        type="text"
+                        value={formData.payeeName}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, payeeName: e.target.value }))}
+                        className="apple-input"
+                        placeholder="如 张三"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium">收款账号</label>
+                      <input
+                        type="text"
+                        value={formData.payeeAccount}
+                        onChange={(e) => setFormData((prev) => ({ ...prev, payeeAccount: e.target.value }))}
+                        className="apple-input"
+                        placeholder="支付宝账号 / 银行卡号"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 风控 / 黑名单 */}
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-5">
+                  <h4 className="mb-1 flex items-center gap-2 text-sm font-semibold">
+                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+                    风控 / 黑名单
+                  </h4>
+                  <p className="mb-4 text-xs text-muted-foreground">
+                    勾选「风控标记」或将其拉黑后，该接单人将被硬拦截、无法快速接单。
+                  </p>
+                  <label className="flex items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      checked={formData.riskFlag}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, riskFlag: e.target.checked }))}
+                      className="h-4 w-4 rounded border-slate-300 text-indigo-500 focus:ring-indigo-500/50"
+                    />
+                    风控标记（拦截快速接单）
+                  </label>
+                  <div className="mt-4">
+                    <label className="mb-2 block text-sm font-medium">黑名单/风控原因</label>
+                    <input
+                      type="text"
+                      value={formData.blacklistReason}
+                      onChange={(e) => setFormData((prev) => ({ ...prev, blacklistReason: e.target.value }))}
+                      className="apple-input"
+                      placeholder="如：多次恶意退款 / 虚假好评"
+                    />
+                  </div>
+                </div>
               </div>
 
               {/* Footer */}
@@ -645,6 +778,68 @@ export default function Takers() {
         </div>
       )}
 
+      {/* 拉黑 / 风控 Modal */}
+      {riskTarget && (
+        <div
+          className="modal-overlay"
+          onClick={closeRiskModal}
+          onKeyDown={(e) => e.key === 'Escape' && closeRiskModal()}
+          tabIndex={-1}
+        >
+          <div className="modal-content modal-md overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-rose-500 flex items-center justify-center shadow-sm">
+                  <Ban className="h-5 w-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">拉黑 / 风控</h3>
+                  <p className="text-xs text-muted-foreground">
+                    将「{riskTarget.wechatName}」标记为风控并拉黑，之后无法快速接单
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={closeRiskModal}
+                className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-all duration-200"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">黑名单 / 风控原因</label>
+                <textarea
+                  value={riskReasonInput}
+                  onChange={(e) => setRiskReasonInput(e.target.value)}
+                  className="apple-input min-h-[80px]"
+                  placeholder="如：多次恶意退款 / 虚假好评 / 失联"
+                />
+                <p className="mt-2 text-xs text-muted-foreground">
+                  原因非必填，但建议填写以便追溯；解除风控会同时清空此原因与风控标记。
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-200 dark:border-slate-700">
+              <button
+                type="button"
+                onClick={closeRiskModal}
+                className="px-5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-all duration-200"
+              >
+                取消
+              </button>
+              <button
+                type="button"
+                onClick={submitBlacklist}
+                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white text-sm font-medium shadow-lg shadow-rose-500/25 hover:from-amber-600 hover:to-rose-600 transition-all duration-200"
+              >
+                确认拉黑
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Table */}
       <div className="rounded-2xl apple-card">
         <table className="w-full">
@@ -663,8 +858,12 @@ export default function Takers() {
                 <ColumnFilter value={columnFilters['taobaoNickname'] || ''} onChange={(v) => setColFilter('taobaoNickname', v)} />
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>收款人</div>
+                <ColumnFilter value={columnFilters['payeeName'] || ''} onChange={(v) => setColFilter('payeeName', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>状态</div>
-                <ColumnFilter type="select" value={columnFilters['status'] || ''} onChange={(v) => setColFilter('status', v)} options={[{ value: 'active', label: '活跃' }, { value: 'inactive', label: '停用' }]} />
+                <ColumnFilter type="select" value={columnFilters['status'] || ''} onChange={(v) => setColFilter('status', v)} options={[{ value: 'active', label: '活跃' }, { value: 'inactive', label: '停用' }, { value: 'suspended', label: '已拉黑' }]} />
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>账号资质</div>
@@ -688,13 +887,13 @@ export default function Takers() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                   加载中...
                 </td>
               </tr>
             ) : filteredTakers.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                   暂无匹配数据
                 </td>
               </tr>
@@ -712,16 +911,30 @@ export default function Takers() {
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{taker.wechatId}</td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{taker.taobaoNickname || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{taker.payeeName || '—'}</td>
                     <td className="px-4 py-3 text-sm">
-                      <span
-                        className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                          taker.status === 'active'
-                            ? 'badge-success'
-                            : 'badge-neutral'
-                        }`}
-                      >
-                        {taker.status === 'active' ? '活跃' : '停用'}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span
+                          className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
+                            taker.status === 'suspended'
+                              ? 'badge-danger'
+                              : taker.status === 'active'
+                                ? 'badge-success'
+                                : 'badge-neutral'
+                          }`}
+                        >
+                          {taker.status === 'suspended' ? '已拉黑' : taker.status === 'active' ? '活跃' : '停用'}
+                        </span>
+                        {taker.risk?.riskFlag && (
+                          <span
+                            className="inline-flex items-center gap-0.5 rounded-full px-2 py-0.5 text-[11px] font-medium badge-warning"
+                            title={taker.blacklistReason || '风控标记：无法快速接单'}
+                          >
+                            <AlertTriangle className="h-3 w-3" />
+                            风控
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-sm">
                       <div className="flex flex-col items-start gap-1">
@@ -755,6 +968,23 @@ export default function Takers() {
                       >
                         <Pencil className="h-4 w-4" />
                       </button>
+                      {taker.risk?.blocked ? (
+                        <button
+                          onClick={() => releaseRisk(taker)}
+                          className="p-1 hover:bg-emerald-500/10 rounded-lg ml-1"
+                          title="解除风控 / 拉黑"
+                        >
+                          <ShieldOff className="h-4 w-4 text-emerald-600" />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => openRiskModal(taker)}
+                          className="p-1 hover:bg-amber-500/10 rounded-lg ml-1"
+                          title="拉黑 / 风控（拦截快速接单）"
+                        >
+                          <Ban className="h-4 w-4 text-amber-600" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDelete(taker.id)}
                         className="p-1 hover:bg-rose-500/10 rounded-lg ml-1"

@@ -8,6 +8,7 @@ import {
   countScreenshots,
   evaluateTakerCompliance,
 } from '../utils/takerCompliance';
+import { evaluateTakerRisk } from '../utils/takerRisk';
 
 /** 单个截图 base64 字符串的最大长度（约 2MB 字符，远小于 body 10mb 上限） */
 const MAX_SCREENSHOT_LENGTH = 2_000_000;
@@ -198,6 +199,11 @@ const LIST_SELECT = {
   monthlyReceiptCount: true,
   screenshotCount: true,
   accountInfoUpdatedAt: true,
+  // 收款人姓名（非敏感）进列表；收款账号 payeeAccount 为敏感信息，**不进列表**，仅详情/单条接口返回
+  payeeName: true,
+  // 风控信号进列表，供前端展示「风控 / 已拉黑」徽标（判定由服务端 evaluateTakerRisk 统一给出）
+  riskFlag: true,
+  blacklistReason: true,
 } as const;
 
 // 获取所有接单人
@@ -229,6 +235,7 @@ export const getAllTakers = async (req: Request, res: Response) => {
     const list = takers.map((taker: any) => ({
       ...taker,
       compliance: evaluateTakerCompliance(taker),
+      risk: evaluateTakerRisk(taker),
     }));
 
     res.json({
@@ -276,6 +283,7 @@ export const getTakerById = async (req: Request, res: Response) => {
       data: {
         ...taker,
         compliance: evaluateTakerCompliance(taker),
+        risk: evaluateTakerRisk(taker),
       },
     });
   } catch (error) {
@@ -309,6 +317,12 @@ export const createTaker = async (req: AuthRequest, res: Response) => {
       wechatName,
       wechatId,
       taobaoNickname: normalizeOptionalString(req.body.taobaoNickname),
+      // 收款信息（返款闭环）
+      payeeName: normalizeOptionalString(req.body.payeeName),
+      payeeAccount: normalizeOptionalString(req.body.payeeAccount),
+      // 风控：riskFlag 默认 false（布尔，false 是合法值）
+      riskFlag: parseBooleanFlag(req.body.riskFlag),
+      blacklistReason: normalizeOptionalString(req.body.blacklistReason),
       ...account.data,
     };
     if (account.hasAnyField) {
@@ -380,6 +394,20 @@ export const updateTaker = async (req: AuthRequest, res: Response) => {
       // 前端恒传该键（空值传 null），因此「清空该字段」的能力不受影响。
       ...(Object.prototype.hasOwnProperty.call(req.body, 'taobaoNickname')
         ? { taobaoNickname: normalizeOptionalString(req.body.taobaoNickname) }
+        : {}),
+      // 收款信息 / 风控：一律「请求体显式携带该键才写入」，保持「不传不覆盖」语义。
+      // riskFlag 必须用 parseBooleanFlag（false 是合法值，禁止真值判断，否则「取消风控」失效）。
+      ...(Object.prototype.hasOwnProperty.call(req.body, 'payeeName')
+        ? { payeeName: normalizeOptionalString(req.body.payeeName) }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(req.body, 'payeeAccount')
+        ? { payeeAccount: normalizeOptionalString(req.body.payeeAccount) }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(req.body, 'riskFlag')
+        ? { riskFlag: parseBooleanFlag(req.body.riskFlag) }
+        : {}),
+      ...(Object.prototype.hasOwnProperty.call(req.body, 'blacklistReason')
+        ? { blacklistReason: normalizeOptionalString(req.body.blacklistReason) }
         : {}),
       ...account.data,
     };
@@ -455,6 +483,11 @@ export const batchCreateTakers = async (req: AuthRequest, res: Response) => {
           wechatName: taker.wechatName,
           wechatId: taker.wechatId,
           taobaoNickname: normalizeOptionalString(taker.taobaoNickname),
+          // 收款信息 / 风控：批量导入同样落库（与 create/update/backup 三条路径对称）
+          payeeName: normalizeOptionalString(taker.payeeName),
+          payeeAccount: normalizeOptionalString(taker.payeeAccount),
+          riskFlag: parseBooleanFlag(taker.riskFlag),
+          blacklistReason: normalizeOptionalString(taker.blacklistReason),
           ...account.data,
         };
         if (hasSubstantiveAccountInfo(account.data)) {
