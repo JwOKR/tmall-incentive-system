@@ -513,7 +513,9 @@ export async function batchUpdateOrders(rawOrders: any[]) {
         if (updateData.isRefunded !== undefined && updateData.isRefunded !== existingOrder.isRefunded)
           changes.push(`返款状态: ${existingOrder.isRefunded ? '已返款' : '未返款'} → ${updateData.isRefunded ? '已返款' : '未返款'}`);
         if (updateData.isGoodReview !== undefined && updateData.isGoodReview !== existingOrder.isGoodReview)
-          changes.push(`好评状态: ${existingOrder.isGoodReview ? '已好评' : '未好评'} → ${updateData.isGoodReview ? '已好评' : '未好评'}`);
+          // isGoodReview 是字符串状态（'pending'/'reviewed'/'creating'/'returned'），必须按 === 'reviewed' 判定，
+          // 否则任意非空串恒为真，日志永远输出「已好评 → 已好评」，与实际变更不符。仅改文案，不动写入逻辑。
+          changes.push(`好评状态: ${existingOrder.isGoodReview === 'reviewed' ? '已好评' : '未好评'} → ${updateData.isGoodReview === 'reviewed' ? '已好评' : '未好评'}`);
         if (updateData.actualPayment !== undefined) changes.push(`实付款: ${existingOrder.actualPayment} → ${updateData.actualPayment}`);
         if (updateData.baseCommission !== undefined) changes.push(`基础返佣: ${existingOrder.baseCommission} → ${updateData.baseCommission}`);
         if (updateData.isBaseCommissionRefunded !== undefined && updateData.isBaseCommissionRefunded !== existingOrder.isBaseCommissionRefunded)
