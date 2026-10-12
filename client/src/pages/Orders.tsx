@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api, { ordersApi } from '@/lib/api';
 import { formatCurrency, formatDate, calcDisplayTotalRefund } from '@/lib/utils';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Circle, Star, Calendar, Eye, ExternalLink, ArrowUpDown, ChevronUp, ChevronDown } from 'lucide-react';
+import { Search, Copy, Save, Trash2, CheckSquare, Square, CheckCircle, Circle, Star, Calendar, Eye, ExternalLink, ArrowUpDown, ChevronUp, ChevronDown, Undo2 } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
 import ColumnFilter from '@/components/ColumnFilter';
@@ -74,6 +74,14 @@ export default function Orders() {
     }),
   });
 
+  // P2-3 撤销预览：纯只读（GET /orders/undo-last），供二次确认弹窗展示「将还原 N 条」。
+  // 批量操作完成后必须失效该查询，让按钮状态跟随「最近一次批量操作」刷新。
+  const { data: undoPreviewData } = useQuery({
+    queryKey: ['orders-undo-preview'],
+    queryFn: () => ordersApi.undoPreview(),
+    enabled: canEdit('orders'),
+  });
+
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: any }) => ordersApi.update(id, data),
     onSuccess: () => {
@@ -124,6 +132,7 @@ export default function Orders() {
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['orders'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['orders-undo-preview'] }); // P2-3：批量操作后刷新撤销预览
       setSelectedIds(new Set());
       toastSuccess(data?.message || '批量更新成功');
     },
@@ -131,6 +140,39 @@ export default function Orders() {
       toastError(error?.response?.data?.message || '批量更新失败');
     },
   });
+
+  // P2-3 撤销最近一次批量操作：二次确认（复用 ConfirmDialog，仅 import 不改组件）后执行
+  const undoMutation = useMutation({
+    mutationFn: () => ordersApi.undoLast(),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['orders-undo-preview'] });
+      toastSuccess(data?.message || '已撤销上一次批量操作');
+    },
+    onError: (error: any) => {
+      toastError(error?.response?.data?.message || '撤销失败');
+    },
+  });
+
+  const handleUndoLast = async () => {
+    const preview = (undoPreviewData as any)?.data;
+    if (!preview?.available) {
+      toastError('没有可撤销的批量操作（仅支持撤销最近一次，且不能重复撤销）');
+      return;
+    }
+    const actionLabel = preview.action === 'batch_create' ? '批量导入' : preview.action === 'batch_update' ? '批量修改' : '批量标记';
+    const detail = preview.action === 'batch_create'
+      ? `将删除上次批量导入新建的订单（共 ${preview.itemCount} 条导入行），并回退对应任务/接单人计数`
+      : `将还原 ${preview.itemCount} 条订单的改动前状态`;
+    const ok = await confirm({
+      message: `撤销最近一次「${actionLabel}」：\n${detail}。\n撤销本身不支持再次撤销，确定继续吗？`,
+      variant: 'warning',
+      confirmText: '撤销',
+    });
+    if (ok) undoMutation.mutate();
+  };
 
   useEffect(() => {
     if (editingCell) {
@@ -813,6 +855,7 @@ export default function Orders() {
                 queryClient.invalidateQueries({ queryKey: ['orders'] });
                 queryClient.invalidateQueries({ queryKey: ['tasks'] });
                 queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+                queryClient.invalidateQueries({ queryKey: ['orders-undo-preview'] }); // P2-3
                 // result 已经是 response.data（axios interceptor 处理后）
                 return result.data || { success: data.length, failed: 0, duplicates: 0 };
               } catch (error: any) {
@@ -857,6 +900,7 @@ export default function Orders() {
                 queryClient.invalidateQueries({ queryKey: ['orders'] });
                 queryClient.invalidateQueries({ queryKey: ['tasks'] });
                 queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+                queryClient.invalidateQueries({ queryKey: ['orders-undo-preview'] }); // P2-3
                 return result.data || { success: data.length, failed: 0, duplicates: 0 };
               } catch (error: any) {
                 console.error('Batch update error:', error);
@@ -867,6 +911,17 @@ export default function Orders() {
             }}
             buttonLabel="批量修改"
           />
+          )}
+          {canEdit('orders') && (
+            <button
+              onClick={handleUndoLast}
+              disabled={undoMutation.isPending}
+              className="apple-btn inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50 transition-colors"
+              title="撤销最近一次批量导入/批量修改/批量标记"
+            >
+              <Undo2 className="h-4 w-4" />
+              {undoMutation.isPending ? '撤销中...' : '撤销上一次批量操作'}
+            </button>
           )}
         </div>
       </div>

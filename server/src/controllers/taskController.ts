@@ -10,6 +10,12 @@ import {
 import { evaluateTakerRisk, describeRiskBlock } from '../utils/takerRisk';
 import { AuthRequest } from '../middleware/auth';
 
+/** 通用字符串归一化：undefined/null → ''，否则 trim */
+function toTrimmedString(v: unknown): string {
+  if (v === undefined || v === null) return '';
+  return String(v).trim();
+}
+
 // 获取所有任务
 export const getAllTasks = async (req: Request, res: Response) => {
   try {
@@ -108,6 +114,7 @@ export const createTask = async (req: AuthRequest, res: Response) => {
       baseCommission,
       reviewReward,
       maxOrders,
+      deadline,
     } = req.body;
 
     // 验证商品ID唯一性（仅在提供了非空商品ID时）
@@ -147,6 +154,8 @@ export const createTask = async (req: AuthRequest, res: Response) => {
         baseCommission: baseCommission ? Number(baseCommission) : 5,
         reviewReward: reviewReward ? Number(reviewReward) : 0,
         maxOrders: maxOrders ? Number(maxOrders) : 1,
+        // P2-5：截止日期可空（历史任务没有 deadline）；空值/非法值一律落 null，绝不报错
+        deadline: parseExcelDate(deadline),
         status: 'pending',
       },
     });
@@ -171,11 +180,11 @@ export const createTask = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// 批量创建任务（按商品编号）
+// 批量创建任务（Excel 导入）—— P2-8 导入查重 + P2-5 截止日期
 export const batchCreateTasks = async (req: AuthRequest, res: Response) => {
   try {
     const { tasks } = req.body;
-    
+
     if (!Array.isArray(tasks) || tasks.length === 0) {
       return res.status(400).json({
         success: false,
@@ -183,30 +192,108 @@ export const batchCreateTasks = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    const createdTasks = await prisma.task.createMany({
-      data: tasks.map((task: any) => ({
+    // ── P2-8 查重准备：一次性批量预查库内已存在的 taoToken / productId（避免循环内 N+1）──
+    // 注意：淘口令 @unique 但「空白时允许多条」——空淘口令绝不参与判重；productId 同理跳过空串。
+    const inputTokens = new Set<string>();
+    const inputProductIds = new Set<string>();
+    for (const task of tasks) {
+      const token = toTrimmedString(task?.taoToken);
+      const productId = toTrimmedString(task?.productId);
+      if (token) inputTokens.add(token);
+      if (productId) inputProductIds.add(productId);
+    }
+
+    const dbTokenSet = new Set<string>();
+    const dbProductIdSet = new Set<string>();
+    if (inputTokens.size > 0 || inputProductIds.size > 0) {
+      const OR: any[] = [];
+      if (inputTokens.size > 0) OR.push({ taoToken: { in: [...inputTokens] } });
+      if (inputProductIds.size > 0) OR.push({ productId: { in: [...inputProductIds] } });
+      const existing = await prisma.task.findMany({
+        where: { OR },
+        select: { taoToken: true, productId: true },
+      });
+      for (const e of existing) {
+        if (e.taoToken) dbTokenSet.add(e.taoToken);
+        if (e.productId) dbProductIdSet.add(e.productId);
+      }
+    }
+
+    // ── 逐行判定：与库内重复 / 本文件内重复 → 跳过并在结果里报告（带 Excel 行号）──
+    const seenTokens = new Map<string, number>();
+    const seenProductIds = new Map<string, number>();
+    const toCreate: any[] = [];
+    const details: Array<{ row: number; productId: string; status: string; reason?: string }> = [];
+    let skipped = 0;
+
+    tasks.forEach((task: any, idx: number) => {
+      // Excel 行号：表头占第 1 行，数据行从第 2 行起 → 下标 + 2
+      const row = idx + 2;
+      const token = toTrimmedString(task?.taoToken);
+      const productId = toTrimmedString(task?.productId);
+
+      // a. 淘口令与库内重复（空淘口令不判重）
+      if (token && dbTokenSet.has(token)) {
+        skipped++;
+        details.push({ row, productId, status: 'skipped', reason: '淘口令已存在' });
+        return;
+      }
+      // b. 淘口令本文件内重复
+      if (token && seenTokens.has(token)) {
+        skipped++;
+        details.push({ row, productId, status: 'skipped', reason: `淘口令本文件内重复（第 ${seenTokens.get(token)} 行已出现）` });
+        return;
+      }
+      // c. 商品ID与库内重复
+      if (productId && dbProductIdSet.has(productId)) {
+        skipped++;
+        details.push({ row, productId, status: 'skipped', reason: '商品ID已存在' });
+        return;
+      }
+      // d. 商品ID本文件内重复
+      if (productId && seenProductIds.has(productId)) {
+        skipped++;
+        details.push({ row, productId, status: 'skipped', reason: `商品ID本文件内重复（第 ${seenProductIds.get(productId)} 行已出现）` });
+        return;
+      }
+
+      if (token) seenTokens.set(token, row);
+      if (productId) seenProductIds.set(productId, row);
+
+      toCreate.push({
         publishDate: parseExcelDate(task.publishDate) || new Date(),
-        productId: task.productId ? String(task.productId).trim() : '',
+        productId,
         productCode: task.productCode ? String(task.productCode).trim() : '',
-        taoToken: task.taoToken ? String(task.taoToken).trim() : null,
+        taoToken: token || null,
         price: Number(task.price) || 0,
         baseCommission: Number(task.baseCommission) || 5,
         reviewReward: Number(task.reviewReward) || 0,
         maxOrders: Number(task.maxOrders) || 1,
-      })),
+        // P2-5：截止日期可空，空值/非法值落 null
+        deadline: parseExcelDate(task.deadline),
+      });
     });
+
+    // skipDuplicates 兜底：预查与写入之间的并发窗口内若有人写入同淘口令，
+    // 只跳过该行而不是让整批失败（旧实现的整批失败正是本次要修的问题）。
+    const createdTasks = toCreate.length > 0
+      ? await prisma.task.createMany({ data: toCreate, skipDuplicates: true })
+      : { count: 0 };
 
     await createAuditLog({
       action: 'create',
-      detail: `批量创建任务: ${createdTasks.count}个`,
+      detail: `批量创建任务: ${createdTasks.count}个，跳过${skipped}条重复`,
       ipAddress: getClientIp(req),
       userId: req.userId,
     });
 
     res.status(201).json({
       success: true,
-      data: { count: createdTasks.count },
-      message: `成功创建${createdTasks.count}个任务`,
+      // details 逐行回显被跳过的行（带 Excel 行号与原因），与订单导入的「可读失败」口径一致
+      data: { count: createdTasks.count, skipped, details },
+      message: skipped > 0
+        ? `成功创建${createdTasks.count}个任务，跳过${skipped}条重复`
+        : `成功创建${createdTasks.count}个任务`,
     });
   } catch (error) {
     console.error('Error batch creating tasks:', error);
@@ -230,6 +317,7 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
       reviewReward,
       maxOrders,
       status,
+      deadline,
     } = req.body;
 
     const existingTask = await prisma.task.findUnique({
@@ -281,6 +369,8 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
         baseCommission: baseCommission ? Number(baseCommission) : undefined,
         reviewReward: reviewReward ? Number(reviewReward) : undefined,
         maxOrders: maxOrders ? Number(maxOrders) : undefined,
+        // P2-5：deadline 可空 —— 显式传（含空串/null）表示设置或清除；不传（undefined）保持原值不动
+        deadline: deadline === undefined ? undefined : (parseExcelDate(deadline) ?? null),
         status,
       },
     });
@@ -306,6 +396,14 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
     if (baseCommission !== undefined && Number(baseCommission) !== existingTask.baseCommission) changes.push(`基础返佣: ${existingTask.baseCommission} → ${baseCommission}`);
     if (reviewReward !== undefined && Number(reviewReward) !== existingTask.reviewReward) changes.push(`好评返佣: ${existingTask.reviewReward} → ${reviewReward}`);
     if (maxOrders !== undefined && Number(maxOrders) !== existingTask.maxOrders) changes.push(`限接人数: ${existingTask.maxOrders} → ${maxOrders}`);
+    // P2-5：截止日期变更日志（统一按日期粒度比较，避免时刻差异造成假变更）
+    if (deadline !== undefined) {
+      const parsedDeadline = parseExcelDate(deadline);
+      const dayOf = (d: unknown) => (d ? new Date(d as Date).toISOString().slice(0, 10) : '');
+      const oldDay = dayOf(existingTask.deadline);
+      const newDay = dayOf(parsedDeadline);
+      if (oldDay !== newDay) changes.push(`截止日期: ${oldDay || '无'} → ${newDay || '无'}`);
+    }
     if (status !== undefined && status !== existingTask.status) changes.push(`状态: ${existingTask.status} → ${status}`);
 
     const detail = changes.length > 0 

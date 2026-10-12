@@ -72,6 +72,7 @@ model Task {
   baseCommission  Float    @default(5) // 基础佣金，默认5元
   reviewReward    Float    @default(0) // 晒单奖励
   maxOrders       Int      @default(1) // 限接人数，默认1人
+  deadline        DateTime? // 截止日期（P2-5 超时提醒；可空——历史任务没有截止日，绝不要求 --accept-data-loss）
   currentOrders   Int      @default(0) // 已接人数
   status          String   @default("pending") // pending待接单, active进行中, refunded已返款, completed已完成, cancelled已取消
   createdAt       DateTime @default(now())
@@ -205,4 +206,20 @@ model RepeatDiscountAnalysis {
 
   @@index([type, scopeKey])
   @@map("repeat_discount_analyses")
+}
+
+// 批量操作快照（P2-3 批量撤销）：批量写库**之前**先把「改动前状态」落进本表（与业务写入同一事务提交，
+// 保证绝无「改了库但没快照」的窗口）；撤销只针对**最近一次**批量操作。
+model OperationSnapshot {
+  id        String    @id @default(cuid())
+  action    String    // batch_create | batch_update | batch_update_status
+  payload   String    @db.LongText // 改动前状态 JSON：新建行的 id 列表 / 逐单「改动前字段值」
+  itemCount Int       @default(0) // 受影响行数（供前端二次确认弹窗展示「将还原 N 条」）
+  consumed  Boolean   @default(false) // 幂等防护：同一快照绝不允许被撤销两次
+  undoneAt  DateTime? // 撤销时间
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
+
+  @@index([createdAt]) // 撤销要找「最近一次」快照，按 createdAt 倒序取第一条
+  @@map("operation_snapshots")
 }

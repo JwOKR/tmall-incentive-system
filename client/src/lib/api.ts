@@ -86,6 +86,9 @@ export const ordersApi = {
     api.put('/orders/batch/status', { ids, field, value }),
   update: (id: string, data: any) => api.put(`/orders/${id}`, data),
   delete: (id: string) => api.delete(`/orders/${id}`),
+  // P2-3 批量撤销：GET 为纯只读预览（供二次确认弹窗），POST 执行撤销（仅最近一次）
+  undoPreview: () => api.get('/orders/undo-last'),
+  undoLast: () => api.post('/orders/undo-last', {}, { timeout: 120000 }),
 };
 
 // Logs API

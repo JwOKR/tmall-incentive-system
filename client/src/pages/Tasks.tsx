@@ -251,6 +251,7 @@ export default function Tasks() {
     baseCommission: '5',
     reviewReward: '0',
     maxOrders: '1',
+    deadline: '',
   });
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editValue, setEditValue] = useState<any>('');
@@ -606,6 +607,7 @@ export default function Tasks() {
       baseCommission: '5',
       reviewReward: '0',
       maxOrders: '1',
+      deadline: '',
     });
   };
 
@@ -755,6 +757,69 @@ export default function Tasks() {
     });
   };
 
+  // ── P2-5 任务超时提醒 ──────────────────────────────────────
+  /** 把任意日期值转成 <input type="date"> 需要的 YYYY-MM-DD（空/非法 → ''） */
+  const toDateInputValue = (value: any): string => {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
+  /**
+   * 截止日期的紧急程度（按「日历日」比较，不受时刻影响）：
+   *   overdue = 已超期（红）；soon = 临期（≤3 天，琥珀）；无 deadline → null。
+   */
+  const getDeadlineTone = (deadline: any): 'overdue' | 'soon' | null => {
+    if (!deadline) return null;
+    const d = new Date(deadline);
+    if (isNaN(d.getTime())) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const diffDays = Math.round((day.getTime() - today.getTime()) / 86400000);
+    if (diffDays < 0) return 'overdue';
+    if (diffDays <= 3) return 'soon';
+    return null;
+  };
+
+  /** 截止日期单元格：临期（≤3 天）琥珀色 / 超期红色；点击进入行内编辑（date 输入） */
+  const renderDeadlineCell = (task: any) => {
+    const editing = isEditing(task.id, 'deadline');
+    if (editing) {
+      return (
+        <input
+          ref={inputRef}
+          type="date"
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={() => handleSave(task.id)}
+          onKeyDown={(e) => handleKeyDown(e, task.id)}
+          className="w-full rounded border border-primary px-2 py-1 text-sm bg-background"
+        />
+      );
+    }
+    const tone = getDeadlineTone(task.deadline);
+    const toneClass = tone === 'overdue'
+      ? 'text-rose-600 dark:text-rose-400 font-medium'
+      : tone === 'soon'
+        ? 'text-amber-600 dark:text-amber-400 font-medium'
+        : '';
+    return (
+      <div
+        onClick={() => {
+          setEditingCell({ taskId: task.id, field: 'deadline' });
+          setEditValue(toDateInputValue(task.deadline));
+        }}
+        className={`cursor-pointer hover:bg-accent px-2 py-1 rounded min-h-[28px] flex items-center ${toneClass}`}
+        title={tone === 'overdue' ? '已超期' : tone === 'soon' ? '临期（3 天内到期）' : '点击编辑'}
+      >
+        {task.deadline ? formatDate(task.deadline) : '-'}
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
@@ -786,6 +851,7 @@ export default function Tasks() {
               { key: 'baseCommission', label: '基础返佣' },
               { key: 'reviewReward', label: '好评返佣' },
               { key: 'maxOrders', label: '限接人数' },
+              { key: 'deadline', label: '截止日期' },
             ]}
             onImport={async (data) => {
               try {
@@ -985,6 +1051,10 @@ export default function Tasks() {
                 <div>发布日期</div>
                 <ColumnFilter value={columnFilters['publishDate'] || ''} onChange={(v) => setColFilter('publishDate', v)} />
               </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>截止日期</div>
+                <ColumnFilter value={columnFilters['deadline'] || ''} onChange={(v) => setColFilter('deadline', v)} />
+              </th>
               <th className="px-4 py-2 text-right text-sm font-medium"><div>操作</div></th>
             </tr>
           </thead>
@@ -1069,6 +1139,14 @@ export default function Tasks() {
                 <td className="px-4 py-2 text-muted-foreground">
                   {formatDate(new Date())}
                 </td>
+                <td className="px-4 py-2">
+                  <input
+                    type="date"
+                    value={newRowData.deadline}
+                    onChange={(e) => setNewRowData({ ...newRowData, deadline: e.target.value })}
+                    className="w-full rounded border px-2 py-1 text-sm"
+                  />
+                </td>
                 <td className="px-4 py-2 text-right">
                   <div className="flex items-center justify-end gap-1">
                     <button
@@ -1092,13 +1170,13 @@ export default function Tasks() {
             {/* Data Rows */}
             {isLoading ? (
               <tr>
-                <td colSpan={12} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={13} className="px-4 py-8 text-center text-muted-foreground">
                   加载中...
                 </td>
               </tr>
             ) : filteredTasks.length === 0 && !addingNewRow ? (
               <tr>
-                <td colSpan={12} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={13} className="px-4 py-8 text-center text-muted-foreground">
                   暂无匹配数据
                 </td>
               </tr>
@@ -1192,6 +1270,9 @@ export default function Tasks() {
                   <td className="px-4 py-2 text-sm text-muted-foreground">
                     {formatDate(task.publishDate)}
                   </td>
+                  <td className="px-4 py-2 text-sm">
+                    {renderDeadlineCell(task)}
+                  </td>
                   <td className="px-4 py-2 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button
@@ -1214,7 +1295,7 @@ export default function Tasks() {
                 </tr>
                 {inlineOrderId === task.id && (
                   <tr className="border-b bg-indigo-50/50 dark:bg-indigo-950/20">
-                    <td colSpan={12} className="px-6 py-4">
+                    <td colSpan={13} className="px-6 py-4">
                       <div className="flex items-center justify-end gap-4 flex-wrap">
                         <div className="rounded-lg border p-3 bg-white dark:bg-slate-900/40">
                           <p className="text-sm font-medium">商品: {task.productId || task.productCode || '未填写'}</p>

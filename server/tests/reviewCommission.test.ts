@@ -126,6 +126,12 @@ const fakePrisma: any = {
     },
   },
   task: { findUnique: async () => null, update: async () => ({}) },
+  // P2-3 批量撤销（W4）：batchCreate/Update/UpdateStatus 现在会在同一事务里先写快照，fake 需提供该模型
+  operationSnapshot: {
+    create: async () => ({ id: 'snap-stub' }),
+    findFirst: async () => null,
+    updateMany: async () => ({ count: 1 }),
+  },
   $transaction: async (arg: any) => {
     if (typeof arg === 'function') return arg(fakePrisma);
     return Promise.all(arg);

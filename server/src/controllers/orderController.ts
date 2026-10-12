@@ -226,6 +226,60 @@ export const batchUpdateStatus = async (req: AuthRequest, res: Response) => {
 };
 
 // ──────────────────────────────────────
+// GET /orders/undo-last  （P2-3 撤销预览：纯只读，供前端二次确认弹窗展示「将还原 N 条」）
+// ──────────────────────────────────────
+export const getUndoPreview = async (_req: Request, res: Response) => {
+  try {
+    const preview = await orderService.getUndoPreview();
+    res.json({ success: true, data: preview });
+  } catch (error) {
+    console.error('Error fetching undo preview:', error);
+    res.status(500).json({ success: false, message: '获取撤销预览失败' });
+  }
+};
+
+// ──────────────────────────────────────
+// POST /orders/undo-last  （P2-3 撤销最近一次批量操作）
+// 幂等：同一快照只允许被撤销一次（服务端原子抢占 consumed）；只支持最近一次，不做多级 undo。
+// ──────────────────────────────────────
+export const undoLastBatch = async (req: AuthRequest, res: Response) => {
+  try {
+    const result = await orderService.undoLastBatch();
+
+    const actionLabel: Record<string, string> = {
+      batch_create: '批量导入',
+      batch_update: '批量修改',
+      batch_update_status: '批量标记',
+    };
+
+    await createAuditLog({
+      action: 'batch_undo',
+      detail: `撤销批量操作(${actionLabel[result.action] || result.action}): 还原${result.restored}条${result.failed > 0 ? `，失败${result.failed}条` : ''}`,
+      ipAddress: getClientIp(req),
+      userId: req.userId,
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      message: `已撤销${actionLabel[result.action] || result.action}：还原${result.restored}条订单${result.failed > 0 ? `，失败${result.failed}条` : ''}`,
+    });
+  } catch (error: any) {
+    if (error.message === 'NO_UNDOABLE_OPERATION') {
+      return res.status(400).json({ success: false, code: 'NO_UNDOABLE_OPERATION', message: '没有可撤销的批量操作（仅支持撤销最近一次，且不能重复撤销）' });
+    }
+    if (error.message === 'SNAPSHOT_ALREADY_CONSUMED') {
+      return res.status(409).json({ success: false, code: 'SNAPSHOT_ALREADY_CONSUMED', message: '该批量操作已被撤销，不能重复撤销' });
+    }
+    if (error.message === 'CORRUPTED_SNAPSHOT') {
+      return res.status(500).json({ success: false, code: 'CORRUPTED_SNAPSHOT', message: '快照数据损坏，无法撤销' });
+    }
+    console.error('Error undoing last batch:', error);
+    res.status(500).json({ success: false, message: '撤销失败' });
+  }
+};
+
+// ──────────────────────────────────────
 // DELETE /orders/:id
 // ──────────────────────────────────────
 export const deleteOrder = async (req: AuthRequest, res: Response) => {

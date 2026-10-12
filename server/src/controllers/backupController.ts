@@ -135,6 +135,8 @@ export const importBackup = async (req: Request, res: Response) => {
               baseCommission: task.baseCommission ?? 5,
               reviewReward: task.reviewReward ?? 0,
               maxOrders: task.maxOrders ?? 1,
+              // P2-5：截止日期与 exportBackup 全字段导出对称；旧版备份缺失时落 null
+              deadline: parseDateOrNull(task.deadline),
               currentOrders: task.currentOrders ?? 0,
               status: task.status || 'active',
               createdAt: task.createdAt ? new Date(task.createdAt) : new Date(),

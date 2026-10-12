@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import prisma from '../utils/db';
 import { parseExcelDate } from '../utils/parseExcelDate';
 import { getReviewCommissionAmount } from './systemSettingService';
@@ -117,6 +118,147 @@ export interface BatchValidateRow {
 export interface BatchValidateResult {
   rows: BatchValidateRow[];
   summary: { total: number; ok: number; dup: number; invalid: number };
+}
+
+// ──────────────────────────────────────
+// 批量操作快照（P2-3 批量撤销）
+//
+// 铁律：快照与业务写入**同一事务**提交，且快照 create 排在所有订单写之前——
+// 快照创建失败 → 整个事务回滚 → 绝不出现「改了库但没快照」的窗口。
+// ──────────────────────────────────────
+export type BatchAction = 'batch_create' | 'batch_update' | 'batch_update_status';
+
+/** OperationSnapshot.payload 反序列化后的统一形状 */
+export interface BatchSnapshotPayload {
+  action: BatchAction;
+  orderCount: number;
+  /** batch_create：预生成的新建订单 id 列表（撤销 = 删除这些行并回退任务/接单人计数） */
+  createdIds?: string[];
+  /** batch_update / batch_update_status：逐单「改动前字段值」（撤销 = 精确写回这些字段） */
+  restores?: Array<{ id: string; before: Record<string, unknown> }>;
+}
+
+/** 撤销执行结果 */
+export interface UndoLastResult {
+  action: BatchAction;
+  restored: number;
+  failed: number;
+  errors: string[];
+}
+
+/** 撤销预览（GET，纯只读）：供前端二次确认弹窗展示「将还原 N 条」 */
+export interface UndoPreview {
+  available: boolean;
+  action?: BatchAction;
+  itemCount: number;
+  createdAt?: string;
+}
+
+/** 从旧订单行中抽取将被批量写覆盖的字段旧值（只存被写字段，撤销时精确写回，绝不多改一个字段） */
+function pickBeforeFields(existing: Record<string, unknown>, updateData: Record<string, unknown>): Record<string, unknown> {
+  const before: Record<string, unknown> = {};
+  for (const key of Object.keys(updateData)) {
+    before[key] = existing[key] ?? null;
+  }
+  return before;
+}
+
+/**
+ * 读取「最近一次批量操作」的撤销预览（纯只读，绝不写库）。
+ * 最近一条快照若已被消费（或 payload 损坏）→ available:false。
+ * 注意：只支持撤销最近一次 —— 即使更早的快照尚未消费，也不允许跨级撤销。
+ */
+export async function getUndoPreview(): Promise<UndoPreview> {
+  const latest = await prisma.operationSnapshot.findFirst({ orderBy: { createdAt: 'desc' } });
+  if (!latest || latest.consumed) return { available: false, itemCount: 0 };
+  try {
+    const payload = JSON.parse(latest.payload) as BatchSnapshotPayload;
+    return {
+      available: true,
+      action: payload.action,
+      itemCount: latest.itemCount,
+      createdAt: latest.createdAt instanceof Date ? latest.createdAt.toISOString() : String(latest.createdAt),
+    };
+  } catch {
+    // payload 损坏：视为不可撤销（撤销比数据更重要的原则下，宁可不给撤也不能乱还原）
+    return { available: false, itemCount: 0 };
+  }
+}
+
+/**
+ * 撤销最近一次批量操作（只支持最近一次，不做多级 undo）。
+ *
+ * 幂等防护：在同一事务内用 `updateMany({ where: { id, consumed: false } })` 原子抢占快照，
+ * 并发第二个撤销请求会命中 0 行 → 抛错回滚 → 同一快照绝不可能被撤销两次。
+ *
+ * 逆操作语义：
+ *   batch_create          → 删除这批新建的订单行，并回退任务/接单人计数（镜像 deleteOrder）；
+ *   batch_update          → 逐单写回被改字段的「改动前值」；
+ *   batch_update_status   → 逐单写回状态字段的「改动前值」（含派生的 refundDate/reviewCommission 等）。
+ */
+export async function undoLastBatch(): Promise<UndoLastResult> {
+  const latest = await prisma.operationSnapshot.findFirst({ orderBy: { createdAt: 'desc' } });
+  if (!latest || latest.consumed) throw new Error('NO_UNDOABLE_OPERATION');
+  let payload: BatchSnapshotPayload;
+  try {
+    payload = JSON.parse(latest.payload) as BatchSnapshotPayload;
+  } catch {
+    throw new Error('CORRUPTED_SNAPSHOT');
+  }
+
+  // 注意：tx 显式标注 any——本机 prisma generate 必失败、client 类型退化为 any，
+  // 不标注会新增 TS7006（本批铁律：不新增 tsc 报错；既有同款报错不在本批修复范围）。
+  return prisma.$transaction(async (tx: any) => {
+    // 原子抢占：consumed:false 条件保证并发下只有一个撤销能成功
+    const claimed = await tx.operationSnapshot.updateMany({
+      where: { id: latest.id, consumed: false },
+      data: { consumed: true, undoneAt: new Date() },
+    });
+    if (claimed.count === 0) throw new Error('SNAPSHOT_ALREADY_CONSUMED');
+
+    const result: UndoLastResult = { action: payload.action, restored: 0, failed: 0, errors: [] };
+
+    if (payload.action === 'batch_create') {
+      const ids = payload.createdIds || [];
+      if (ids.length === 0) return result;
+      const createdOrders = await tx.order.findMany({ where: { id: { in: ids } } });
+      for (const order of createdOrders) {
+        try {
+          await tx.log.deleteMany({ where: { orderId: order.id } });
+          await tx.order.delete({ where: { id: order.id } });
+          // 计数回退用 updateMany：目标行已被删除时不抛错（镜像 deleteOrder 的回退语义，且不阻断其余行）
+          if (order.taskId) {
+            await tx.task.updateMany({ where: { id: order.taskId }, data: { currentOrders: { decrement: 1 } } });
+          }
+          if (order.takerId) {
+            await tx.orderTaker.updateMany({
+              where: { id: order.takerId },
+              data: { totalOrders: { decrement: 1 }, totalAmount: { decrement: order.actualPayment } },
+            });
+          }
+          result.restored++;
+        } catch (e) {
+          result.failed++;
+          result.errors.push(`${order.orderNo || order.id}: ${(e as Error).message}`);
+        }
+      }
+      return result;
+    }
+
+    // batch_update / batch_update_status：逐单精确写回「改动前值」
+    const restores = payload.restores || [];
+    for (const item of restores) {
+      try {
+        await tx.order.update({ where: { id: item.id }, data: item.before });
+        result.restored++;
+      } catch (e) {
+        // 订单在批量之后被单独删除等场景：该行计 failed，不影响其余行
+        result.failed++;
+        result.errors.push(`${item.id}: ${(e as Error).message}`);
+      }
+    }
+    return result;
+  });
 }
 
 // ──────────────────────────────────────
@@ -346,7 +488,27 @@ export async function batchCreateOrders(rawOrders: any[]): Promise<BatchImportRe
   const errors: BatchImportResult['errors'] = [];
   const details: BatchImportResult['details'] = [];
 
+  // P2-3：预生成新建行的 id（Node 内置 randomUUID，无新依赖）——
+  // 使快照能在**写库之前**就携带完整的「createdIds」落库，撤销时按 id 精确删除。
+  const createdIds: string[] = rawOrders.map(() => crypto.randomUUID());
+
   await prisma.$transaction(async (tx) => {
+    // P2-3 铁律：快照先落库（同一事务、先于所有订单写入）。
+    // 快照创建失败 → 事务整体回滚 → 绝不出现「改了库但没快照」的窗口。
+    // 说明：itemCount 为导入总行数（含后续因重复被跳过的行）；撤销按 createdIds 删除，
+    // 被跳过的行 id 不会命中任何数据，属无害空转。
+    await tx.operationSnapshot.create({
+      data: {
+        action: 'batch_create',
+        itemCount: rawOrders.length,
+        payload: JSON.stringify({
+          action: 'batch_create',
+          orderCount: rawOrders.length,
+          createdIds,
+        } as BatchSnapshotPayload),
+      },
+    });
+
     for (let idx = 0; idx < rawOrders.length; idx++) {
       const item = rawOrders[idx];
       // Excel 行号：表头占第 1 行，数据行从第 2 行起 → 下标 + 2
@@ -408,6 +570,8 @@ export async function batchCreateOrders(rawOrders: any[]): Promise<BatchImportRe
 
         await tx.order.create({
           data: {
+            // P2-3：使用预生成 id，使快照里的 createdIds 与实际落库行一一对应
+            id: createdIds[idx],
             orderDate,
             orderNo: orderNoStr,
             orderNo19: orderNo19Str,
@@ -569,6 +733,10 @@ export async function batchUpdateOrders(rawOrders: any[]) {
   const errors: string[] = [];
   const details: any[] = [];
 
+  // P2-3 两阶段提交：先解析全部行（纯读 + 纯计算），收集「改动前状态」；
+  // 然后快照先落库，最后才执行真正的订单更新。快照创建失败 → 整个事务回滚。
+  const writes: Array<{ item: any; id: string; data: any; before: Record<string, unknown> }> = [];
+
   await prisma.$transaction(async (tx) => {
     for (let idx = 0; idx < rawOrders.length; idx++) {
       const item = rawOrders[idx];
@@ -637,7 +805,13 @@ export async function batchUpdateOrders(rawOrders: any[]) {
           continue;
         }
 
-        await tx.order.update({ where: { id: existingOrder.id }, data: updateData });
+        // P2-3：第一遍只解析不写库——记录待写数据与「改动前状态」，快照落库后统一执行
+        writes.push({
+          item,
+          id: existingOrder.id,
+          data: updateData,
+          before: pickBeforeFields(existingOrder as unknown as Record<string, unknown>, updateData),
+        });
 
         const changes: string[] = [];
         if (updateData.isRefunded !== undefined && updateData.isRefunded !== existingOrder.isRefunded)
@@ -653,11 +827,36 @@ export async function batchUpdateOrders(rawOrders: any[]) {
         if (updateData.reviewCommission !== undefined) changes.push(`好评返佣: ${existingOrder.reviewCommission} → ${updateData.reviewCommission}`);
         if (updateData.remark !== undefined) changes.push(`备注: ${existingOrder.remark || '空'} → ${updateData.remark || '空'}`);
 
-        success++;
+        // 注意：success 计数移到第二遍真正写库成功后（见下方 writes 循环），保证与实际更新数一致
         details.push({ row: rowNo, orderNo: orderNoStr || orderNo19Str, status: 'success', changes: changes.join(', ') });
       } catch (e) {
         failed++;
         errors.push(`${item.orderNo || item.orderNo19 || '未知'}: ${(e as Error).message}`);
+      }
+    }
+
+    // P2-3：快照先落库（同一事务、先于任何订单更新），再执行真正的更新。
+    // 快照创建失败 → 事务整体回滚 → 绝不出现「改了库但没快照」的窗口。
+    if (writes.length > 0) {
+      await tx.operationSnapshot.create({
+        data: {
+          action: 'batch_update',
+          itemCount: writes.length,
+          payload: JSON.stringify({
+            action: 'batch_update',
+            orderCount: writes.length,
+            restores: writes.map(w => ({ id: w.id, before: w.before })),
+          } as BatchSnapshotPayload),
+        },
+      });
+      for (const w of writes) {
+        try {
+          await tx.order.update({ where: { id: w.id }, data: w.data });
+          success++;
+        } catch (e) {
+          failed++;
+          errors.push(`${w.item.orderNo || w.item.orderNo19 || '未知'}: ${(e as Error).message}`);
+        }
       }
     }
   });
@@ -669,9 +868,9 @@ export async function batchUpdateOrders(rawOrders: any[]) {
 // 批量更新状态（事务内）
 // ──────────────────────────────────────
 export async function batchUpdateOrderStatus(ids: string[], field: 'isRefunded' | 'isGoodReview' | 'isBaseCommissionRefunded', value: boolean | string) {
+  // P2-3：取**全字段**旧值（不再 select 子集）——快照必须携带「改动前状态」供撤销精确还原
   const orders = await prisma.order.findMany({
     where: { id: { in: ids } },
-    select: { id: true, actualPayment: true, baseCommission: true, reviewCommission: true, refundDate: true },
   });
 
   // 是否本次批量标记为「已好评」：与单条路径同一口径（parseReviewStatus 归一化）。
@@ -680,6 +879,29 @@ export async function batchUpdateOrderStatus(ids: string[], field: 'isRefunded' 
   const reviewAmount = markReviewed ? await getReviewCommissionAmount() : null;
 
   await prisma.$transaction(async (tx) => {
+    // P2-3 铁律：快照先落库（同一事务、先于所有订单写入）。
+    // 快照创建失败 → 事务整体回滚 → 绝不出现「改了库但没快照」的窗口。
+    // 快照保存批量将覆盖的字段的「改动前值」（超集：field + 派生字段 refundDate/reviewCommission/
+    // reviewCommissionDate/totalRefund；撤销时写回未变化的字段是 no-op，无副作用）。
+    const RESTORE_FIELDS = [
+      'isRefunded', 'refundDate', 'isGoodReview', 'isBaseCommissionRefunded',
+      'reviewCommission', 'reviewCommissionDate', 'totalRefund',
+    ] as const;
+    await tx.operationSnapshot.create({
+      data: {
+        action: 'batch_update_status',
+        itemCount: orders.length,
+        payload: JSON.stringify({
+          action: 'batch_update_status',
+          orderCount: orders.length,
+          restores: orders.map((order: any) => ({
+            id: order.id,
+            before: Object.fromEntries(RESTORE_FIELDS.map((f) => [f, (order as Record<string, unknown>)[f] ?? null])),
+          })),
+        } as BatchSnapshotPayload),
+      },
+    });
+
     for (const order of orders) {
       const updateData: any = { [field]: value };
       // 基础返佣返款状态：必须落成真正的布尔值，避免前端传字符串 'true' 写坏。
