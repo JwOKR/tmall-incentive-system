@@ -12,9 +12,16 @@ import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { orderColumns } from '@/lib/export';
 import { usePermissions } from '@/lib/permissions';
+import { computeVirtualWindow } from '@/lib/virtualList';
 
 const PAGE_SIZE_OPTIONS = [20, 50, 100];
 const PAGE_SIZE_STORAGE_KEY = 'tmall_orders_page_size';
+
+// P1-11 列表虚拟滚动：仅当渲染行数超过阈值时启用窗口化，降低回归面。
+// VIRTUAL_ROW_HEIGHT 为固定行高（虚拟模式下单元格会被裁成单行以保证高度可预测）。
+const VIRTUALIZE_THRESHOLD = 200;
+const VIRTUAL_ROW_HEIGHT = 56;
+const VIRTUAL_OVERSCAN = 6;
 
 interface EditingCell {
   orderId: string;
@@ -132,25 +139,26 @@ export default function Orders() {
     }
   }, [editingCell]);
 
-  const handleCellClick = (orderId: string, field: string, currentValue: any) => {
-    if (!canEdit('orders')) return; // 检查编辑权限
-    if (editingCell?.orderId === orderId && editingCell?.field === field) return;
-    
-    setEditingCell({ orderId, field });
-    
+  // 由单元格原值推导「进入编辑态时的输入值」，供点击编辑与键盘导航（P1-5）共用
+  const buildEditValue = (field: string, currentValue: any): string => {
     if (field === 'refundDate' || field === 'drawingDate' || field === 'reviewCommissionDate') {
       if ((field === 'drawingDate' || field === 'reviewCommissionDate') && currentValue) {
         const d = new Date(currentValue);
         const pad = (n: number) => String(n).padStart(2, '0');
-        setEditValue(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`);
-      } else {
-        setEditValue(currentValue ? currentValue.split('T')[0] : '');
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
       }
-    } else if (typeof currentValue === 'boolean') {
-      setEditValue(currentValue ? 'true' : 'false');
-    } else {
-      setEditValue(String(currentValue || ''));
+      return currentValue ? String(currentValue).split('T')[0] : '';
     }
+    if (typeof currentValue === 'boolean') return currentValue ? 'true' : 'false';
+    return String(currentValue ?? '');
+  };
+
+  const handleCellClick = (orderId: string, field: string, currentValue: any) => {
+    if (!canEdit('orders')) return; // 检查编辑权限
+    if (editingCell?.orderId === orderId && editingCell?.field === field) return;
+
+    setEditingCell({ orderId, field });
+    setEditValue(buildEditValue(field, currentValue));
   };
 
   const handleSave = () => {
@@ -269,11 +277,23 @@ export default function Orders() {
     }
   };
 
+  // P1-5 表格键盘流：Enter 提交并跳到下一行同列，↑↓ 上下移动同列，Ctrl/Cmd+D 复制上一行同列。
+  // 仅作用于行内可编辑的文本/数字/日期单元格；状态下拉（isRefunded/isGoodReview）保持原生交互。
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      handleSave();
+      e.preventDefault();
+      commitAndMove(1);
     } else if (e.key === 'Escape') {
       handleCancel();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      commitAndMove(1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      commitAndMove(-1);
+    } else if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+      e.preventDefault();
+      copyFromRowAbove();
     }
   };
 
@@ -508,12 +528,235 @@ export default function Orders() {
     return { refundPending, reviewPending, totalAmount, totalRefund, count: total };
   }, [sortedOrders, total]);
 
+  // ── P1-5 键盘流：行间导航辅助 ───────────────────────────────
+  // 提交当前编辑并移动到同一列的上/下一行；提交走既有 handleSave（含校验与错误提示），不绕过。
+  const commitAndMove = (direction: 1 | -1): boolean => {
+    if (!editingCell) return false;
+    const { orderId, field } = editingCell;
+    const idx = sortedOrders.findIndex((o: any) => o.id === orderId);
+    handleSave(); // 复用既有提交路径
+    if (idx === -1) return false;
+    const targetIdx = idx + direction;
+    if (targetIdx < 0 || targetIdx >= sortedOrders.length) return false;
+    const target = sortedOrders[targetIdx];
+    setEditingCell({ orderId: target.id, field });
+    setEditValue(buildEditValue(field, target[field]));
+    return true;
+  };
+
+  // Ctrl/Cmd+D：把上一行同列的值填入当前编辑框（不自动提交，交由 Enter 确认）
+  const copyFromRowAbove = () => {
+    if (!editingCell) return;
+    const { orderId, field } = editingCell;
+    const idx = sortedOrders.findIndex((o: any) => o.id === orderId);
+    if (idx <= 0) return;
+    setEditValue(buildEditValue(field, sortedOrders[idx - 1][field]));
+  };
+
+  // ── P1-11 列表虚拟滚动（手写，零 npm 依赖）──────────────────
+  // 仅当渲染行数超过阈值时才切换到窗口化渲染；否则完全走原有渲染路径（默认分页 20/50/100）。
+  // 注意：订单页分页上限为 100 行/页（PAGE_SIZE_OPTIONS），因此本分支在现有分页策略下
+  // 不会被触发；一旦分页上限提高到 200 以上即自动生效。虚拟模式下行高固定为
+  // VIRTUAL_ROW_HEIGHT（56px，可容纳当前最常见的两行单元格）；由于该分支当前不可达，
+  // 未对单元格追加 truncate/裁剪样式，以免影响常规渲染路径的既有观感。
+  const virtualize = sortedOrders.length > VIRTUALIZE_THRESHOLD;
+  const [tableViewport, setTableViewport] = useState({ scrollTop: 0, height: 600 });
+  const virtualWindow = useMemo(
+    () =>
+      computeVirtualWindow({
+        itemCount: sortedOrders.length,
+        rowHeight: VIRTUAL_ROW_HEIGHT,
+        scrollTop: tableViewport.scrollTop,
+        viewportHeight: tableViewport.height,
+        overscan: VIRTUAL_OVERSCAN,
+      }),
+    [sortedOrders.length, tableViewport]
+  );
+  const visibleOrders = virtualize
+    ? sortedOrders.slice(virtualWindow.startIndex, virtualWindow.endIndex)
+    : sortedOrders;
+  const handleTableScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    setTableViewport({ scrollTop: el.scrollTop, height: el.clientHeight || 600 });
+  };
+
+  // ── P1-4 移动端卡片视图 ─────────────────────────────────────
+  // 与桌面表格共用同一份 react-query 数据与全部状态（筛选/分页/批量选择），
+  // 不新增任何请求，仅按断点切换渲染形态（小屏卡片 md:hidden / 桌面表格 hidden md:block）。
+  const renderOrderCard = (order: any) => {
+    const selected = selectedIds.has(order.id);
+    return (
+      <div
+        key={order.id}
+        className={`rounded-2xl border bg-card p-4 shadow-sm apple-card space-y-3 ${selected ? 'ring-2 ring-indigo-400/60' : ''}`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => handleSelectOne(order.id)}
+              className="p-1 -ml-1 hover:bg-accent rounded shrink-0"
+              title={selected ? '取消选择' : '选择'}
+            >
+              {selected ? <CheckSquare className="h-5 w-5 text-primary" /> : <Square className="h-5 w-5 text-muted-foreground" />}
+            </button>
+            <div className="min-w-0">
+              <p className="font-semibold truncate">{order.taker?.wechatName || '-'}</p>
+              <p className="text-xs text-muted-foreground truncate">{order.taker?.taobaoNickname || '-'}</p>
+            </div>
+          </div>
+          <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">{formatDate(order.orderDate)}</span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-x-3 gap-y-2 text-sm">
+          <div>
+            <p className="text-xs text-muted-foreground">总返款</p>
+            <p className="font-medium text-emerald-600 dark:text-emerald-400">{formatCurrency(calcDisplayTotalRefund(order))}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground">实付</p>
+            <p className="font-medium">{formatCurrency(order.actualPayment)}</p>
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">返款状态</p>
+            {renderStatusSelect(order, 'isRefunded', refundOptions)}
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">好评状态</p>
+            {renderStatusSelect(order, 'isGoodReview', reviewOptions)}
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">返款日期</p>
+            {renderEditableCell(order, 'refundDate', 'date')}
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">基础返佣</p>
+            {renderBaseCommissionCell(order)}
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">好评返佣</p>
+            {renderEditableCell(order, 'reviewCommission', 'number')}
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">19订单号</p>
+            {renderEditableCell(order, 'orderNo19', 'text')}
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">订单编号</p>
+            {renderEditableCell(order, 'orderNo', 'text')}
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">备注</p>
+            {renderEditableCell(order, 'remark', 'text')}
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">作图时间</p>
+            {renderEditableCell(order, 'drawingDate', 'datetime')}
+          </div>
+          <div>
+            <p className="text-xs text-muted-foreground mb-0.5">好评返佣日期</p>
+            {renderEditableCell(order, 'reviewCommissionDate', 'datetime')}
+          </div>
+        </div>
+
+        <div className="text-sm space-y-1">
+          <div className="flex items-center gap-1 min-w-0">
+            <span className="text-xs text-muted-foreground shrink-0">商品</span>
+            <span className="truncate">{order.task?.productName || '-'}</span>
+            {order.productId && (
+              <a
+                href={`https://detail.tmall.com/item.htm?id=${order.productId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-indigo-500 hover:text-indigo-700 dark:text-indigo-400 shrink-0"
+                title="在天猫查看"
+              >
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+          <div className="flex items-center gap-1 min-w-0 text-muted-foreground">
+            <span className="text-xs shrink-0">ID</span>
+            <span className="truncate">{order.productId || '-'}</span>
+            <span className="text-xs shrink-0 ml-1">编号</span>
+            <span className="truncate">{order.productCode || '-'}</span>
+            {order.productCode && (
+              <a
+                href={`http://web.19buy.com/search.aspx?id=${order.productCode}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sky-600 dark:text-sky-400 shrink-0"
+                title="查看产品页面"
+              >
+                ↗
+              </a>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-2 border-t">
+          <div className="flex items-center gap-2 min-w-0">
+            {order.orderLink ? (
+              <>
+                <a
+                  href={order.orderLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sky-600 dark:text-sky-400 text-xs hover:underline"
+                >
+                  打开订单
+                </a>
+                <button
+                  onClick={() => handleCopy(order.orderLink)}
+                  className="text-muted-foreground hover:text-foreground"
+                  title="复制链接"
+                >
+                  <Copy className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  onClick={() => handleCellClick(order.id, 'orderLink', order.orderLink)}
+                  className="text-muted-foreground hover:text-foreground text-xs"
+                  title="编辑链接"
+                >
+                  ✎
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => handleCellClick(order.id, 'orderLink', '')}
+                className="text-muted-foreground hover:text-foreground text-xs"
+                title="点击添加链接"
+              >
+                + 添加链接
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={() => setDrawerOrderId(order.id)}
+              className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-xs hover:bg-accent transition-colors"
+              title="查看详情"
+            >
+              <Eye className="h-4 w-4" /> 详情
+            </button>
+            <button
+              onClick={() => handleDelete(order.id)}
+              className="inline-flex items-center gap-1 rounded-lg border border-rose-200 dark:border-rose-900/40 px-2.5 py-1.5 text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
+              title="删除订单"
+            >
+              <Trash2 className="h-4 w-4" /> 删除
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">接单明细</h2>
-          <p className="text-muted-foreground mt-1">点击任意单元格直接编辑，按 Enter 保存，Esc 取消</p>
+          <p className="text-muted-foreground mt-1">点击任意单元格直接编辑，Enter 保存并下移，↑↓ 上下移动，Ctrl+D 复制上行，Esc 取消</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <ExportDialog
@@ -775,8 +1018,37 @@ export default function Orders() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="rounded-2xl border bg-card shadow-sm overflow-x-auto apple-card">
+      {/* Mobile card view (P1-4)：小屏渲染卡片 */}
+      <div className="md:hidden space-y-3">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={handleSelectAll}
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+          >
+            {selectedIds.size === sortedOrders.length && sortedOrders.length > 0 ? (
+              <CheckSquare className="h-4 w-4 text-primary" />
+            ) : (
+              <Square className="h-4 w-4" />
+            )}
+            {selectedIds.size === sortedOrders.length && sortedOrders.length > 0 ? '取消全选' : '全选'}
+          </button>
+          <span className="text-xs text-muted-foreground">本页 {sortedOrders.length} 条</span>
+        </div>
+        {isLoading ? (
+          <div className="rounded-2xl border bg-card p-8 text-center text-muted-foreground">加载中...</div>
+        ) : sortedOrders.length === 0 ? (
+          <div className="rounded-2xl border bg-card p-8 text-center text-muted-foreground">暂无匹配数据</div>
+        ) : (
+          sortedOrders.map((order: any) => renderOrderCard(order))
+        )}
+      </div>
+
+      {/* Table (desktop) */}
+      <div
+        onScroll={virtualize ? handleTableScroll : undefined}
+        style={virtualize ? { maxHeight: '70vh', overflowY: 'auto' } : undefined}
+        className="hidden md:block rounded-2xl border bg-card shadow-sm overflow-x-auto apple-card"
+      >
         <table className="w-full text-sm">
           <thead>
             <tr className="table-header">
@@ -988,8 +1260,13 @@ export default function Orders() {
                 </td>
               </tr>
             ) : (
-              sortedOrders.map((order: any) => (
-                <tr key={order.id} className={`table-row-hover table-row-zebra ${selectedIds.has(order.id) ? 'table-row-selected' : ''}`}>
+              <>
+                {/* P1-11 虚拟滚动：虚拟模式下用上下占位行撑起滚动高度 */}
+                {virtualize && virtualWindow.padTop > 0 && (
+                  <tr aria-hidden="true" style={{ height: virtualWindow.padTop }} />
+                )}
+                {visibleOrders.map((order: any) => (
+                <tr key={order.id} style={virtualize ? { height: VIRTUAL_ROW_HEIGHT } : undefined} className={`table-row-hover table-row-zebra ${selectedIds.has(order.id) ? 'table-row-selected' : ''}`}>
                   <td className="px-3 py-2">
                     <button
                       onClick={() => handleSelectOne(order.id)}
@@ -1157,7 +1434,11 @@ export default function Orders() {
                     </div>
                   </td>
                 </tr>
-              ))
+                ))}
+                {virtualize && virtualWindow.padBottom > 0 && (
+                  <tr aria-hidden="true" style={{ height: virtualWindow.padBottom }} />
+                )}
+              </>
             )}
           </tbody>
         </table>
