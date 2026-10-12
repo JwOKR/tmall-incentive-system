@@ -99,8 +99,24 @@ export interface BatchImportResult {
   success: number;
   failed: number;
   skipped: number;
-  details: Array<{ orderNo?: string | null; orderNo19?: string | null; status: string; reason?: string; taker?: string; task?: string }>;
-  errors: string[];
+  /** row = 入参行数组下标 + 2（Excel 表头占第 1 行，数据从第 2 行起） */
+  details: Array<{ row: number; orderNo?: string | null; orderNo19?: string | null; status: string; reason?: string; taker?: string; task?: string }>;
+  /** row = 入参行数组下标 + 2；message 为失败原因，便于前端定位到 Excel 具体行 */
+  errors: Array<{ row: number; orderNo?: string | null; message: string }>;
+}
+
+/** 只读预校验：单行结果 */
+export type BatchValidateStatus = 'ok' | 'dup' | 'invalid';
+export interface BatchValidateRow {
+  /** row = 入参行数组下标 + 2（Excel 行号，表头占第 1 行） */
+  row: number;
+  status: BatchValidateStatus;
+  reason?: string;
+}
+/** 只读预校验：整体结果 */
+export interface BatchValidateResult {
+  rows: BatchValidateRow[];
+  summary: { total: number; ok: number; dup: number; invalid: number };
 }
 
 // ──────────────────────────────────────
@@ -327,11 +343,14 @@ export async function batchCreateOrders(rawOrders: any[]): Promise<BatchImportRe
   let success = 0;
   let failed = 0;
   let skipped = 0;
-  const errors: string[] = [];
+  const errors: BatchImportResult['errors'] = [];
   const details: BatchImportResult['details'] = [];
 
   await prisma.$transaction(async (tx) => {
-    for (const item of rawOrders) {
+    for (let idx = 0; idx < rawOrders.length; idx++) {
+      const item = rawOrders[idx];
+      // Excel 行号：表头占第 1 行，数据行从第 2 行起 → 下标 + 2
+      const rowNo = idx + 2;
       try {
         const orderNoStr = item.orderNo ? String(item.orderNo).trim() : null;
         const orderNo19Str = item.orderNo19 ? String(item.orderNo19).trim() : null;
@@ -372,11 +391,11 @@ export async function batchCreateOrders(rawOrders: any[]): Promise<BatchImportRe
         // 重复检查
         if (orderNoStr) {
           const existing = await tx.order.findFirst({ where: { orderNo: orderNoStr } });
-          if (existing) { skipped++; details.push({ orderNo: orderNoStr, status: 'skipped', reason: '订单编号已存在' }); continue; }
+          if (existing) { skipped++; details.push({ row: rowNo, orderNo: orderNoStr, status: 'skipped', reason: '订单编号已存在' }); continue; }
         }
         if (orderNo19Str) {
           const existing = await tx.order.findFirst({ where: { orderNo19: orderNo19Str } });
-          if (existing) { skipped++; details.push({ orderNo: orderNoStr, orderNo19: orderNo19Str, status: 'skipped', reason: '19订单号已存在' }); continue; }
+          if (existing) { skipped++; details.push({ row: rowNo, orderNo: orderNoStr, orderNo19: orderNo19Str, status: 'skipped', reason: '19订单号已存在' }); continue; }
         }
 
         const actualPayment = Number(item.actualPayment) || 0;
@@ -421,15 +440,123 @@ export async function batchCreateOrders(rawOrders: any[]): Promise<BatchImportRe
         }
 
         success++;
-        details.push({ orderNo: orderNoStr, status: 'success', taker: taker?.wechatName || '未匹配', task: task?.productId || '未匹配' });
+        details.push({ row: rowNo, orderNo: orderNoStr, status: 'success', taker: taker?.wechatName || '未匹配', task: task?.productId || '未匹配' });
       } catch (e) {
         failed++;
-        errors.push(`${item.orderNo || item.orderNo19 || '未知'}: ${(e as Error).message}`);
+        errors.push({ row: rowNo, orderNo: item.orderNo || item.orderNo19 || null, message: (e as Error).message });
       }
     }
   });
 
   return { success, failed, skipped, details, errors };
+}
+
+// ──────────────────────────────────────
+// 只读批量预校验（导入前）：不写任何数据，仅返回每行判定与汇总
+// ──────────────────────────────────────
+function toStr(v: unknown): string {
+  if (v === undefined || v === null) return '';
+  return String(v).trim();
+}
+
+export async function validateBatchOrders(rows: any[]): Promise<BatchValidateResult> {
+  if (!Array.isArray(rows) || rows.length === 0) {
+    throw new Error('EMPTY_ORDER_LIST');
+  }
+
+  // 1) 先把所有单号收集起来，**一次性批量查库**（避免循环内 N+1）。
+  const orderNos = new Set<string>();
+  const orderNo19s = new Set<string>();
+  for (const r of rows) {
+    const no = toStr(r?.orderNo);
+    const no19 = toStr(r?.orderNo19);
+    if (no) orderNos.add(no);
+    if (no19) orderNo19s.add(no19);
+  }
+
+  // orderNo / orderNo19 → 库内已存在记录对应的接单人昵称（用于走查重原因文案带上下文）
+  const dbOrderNo = new Map<string, string>();
+  const dbOrderNo19 = new Map<string, string>();
+  if (orderNos.size > 0 || orderNo19s.size > 0) {
+    const OR: any[] = [];
+    if (orderNos.size > 0) OR.push({ orderNo: { in: [...orderNos] } });
+    if (orderNo19s.size > 0) OR.push({ orderNo19: { in: [...orderNo19s] } });
+    const existing = await prisma.order.findMany({
+      where: { OR },
+      select: { orderNo: true, orderNo19: true, taker: { select: { wechatName: true } } },
+    });
+    for (const e of existing) {
+      const takerName = (e as any).taker?.wechatName || '';
+      if (e.orderNo) dbOrderNo.set(e.orderNo, takerName);
+      if (e.orderNo19) dbOrderNo19.set(e.orderNo19, takerName);
+    }
+  }
+
+  // 2) 逐行判定（纯内存 + 上面这一次查询结果）
+  const seenOrderNo = new Map<string, number>();   // 本批内 orderNo 首次出现的行号
+  const seenOrderNo19 = new Map<string, number>(); // 本批内 orderNo19 首次出现的行号
+  const resultRows: BatchValidateRow[] = rows.map((r, idx) => {
+    const row = idx + 2; // Excel 行号：下标 + 2
+    const orderNo = toStr(r?.orderNo);
+    const orderNo19 = toStr(r?.orderNo19);
+
+    // 登记本批出现的单号（无论最终判定如何，后续行都以「首次出现行」为准）
+    const registerSeen = () => {
+      if (orderNo && !seenOrderNo.has(orderNo)) seenOrderNo.set(orderNo, row);
+      if (orderNo19 && !seenOrderNo19.has(orderNo19)) seenOrderNo19.set(orderNo19, row);
+    };
+
+    // a. 订单编号与19订单号至少填一个
+    if (!orderNo && !orderNo19) {
+      return { row, status: 'invalid', reason: '订单编号与19订单号至少填写一个' };
+    }
+
+    // b. 与库内已有单号重复
+    if (orderNo && dbOrderNo.has(orderNo)) {
+      registerSeen();
+      const name = dbOrderNo.get(orderNo);
+      return { row, status: 'dup', reason: `订单编号已存在${name ? `（接单人 ${name}）` : ''}` };
+    }
+    if (orderNo19 && dbOrderNo19.has(orderNo19)) {
+      registerSeen();
+      const name = dbOrderNo19.get(orderNo19);
+      return { row, status: 'dup', reason: `19订单号已存在${name ? `（接单人 ${name}）` : ''}` };
+    }
+
+    // c. 同一批次内重复（前面已出现过相同单号）
+    if (orderNo && seenOrderNo.has(orderNo)) {
+      const first = seenOrderNo.get(orderNo) as number;
+      registerSeen();
+      return { row, status: 'dup', reason: `本文件内重复（第 ${first} 行已出现）` };
+    }
+    if (orderNo19 && seenOrderNo19.has(orderNo19)) {
+      const first = seenOrderNo19.get(orderNo19) as number;
+      registerSeen();
+      return { row, status: 'dup', reason: `本文件内重复（第 ${first} 行已出现）` };
+    }
+
+    // d. 实付金额非法（非数字 / 负数）
+    const rawAmount = r?.actualPayment;
+    if (rawAmount !== undefined && rawAmount !== null && String(rawAmount).trim() !== '') {
+      const n = Number(rawAmount);
+      if (!Number.isFinite(n) || n < 0) {
+        registerSeen();
+        return { row, status: 'invalid', reason: '实付金额非法' };
+      }
+    }
+
+    registerSeen();
+    return { row, status: 'ok' };
+  });
+
+  const summary = {
+    total: resultRows.length,
+    ok: resultRows.filter(r => r.status === 'ok').length,
+    dup: resultRows.filter(r => r.status === 'dup').length,
+    invalid: resultRows.filter(r => r.status === 'invalid').length,
+  };
+
+  return { rows: resultRows, summary };
 }
 
 // ──────────────────────────────────────
@@ -443,7 +570,10 @@ export async function batchUpdateOrders(rawOrders: any[]) {
   const details: any[] = [];
 
   await prisma.$transaction(async (tx) => {
-    for (const item of rawOrders) {
+    for (let idx = 0; idx < rawOrders.length; idx++) {
+      const item = rawOrders[idx];
+      // Excel 行号：表头占第 1 行，数据行从第 2 行起 → 下标 + 2
+      const rowNo = idx + 2;
       try {
         const orderNoStr = item.orderNo ? String(item.orderNo).trim() : null;
         const orderNo19Str = item.orderNo19 ? String(item.orderNo19).trim() : null;
@@ -465,7 +595,7 @@ export async function batchUpdateOrders(rawOrders: any[]) {
 
         if (!existingOrder) {
           notFound++;
-          details.push({ orderNo: orderNoStr || orderNo19Str, status: 'not_found', reason: '订单不存在' });
+          details.push({ row: rowNo, orderNo: orderNoStr || orderNo19Str, status: 'not_found', reason: '订单不存在' });
           continue;
         }
 
@@ -503,7 +633,7 @@ export async function batchUpdateOrders(rawOrders: any[]) {
 
         if (Object.keys(updateData).length <= 1) {
           notFound++;
-          details.push({ orderNo: orderNoStr || orderNo19Str, status: 'skipped', reason: '无需更新的字段' });
+          details.push({ row: rowNo, orderNo: orderNoStr || orderNo19Str, status: 'skipped', reason: '无需更新的字段' });
           continue;
         }
 
@@ -524,7 +654,7 @@ export async function batchUpdateOrders(rawOrders: any[]) {
         if (updateData.remark !== undefined) changes.push(`备注: ${existingOrder.remark || '空'} → ${updateData.remark || '空'}`);
 
         success++;
-        details.push({ orderNo: orderNoStr || orderNo19Str, status: 'success', changes: changes.join(', ') });
+        details.push({ row: rowNo, orderNo: orderNoStr || orderNo19Str, status: 'success', changes: changes.join(', ') });
       } catch (e) {
         failed++;
         errors.push(`${item.orderNo || item.orderNo19 || '未知'}: ${(e as Error).message}`);

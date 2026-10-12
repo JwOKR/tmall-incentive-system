@@ -7,6 +7,7 @@ import {
   batchCreateOrders,
   batchUpdateOrders,
   batchUpdateStatus,
+  validateBatchOrders,
 } from '../controllers/orderController';
 import { requireEditPermission, requireViewPermission } from '../middleware/auth';
 
@@ -14,6 +15,7 @@ const router = Router();
 
 // 批量操作路由（必须在 /:id 之前注册，否则 'batch' 会被当作 id）
 router.post('/batch', requireEditPermission('orders'), batchCreateOrders);
+router.post('/validate-batch', requireEditPermission('orders'), validateBatchOrders);
 router.put('/batch/update', requireEditPermission('orders'), batchUpdateOrders);
 router.put('/batch/status', requireEditPermission('orders'), batchUpdateStatus);
 

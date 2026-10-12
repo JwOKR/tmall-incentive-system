@@ -114,13 +114,36 @@ export const batchCreateOrders = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      data: { ...result, duplicates: result.skipped, details: result.details.slice(0, 20), errors: result.errors.slice(0, 10) },
+      // 返回**完整** details / errors：前端预览已按行展示校验结果，导入后明细表需要
+      // 逐行回显「成功 / 跳过 / 失败 + 原因」。若仍截断到 20/10，问题行会被隐藏、
+      // 且明细表「共 N 条」与实际不符，违背「失败与跳过可读」的目标。仅影响响应体形状，不涉及写入语义。
+      data: { ...result, duplicates: result.skipped, details: result.details, errors: result.errors },
       message: `导入完成: 成功${result.success}条，跳过${result.skipped}条，失败${result.failed}条`,
     });
   } catch (error: any) {
     if (error.message === 'EMPTY_ORDER_LIST') return res.status(400).json({ success: false, message: '请提供订单列表' });
     console.error('Error batch creating orders:', error);
     res.status(500).json({ success: false, message: '批量导入订单失败' });
+  }
+};
+
+// ──────────────────────────────────────
+// POST /orders/validate-batch  （只读预校验：不写库，导入前给用户看每行判定）
+// ──────────────────────────────────────
+export const validateBatchOrders = async (req: Request, res: Response) => {
+  try {
+    const rows = (req.body as any)?.rows;
+    if (!Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ success: false, message: '请提供待校验的行数据' });
+    }
+    const data = await orderService.validateBatchOrders(rows);
+    res.json({ success: true, data });
+  } catch (error: any) {
+    if (error?.message === 'EMPTY_ORDER_LIST') {
+      return res.status(400).json({ success: false, message: '请提供待校验的行数据' });
+    }
+    console.error('Error validating orders batch:', error);
+    res.status(500).json({ success: false, message: '批量校验失败' });
   }
 };
 
@@ -145,7 +168,8 @@ export const batchUpdateOrders = async (req: AuthRequest, res: Response) => {
 
     res.json({
       success: true,
-      data: { ...result, duplicates: result.notFound, details: result.details.slice(0, 20), errors: result.errors.slice(0, 10) },
+      // 同 batchCreateOrders：完整回传 details / errors，保证问题行可读（不涉及写入语义）。
+      data: { ...result, duplicates: result.notFound, details: result.details, errors: result.errors },
       message: `修改完成: 成功${result.success}条，未找到${result.notFound}条，失败${result.failed}条`,
     });
   } catch (error) {

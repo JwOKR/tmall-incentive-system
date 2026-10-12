@@ -80,6 +80,7 @@ export const ordersApi = {
   getById: (id: string) => api.get(`/orders/${id}`),
   create: (data: any) => api.post('/orders', data),
   batchCreate: (orders: any[]) => api.post('/orders/batch', { orders }, { timeout: 120000 }),
+  validateBatch: (rows: any[]) => api.post('/orders/validate-batch', { rows }, { timeout: 60000 }),
   batchUpdate: (orders: any[]) => api.put('/orders/batch/update', { orders }, { timeout: 120000 }),
   batchUpdateStatus: (ids: string[], field: string, value: boolean | string) =>
     api.put('/orders/batch/status', { ids, field, value }),

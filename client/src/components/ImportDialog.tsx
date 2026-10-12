@@ -9,28 +9,115 @@ interface ImportColumn {
   required?: boolean;
 }
 
+type RowStatus = 'ok' | 'dup' | 'invalid';
+
+interface ValidateRow {
+  row: number;
+  status: RowStatus;
+  reason?: string;
+}
+
+interface ValidateResult {
+  rows: ValidateRow[];
+  summary: { total: number; ok: number; dup: number; invalid: number };
+}
+
+interface ImportDetail {
+  row?: number;
+  orderNo?: string | null;
+  orderNo19?: string | null;
+  status?: string;
+  reason?: string;
+  changes?: string;
+  taker?: string;
+  task?: string;
+}
+
+interface ImportErrorItem {
+  row?: number;
+  orderNo?: string | null;
+  message: string;
+}
+
+interface ImportResult {
+  success: number;
+  failed: number;
+  duplicates: number;
+  details?: ImportDetail[];
+  /** 兼容：部分批量接口历史上返回字符串数组 */
+  errors?: Array<ImportErrorItem | string>;
+}
+
 interface ImportDialogProps {
   title: string;
   columns: ImportColumn[];
-  onImport: (data: any[]) => Promise<{ success: number; failed: number; duplicates: number }>;
+  onImport: (data: any[]) => Promise<ImportResult>;
+  /**
+   * 可选：服务端只读预校验（导入前调用，不写库）。
+   * 未传时（如 Takers / Tasks）退化为「仅本地校验」。
+   */
+  onValidate?: (rows: any[]) => Promise<ValidateResult>;
   buttonLabel?: string;
   templateFilename?: string;
   /** create = 新建导入（默认），update = 批量修改（以订单号/19订单号为匹配键，只更新非空字段） */
   mode?: 'create' | 'update';
 }
 
-export default function ImportDialog({ title, columns, onImport, buttonLabel = '导入', templateFilename = '导入模板', mode = 'create' }: ImportDialogProps) {
+/** 预览行：excelRow 为 Excel 中的真实行号（表头占第 1 行）；status/reason 为校验结果 */
+interface PreviewRow {
+  excelRow: number;
+  data: any;
+  status: RowStatus;
+  reason?: string;
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  success: '成功',
+  skipped: '跳过',
+  not_found: '未找到',
+  failed: '失败',
+  ok: '正常',
+  dup: '重复',
+  invalid: '非法',
+};
+
+const PREVIEW_STATUS_LABEL: Record<RowStatus, string> = {
+  ok: '正常',
+  dup: '重复',
+  invalid: '非法',
+};
+
+function detailReason(d: ImportDetail): string {
+  if (d.reason) return d.reason;
+  if (d.changes) return d.changes;
+  if (d.taker || d.task) return `接单人: ${d.taker || '未匹配'} / 任务: ${d.task || '未匹配'}`;
+  return '-';
+}
+
+export default function ImportDialog({
+  title,
+  columns,
+  onImport,
+  onValidate,
+  buttonLabel = '导入',
+  templateFilename = '导入模板',
+  mode = 'create',
+}: ImportDialogProps) {
   const { error: toastError } = useToast();
   const [showDialog, setShowDialog] = useState(false);
   const [file, setFile] = useState<File | null>(null);
-  const [previewData, setPreviewData] = useState<any[]>([]);
+  const [previewRows, setPreviewRows] = useState<PreviewRow[]>([]);
+  const [validating, setValidating] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [result, setResult] = useState<{ success: number; failed: number; duplicates: number } | null>(null);
+  const [result, setResult] = useState<ImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (showDialog && dialogRef.current) dialogRef.current.focus();
   }, [showDialog]);
+
+  const importableRows = previewRows.filter(r => r.status === 'ok');
+  const problemCount = previewRows.length - importableRows.length;
 
   const handleDownloadTemplate = () => {
     // 创建模板数据
@@ -47,7 +134,7 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
 
     // 设置列宽
     const colWidths = columns.map(col => ({
-      wch: Math.max(col.label.length * 2, 15)
+      wch: Math.max(col.label.length * 2, 15),
     }));
     ws['!cols'] = colWidths;
 
@@ -57,113 +144,140 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
     XLSX.writeFile(wb, `${templateFilename}.xlsx`);
   };
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  /**
+   * 单一解析函数（handleFileSelect 与 handleImport 共用，消除历史上两份解析逻辑的不一致）。
+   * 逐单元格读取以保留长数字（>15 位）精度：数字单元格用格式化文本 cell.w 而非 cell.v。
+   * 返回 excelRow（Excel 真实行号）+ 映射后的行数据；整行全空的行在此丢弃（不计入总行数）。
+   */
+  const parseFile = async (f: File): Promise<{ excelRow: number; data: any }[]> => {
+    const buf = await f.arrayBuffer();
+    const workbook = XLSX.read(buf, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    if (!worksheet) return [];
+
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    const headers: string[] = [];
+    for (let col = range.s.c; col <= range.e.c; col++) {
+      const cell = worksheet[XLSX.utils.encode_cell({ r: range.s.r, c: col })];
+      headers.push(cell ? String(cell.v) : '');
+    }
+
+    const out: { excelRow: number; data: any }[] = [];
+    for (let r = range.s.r + 1; r <= range.e.r; r++) {
+      const rowData: any = {};
+      let hasData = false;
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const cell = worksheet[XLSX.utils.encode_cell({ r, c: col })];
+        const header = headers[col - range.s.c];
+        if (cell) {
+          if (cell.t === 'n' && cell.w && String(cell.v).length > 15) {
+            rowData[header] = cell.w; // 长数字：用格式化文本保精度
+          } else {
+            rowData[header] = cell.v;
+          }
+          hasData = true;
+        } else {
+          rowData[header] = '';
+        }
+      }
+      if (!hasData) continue; // 整行全空 → 不计入总行数
+
+      const mapped: any = {};
+      columns.forEach(col => {
+        const value = col.label in rowData ? rowData[col.label] : (col.key in rowData ? rowData[col.key] : '');
+        mapped[col.key] =
+          typeof value === 'number' && ['orderNo', 'orderNo19', 'productId', 'productCode'].includes(col.key)
+            ? String(value)
+            : value;
+      });
+      // r 为 0-based 行下标，+1 得到 Excel 行号
+      out.push({ excelRow: r + 1, data: mapped });
+    }
+    return out;
+  };
+
+  /** 本地校验（不依赖后端）：required 列为空 → invalid；本文件内单号重复 → dup */
+  const localValidate = (parsed: { excelRow: number; data: any }[]): ValidateRow[] => {
+    const seen = new Map<string, number>();
+    return parsed.map(({ excelRow, data }) => {
+      for (const col of columns) {
+        if (!col.required) continue;
+        const v = data[col.key];
+        if (v === undefined || v === null || String(v).trim() === '') {
+          return { row: excelRow, status: 'invalid' as RowStatus, reason: `${col.label}不能为空` };
+        }
+      }
+      const no = data.orderNo !== undefined && data.orderNo !== null ? String(data.orderNo).trim() : '';
+      const no19 = data.orderNo19 !== undefined && data.orderNo19 !== null ? String(data.orderNo19).trim() : '';
+      if (no && seen.has(no)) {
+        return { row: excelRow, status: 'dup' as RowStatus, reason: `本文件内重复（第 ${seen.get(no)} 行已出现）` };
+      }
+      if (no19 && seen.has(no19)) {
+        return { row: excelRow, status: 'dup' as RowStatus, reason: `本文件内重复（第 ${seen.get(no19)} 行已出现）` };
+      }
+      if (no && !seen.has(no)) seen.set(no, excelRow);
+      if (no19 && !seen.has(no19)) seen.set(no19, excelRow);
+      return { row: excelRow, status: 'ok' as RowStatus };
+    });
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
 
     setFile(selectedFile);
     setResult(null);
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const data = event.target?.result;
-        const workbook = XLSX.read(data, { type: 'binary' });
-        const sheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+    try {
+      const parsed = await parseFile(selectedFile);
+      const local = localValidate(parsed);
+      let rows: PreviewRow[] = parsed.map((p, i) => ({
+        excelRow: p.excelRow,
+        data: p.data,
+        status: local[i].status,
+        reason: local[i].reason,
+      }));
 
-        // 映射列名
-        const mappedData = jsonData.map((row: any) => {
-          const mapped: any = {};
-          columns.forEach(col => {
-            // 尝试匹配列名（支持中文和英文），注意不能用||否则false/0会被忽略
-            const value = col.label in row ? row[col.label] : (col.key in row ? row[col.key] : '');
-            mapped[col.key] = value;
-          });
-          return mapped;
-        });
-
-        setPreviewData(mappedData.slice(0, 10)); // 预览前10条
-      } catch (error) {
-        toastError('文件解析失败，请检查文件格式');
-        setFile(null);
-        setPreviewData([]);
+      // 服务端只读预校验（若组件传入了 onValidate）；服务端结果优先覆盖本地对同一行（按顺序）的判定
+      if (onValidate && parsed.length > 0) {
+        setValidating(true);
+        try {
+          const res = await onValidate(parsed.map(p => p.data));
+          const served = res?.rows;
+          if (Array.isArray(served) && served.length === rows.length) {
+            rows = rows.map((r, i) => ({
+              ...r,
+              status: served[i]?.status ?? r.status,
+              reason: served[i]?.reason ?? r.reason,
+            }));
+          }
+        } catch {
+          // 服务端校验不可用 → 保留本地校验结果，不阻断用户流程
+        } finally {
+          setValidating(false);
+        }
       }
-    };
-    reader.readAsBinaryString(selectedFile);
+
+      setPreviewRows(rows);
+    } catch {
+      toastError('文件解析失败，请检查文件格式');
+      setFile(null);
+      setPreviewRows([]);
+    }
   };
 
   const handleImport = async () => {
-    if (!file || previewData.length === 0) return;
+    const rowsToImport = importableRows.map(r => r.data);
+    if (!file || rowsToImport.length === 0) return;
 
     setImporting(true);
     try {
-      // 重新读取完整数据
-      const reader = new FileReader();
-      reader.onload = async (event) => {
-        try {
-          const data = event.target?.result;
-          const workbook = XLSX.read(data, { type: 'binary', raw: true });
-          const sheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[sheetName];
-          
-          // 获取表头行
-          const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
-          const headers: string[] = [];
-          for (let col = range.s.c; col <= range.e.c; col++) {
-            const cell = worksheet[XLSX.utils.encode_cell({ r: range.s.r, c: col })];
-            headers.push(cell ? String(cell.v) : '');
-          }
-          
-          // 手动解析数据行，保留长数字的精度
-          const jsonData: any[] = [];
-          for (let row = range.s.r + 1; row <= range.e.r; row++) {
-            const rowData: any = {};
-            let hasData = false;
-            for (let col = range.s.c; col <= range.e.c; col++) {
-              const cellRef = XLSX.utils.encode_cell({ r: row, c: col });
-              const cell = worksheet[cellRef];
-              const header = headers[col - range.s.c];
-              if (cell) {
-                // 如果是数字且超过15位，使用格式化后的文本值
-                if (cell.t === 'n' && cell.w && String(cell.v).length > 15) {
-                  rowData[header] = cell.w;
-                } else {
-                  rowData[header] = cell.v;
-                }
-                hasData = true;
-              } else {
-                rowData[header] = '';
-              }
-            }
-            if (hasData) jsonData.push(rowData);
-          }
-
-          const mappedData = jsonData.map((row: any) => {
-            const mapped: any = {};
-            columns.forEach(col => {
-              let value = col.label in row ? row[col.label] : (col.key in row ? row[col.key] : '');
-              // 确保数字类型的字段转换为字符串
-              if (typeof value === 'number' && ['orderNo', 'orderNo19', 'productId', 'productCode'].includes(col.key)) {
-                value = String(value);
-              }
-              mapped[col.key] = value;
-            });
-            return mapped;
-          });
-
-          const importResult = await onImport(mappedData);
-          setResult(importResult);
-        } catch (error) {
-          toastError('导入失败：' + (error as Error).message);
-        } finally {
-          setImporting(false);
-        }
-      };
-      reader.readAsBinaryString(file);
+      const importResult = await onImport(rowsToImport);
+      setResult(importResult);
     } catch (error) {
       toastError('导入失败：' + (error as Error).message);
+    } finally {
       setImporting(false);
     }
   };
@@ -171,8 +285,9 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
   const handleClose = () => {
     setShowDialog(false);
     setFile(null);
-    setPreviewData([]);
+    setPreviewRows([]);
     setResult(null);
+    setValidating(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -187,7 +302,7 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
         <Upload className="h-4 w-4" />
         {buttonLabel}
       </button>
-      
+
       {showDialog && (
         <div
           className="modal-overlay"
@@ -209,7 +324,7 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
                 <X className="h-5 w-5" />
               </button>
             </div>
-            
+
             {/* 文件选择 */}
             <div className="mb-6">
               <label className="block text-sm font-medium mb-2">选择文件</label>
@@ -265,38 +380,65 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
               </p>
             </div>
 
-            {/* 预览数据 */}
-            {previewData.length > 0 && (
+            {/* 预览数据（全部行，可滚动） */}
+            {previewRows.length > 0 && (
               <div className="mb-6">
-                <label className="block text-sm font-medium mb-2">
-                  数据预览 (前10条)
-                </label>
-                <div className="overflow-x-auto border rounded-lg">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium">
+                    数据预览（共 {previewRows.length} 行）
+                  </label>
+                  {validating && (
+                    <span className="text-xs text-muted-foreground">正在校验…</span>
+                  )}
+                </div>
+                <div className="max-h-[40vh] overflow-auto border rounded-lg">
                   <table className="w-full text-sm">
-                    <thead>
+                    <thead className="sticky top-0 bg-background">
                       <tr className="table-header">
+                        <th className="px-3 py-2 text-left font-medium whitespace-nowrap">行号</th>
                         {columns.map(col => (
-                          <th key={col.key} className="px-3 py-2 text-left font-medium">
+                          <th key={col.key} className="px-3 py-2 text-left font-medium whitespace-nowrap">
                             {col.label}
                           </th>
                         ))}
+                        <th className="px-3 py-2 text-left font-medium whitespace-nowrap">校验</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {previewData.map((row, index) => (
-                        <tr key={index} className="table-row-hover">
+                      {previewRows.map((row, index) => (
+                        <tr
+                          key={index}
+                          className={row.status === 'ok' ? 'table-row-hover' : 'bg-destructive/10'}
+                        >
+                          <td className="px-3 py-2 text-muted-foreground whitespace-nowrap">{row.excelRow}</td>
                           {columns.map(col => (
-                            <td key={col.key} className="px-3 py-2">
-                              {row[col.key] || '-'}
+                            <td key={col.key} className="px-3 py-2 whitespace-nowrap">
+                              {row.data[col.key] === '' || row.data[col.key] === undefined || row.data[col.key] === null
+                                ? '-'
+                                : String(row.data[col.key])}
                             </td>
                           ))}
+                          <td className="px-3 py-2 whitespace-nowrap">
+                            {row.status === 'ok' ? (
+                              <span className="text-green-600 dark:text-green-400">
+                                {PREVIEW_STATUS_LABEL[row.status]}
+                              </span>
+                            ) : (
+                              <span className="text-destructive">
+                                {PREVIEW_STATUS_LABEL[row.status]}
+                                {row.reason ? `：${row.reason}` : ''}
+                              </span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">
-                  共 {previewData.length} 条数据待导入
+                  共 {previewRows.length} 行，其中 {problemCount} 行有问题；可导入{' '}
+                  <span className="font-medium">{importableRows.length}</span> 行
+                  {problemCount > 0 && '（导入时将自动跳过有问题的行）'}
                 </p>
               </div>
             )}
@@ -333,9 +475,54 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
                     </div>
                   )}
                 </div>
+
+                {/* 明细表：行号 / 单号 / 状态 / 原因 */}
+                {result.details && result.details.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-medium mb-1">明细（共 {result.details.length} 条）</p>
+                    <div className="max-h-48 overflow-auto border rounded-md bg-background">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-background">
+                          <tr className="table-header">
+                            <th className="px-2 py-1 text-left font-medium whitespace-nowrap">行号</th>
+                            <th className="px-2 py-1 text-left font-medium whitespace-nowrap">单号</th>
+                            <th className="px-2 py-1 text-left font-medium whitespace-nowrap">状态</th>
+                            <th className="px-2 py-1 text-left font-medium">原因</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {result.details.map((d, i) => (
+                            <tr key={i} className={d.status === 'success' ? '' : 'bg-destructive/10'}>
+                              <td className="px-2 py-1 text-muted-foreground whitespace-nowrap">{d.row ?? '-'}</td>
+                              <td className="px-2 py-1 whitespace-nowrap">{d.orderNo || d.orderNo19 || '-'}</td>
+                              <td className="px-2 py-1 whitespace-nowrap">{d.status ? STATUS_LABEL[d.status] || d.status : '-'}</td>
+                              <td className="px-2 py-1">{detailReason(d)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* 错误明细 */}
+                {result.errors && result.errors.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-xs font-medium mb-1 text-destructive">错误（共 {result.errors.length} 条）</p>
+                    <ul className="text-xs space-y-0.5">
+                      {result.errors.map((e, i) => (
+                        <li key={i} className="text-destructive">
+                          {typeof e === 'string'
+                            ? e
+                            : `第 ${e.row ?? '?'} 行${e.orderNo ? `（${e.orderNo}）` : ''}：${e.message}`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
-            
+
             <div className="flex justify-end gap-2">
               <button
                 onClick={handleClose}
@@ -346,12 +533,14 @@ export default function ImportDialog({ title, columns, onImport, buttonLabel = '
               {!result && (
                 <button
                   onClick={handleImport}
-                  disabled={!file || previewData.length === 0 || importing}
+                  disabled={!file || previewRows.length === 0 || importableRows.length === 0 || importing || validating}
                   className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   {importing
                     ? (mode === 'update' ? '修改中...' : '导入中...')
-                    : (mode === 'update' ? `批量修改 (${previewData.length} 条)` : `导入 (${previewData.length} 条)`)}
+                    : problemCount > 0
+                      ? `仅导入正常行（${importableRows.length} 条）`
+                      : (mode === 'update' ? `批量修改 (${previewRows.length} 条)` : `导入 (${previewRows.length} 条)`)}
                 </button>
               )}
             </div>

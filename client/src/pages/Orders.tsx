@@ -557,6 +557,12 @@ export default function Orders() {
                 return { success: 0, failed: data.length, duplicates: 0 };
               }
             }}
+            onValidate={async (rows) => {
+              // 服务端只读预校验（POST /orders/validate-batch）。
+              // axios 响应拦截器已把 response.data（响应体）解包，故 res.data 即 { rows, summary }。
+              const res: any = await ordersApi.validateBatch(rows);
+              return res?.data || { rows: [], summary: { total: rows.length, ok: rows.length, dup: 0, invalid: 0 } };
+            }}
             buttonLabel="导入"
           />
           )}
@@ -566,7 +572,7 @@ export default function Orders() {
               templateFilename="订单批量修改模板"
               mode="update"
               columns={[
-                { key: 'orderNo', label: '订单编号', required: true },
+                { key: 'orderNo', label: '订单编号' },
                 { key: 'orderNo19', label: '19订单号' },
                 { key: 'wechatName', label: '微信昵称' },
                 { key: 'actualPayment', label: '实付价' },
