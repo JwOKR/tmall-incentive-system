@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import DatePicker from "@/components/DatePicker";
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi, remindApi } from '@/lib/api';
+import { dashboardApi, remindApi, anomalyApi } from '@/lib/api';
 import { formatCurrency, formatNumber } from '@/lib/utils';
+import { getNotificationPermission, requestNotificationPermission, showSystemNotification } from '@/utils/notify';
 import { useToast } from '@/components/Toast';
 import { DashboardSkeleton } from '@/components/Skeleton';
 import RefundAlertModal from '@/components/RefundAlertModal';
@@ -21,6 +22,7 @@ import {
   Clock,
   Copy,
   X,
+  Bell,
   ListTodo,
   Sparkles,
   RefreshCw,
@@ -130,6 +132,75 @@ export default function AppleDashboard() {
     }
   };
 
+  /* ── P2-9 页面内提醒（只挂在 Dashboard 页内，不进 Layout/全局路由）──
+   * 轮询频率克制：5 分钟一次；document.hidden 时跳过本次，不打爆后端。
+   * 系统通知仅在权限 granted 且计数较上次增加时发送（避免重复轰炸）；
+   * 无权限时回退为页面内提醒条。权限请求只由用户点击按钮触发。 */
+  const ALERT_POLL_INTERVAL_MS = 5 * 60 * 1000;
+
+  const [alerts, setAlerts] = useState<{ overdueOrders: number; overdueAmount: number; anomalies: number } | null>(null);
+  const [showAlertBanner, setShowAlertBanner] = useState(true);
+  const [notifyPermission, setNotifyPermission] = useState(getNotificationPermission());
+  const lastNotifiedRef = useRef<{ overdue: number; anomalies: number }>({ overdue: -1, anomalies: -1 });
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchAlerts = async () => {
+      if (document.hidden) return; // 页面不可见时跳过本次轮询
+      try {
+        const [refundRes, anomalyRes] = await Promise.all([
+          remindApi.getRefundAlerts(),
+          anomalyApi.getAnomalies(),
+        ]);
+        if (cancelled) return;
+        const next = {
+          overdueOrders: (refundRes as any)?.data?.summary?.totalOrders ?? 0,
+          overdueAmount: (refundRes as any)?.data?.summary?.totalAmount ?? 0,
+          anomalies: (anomalyRes as any)?.data?.summary?.totalAnomalies ?? 0,
+        };
+        setAlerts(next);
+        if (notifyPermission === 'granted') {
+          const parts: string[] = [];
+          if (next.overdueOrders > lastNotifiedRef.current.overdue && next.overdueOrders > 0) {
+            parts.push(`超期未返款 ${next.overdueOrders} 单`);
+          }
+          if (next.anomalies > lastNotifiedRef.current.anomalies && next.anomalies > 0) {
+            parts.push(`数据异常 ${next.anomalies} 条`);
+          }
+          if (parts.length > 0) {
+            showSystemNotification('天猫激励提醒', parts.join('；'));
+          }
+        }
+        lastNotifiedRef.current = { overdue: next.overdueOrders, anomalies: next.anomalies };
+      } catch {
+        // 提醒属于锦上添花，失败静默，不影响主数据
+      }
+    };
+    fetchAlerts();
+    const timer = window.setInterval(fetchAlerts, ALERT_POLL_INTERVAL_MS);
+    const onVisibilityChange = () => {
+      if (!document.hidden) fetchAlerts(); // 切回页面时立即补一次
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [notifyPermission]);
+
+  const handleEnableNotifications = async () => {
+    const perm = await requestNotificationPermission();
+    setNotifyPermission(perm);
+    if (perm === 'granted') {
+      toastSuccess('已开启系统通知');
+    } else if (perm === 'denied') {
+      toastError('通知权限被拒绝，将继续使用页面内提醒');
+    } else if (perm === 'unsupported') {
+      toastError('当前浏览器不支持系统通知，将继续使用页面内提醒');
+    }
+  };
+
   if (isLoading) {
     return <DashboardSkeleton />;
   }
@@ -191,7 +262,7 @@ export default function AppleDashboard() {
       accent: 'stat-accent-amber',
       iconBg: 'bg-amber-100 dark:bg-amber-950/40',
       iconColor: 'text-amber-600 dark:text-amber-400',
-      description: '本月活跃人数',
+      description: '当前活跃状态人数',
     },
   ];
 
@@ -281,6 +352,58 @@ export default function AppleDashboard() {
           </div>
         </div>
       </div>
+
+      {/* P2-9 提醒条（可关闭；仅 Dashboard 页内，数据由 5 分钟轮询驱动） */}
+      {showAlertBanner && alerts && (alerts.overdueOrders > 0 || alerts.anomalies > 0) && (
+        <div className="flex items-center justify-between gap-3 flex-wrap px-5 py-3 rounded-2xl border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30">
+          <div className="flex items-center gap-4 flex-wrap">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <span className="apple-text-headline text-amber-700 dark:text-amber-400">待办提醒</span>
+            </div>
+            {alerts.overdueOrders > 0 && (
+              <Link
+                to="/orders?refund=false"
+                className="text-sm font-medium text-amber-700 dark:text-amber-300 hover:underline tabular-nums"
+              >
+                超期未返款 {alerts.overdueOrders} 单
+              </Link>
+            )}
+            {alerts.anomalies > 0 && (
+              <Link
+                to="/anomalies"
+                className="text-sm font-medium text-amber-700 dark:text-amber-300 hover:underline tabular-nums"
+              >
+                数据异常 {alerts.anomalies} 条
+              </Link>
+            )}
+            <span className="text-xs text-muted-foreground">每 5 分钟自动检查</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {notifyPermission === 'granted' ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <Bell className="h-3.5 w-3.5" />
+                系统通知已开启
+              </span>
+            ) : (
+              <button
+                onClick={handleEnableNotifications}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+              >
+                <Bell className="h-3.5 w-3.5" />
+                开启系统通知
+              </button>
+            )}
+            <button
+              onClick={() => setShowAlertBanner(false)}
+              className="p-1.5 rounded-lg text-muted-foreground hover:bg-amber-100 dark:hover:bg-amber-900/40 transition-colors"
+              aria-label="关闭提醒"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Apple-style Summary Modal */}
       {showSummary && (
@@ -524,7 +647,7 @@ export default function AppleDashboard() {
                 </div>
                 <div>
                   <p className="apple-text-headline">待返款订单</p>
-                  <p className="apple-text-footnote text-muted-foreground">需要立即处理</p>
+                  <p className="apple-text-footnote text-muted-foreground">{`统计范围：${stats?.rangeLabel || '今日'}`}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -542,7 +665,7 @@ export default function AppleDashboard() {
                 </div>
                 <div>
                   <p className="apple-text-headline">待好评订单</p>
-                  <p className="apple-text-footnote text-muted-foreground">等待用户评价</p>
+                  <p className="apple-text-footnote text-muted-foreground">{`统计范围：${stats?.rangeLabel || '今日'}`}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
@@ -580,7 +703,7 @@ export default function AppleDashboard() {
               </div>
               <div>
                 <h3 className="apple-text-title-3">接单人排行</h3>
-                <p className="apple-text-footnote text-muted-foreground">本月表现最佳</p>
+                <p className="apple-text-footnote text-muted-foreground">{stats?.topTakersLabel || '按当前筛选统计'}</p>
               </div>
             </div>
             <Link
@@ -744,7 +867,7 @@ export default function AppleDashboard() {
               <BarChart3 className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <h3 className="apple-text-title-3">近7天明细</h3>
+              <h3 className="apple-text-title-3">{`${stats?.dailySummaryLabel || '近7天'}明细`}</h3>
               <p className="apple-text-footnote text-muted-foreground">每日订单数据详情</p>
             </div>
           </div>
@@ -787,7 +910,7 @@ export default function AppleDashboard() {
                   <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
                     <BarChart3 className="h-12 w-12 mx-auto mb-4" />
                     <p className="apple-text-headline">暂无数据</p>
-                    <p className="apple-text-body">暂无近7天的订单数据</p>
+                    <p className="apple-text-body">{`暂无${stats?.dailySummaryLabel || '该范围'}的订单数据`}</p>
                   </td>
                 </tr>
               )}

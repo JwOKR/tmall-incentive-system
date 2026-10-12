@@ -136,6 +136,18 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     sevenDaysAgo.setHours(0, 0, 0, 0);
 
+    // ── P2-7 口径统一决策（三项一起改，杜绝「看起来能筛其实不能筛」的半吊子状态）──
+    //   1) dailySummary：跟随筛选；未设筛选时保持「近7天」默认窗口，
+    //      实际口径通过 dailySummaryLabel 返回给前端（前端只展示，不自行判定）。
+    //   2) topTakers：改为按所选区间的真实订单聚合排行（原先是接单人表的历史累计
+    //      totalOrders/totalAmount，标「本月」实为全期，口径错误）。
+    //   3) pendingRefundCount / pendingReviewCount：在 dateFilter 基础上叠加订单级状态，
+    //      跟随筛选。返款用订单级 isRefunded（分项级 isBaseCommissionRefunded 不参与统计），
+    //      isGoodReview 是字符串状态字段，一律字符串比较，禁止真值判断。
+    const hasDateFilter = Boolean(startDate || endDate);
+    const dailyFilter = hasDateFilter ? dateFilter : { orderDate: { gte: sevenDaysAgo } };
+    const dailySummaryLabel = hasDateFilter ? rangeLabel : '近7天';
+
     const [
       orderStats,
       takerCount,
@@ -146,17 +158,17 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       rangeStats,
       pendingRefundCount,
       pendingReviewCount,
-      topTakers,
+      topTakersRaw,
       recentOrders,
     ] = await Promise.all([
-      // 总数据（不受日期筛选影响）
+      // 总数据（不受日期筛选影响；卡片标题即「总」，口径显式为全量）
       prisma.order.aggregate({
         _count: true,
         _sum: { actualPayment: true, totalRefund: true },
       }),
       prisma.orderTaker.count({ where: { status: 'active' } }),
       prisma.task.count({ where: { status: 'active' } }),
-      // 今日数据（始终显示）
+      // 今日数据（始终显示；卡片标题即「今日」）
       prisma.order.count({ where: { orderDate: { gte: today } } }),
       prisma.order.aggregate({
         where: { orderDate: { gte: today } },
@@ -168,18 +180,45 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         where: dateFilter,
         _sum: { actualPayment: true, totalRefund: true },
       }),
-      prisma.order.count({ where: { isRefunded: false } }),
-      prisma.order.count({ where: { isGoodReview: 'pending' } }),
-      prisma.orderTaker.findMany({
+      // 待返款：跟随筛选（订单级 isRefunded 判定）
+      prisma.order.count({ where: { ...dateFilter, isRefunded: false } }),
+      // 待好评：跟随筛选（isGoodReview 字符串字段，用字符串比较）
+      prisma.order.count({ where: { ...dateFilter, isGoodReview: 'pending' } }),
+      // 接单人排行：按所选区间的真实订单聚合（不再是接单人表的历史累计值）
+      prisma.order.groupBy({
+        by: ['takerId'],
+        where: dateFilter,
+        _count: { _all: true },
+        _sum: { actualPayment: true },
+        orderBy: { _count: { takerId: 'desc' } },
         take: 5,
-        orderBy: { totalOrders: 'desc' },
-        select: { id: true, wechatName: true, wechatId: true, totalOrders: true, totalAmount: true },
       }),
+      // 日汇总明细：跟随筛选；未筛选时为「近7天」默认窗口
       prisma.order.findMany({
-        where: { orderDate: { gte: sevenDaysAgo } },
+        where: dailyFilter,
         select: { orderDate: true, totalRefund: true, isRefunded: true, isGoodReview: true },
       }),
     ]);
+
+    // 补齐接单人昵称（groupBy 只返回 takerId）
+    const topTakerIds = topTakersRaw.map((r: any) => r.takerId).filter((id: any) => Boolean(id));
+    const topTakerRows = topTakerIds.length > 0
+      ? await prisma.orderTaker.findMany({
+          where: { id: { in: topTakerIds } },
+          select: { id: true, wechatName: true, wechatId: true },
+        })
+      : [];
+    const topTakerMap = new Map<string, any>(topTakerRows.map((t: any): [string, any] => [t.id, t]));
+    const topTakers = topTakersRaw.map((r: any) => {
+      const taker = r.takerId ? topTakerMap.get(r.takerId) : null;
+      return {
+        id: r.takerId || 'unknown',
+        wechatName: taker?.wechatName || '未匹配',
+        wechatId: taker?.wechatId || '',
+        totalOrders: Number(r._count?._all ?? 0),
+        totalAmount: Number(r._sum?.actualPayment ?? 0),
+      };
+    });
 
     // 按日期分组统计
     const dailyMap = new Map<string, {
@@ -235,6 +274,9 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       pendingRefundCount,
       pendingReviewCount,
       topTakers,
+      // 口径标签（前端只展示，不自行判定口径）
+      dailySummaryLabel,
+      topTakersLabel: `${rangeLabel}接单排行`,
       dailySummary,
     };
 
