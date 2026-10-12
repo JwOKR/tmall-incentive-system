@@ -539,7 +539,7 @@ export async function batchUpdateOrders(rawOrders: any[]) {
 export async function batchUpdateOrderStatus(ids: string[], field: 'isRefunded' | 'isGoodReview' | 'isBaseCommissionRefunded', value: boolean | string) {
   const orders = await prisma.order.findMany({
     where: { id: { in: ids } },
-    select: { id: true, actualPayment: true, baseCommission: true, reviewCommission: true },
+    select: { id: true, actualPayment: true, baseCommission: true, reviewCommission: true, refundDate: true },
   });
 
   // 是否本次批量标记为「已好评」：与单条路径同一口径（parseReviewStatus 归一化）。
@@ -553,7 +553,17 @@ export async function batchUpdateOrderStatus(ids: string[], field: 'isRefunded' 
       // 基础返佣返款状态：必须落成真正的布尔值，避免前端传字符串 'true' 写坏。
       // 该字段**不记录日期**（与订单级 isRefunded 不同），因此这里绝不写任何时间戳。
       if (field === 'isBaseCommissionRefunded') updateData.isBaseCommissionRefunded = parseBoolValue(value);
-      if (field === 'isRefunded' && value) updateData.refundDate = new Date();
+      if (field === 'isRefunded') {
+        // 返款日期口径（修复静默覆盖）：
+        //   - 标记为「已返款」时，仅在订单原本没有 refundDate 的情况下回填当前时间，
+        //     绝不覆盖已有的真实返款日期（历史数据/手工录入的对账日期必须保留）；
+        //   - 标记为「未返款」时同步清空 refundDate，避免状态与日期自相矛盾。
+        if (value) {
+          updateData.refundDate = order.refundDate ?? new Date();
+        } else {
+          updateData.refundDate = null;
+        }
+      }
 
       // 好评返佣金额的最终取值：标记「已好评」时一律覆盖为配置值，否则保持原值。
       let review = order.reviewCommission;

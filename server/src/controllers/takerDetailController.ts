@@ -49,7 +49,9 @@ export const getTakerDetail = async (req: Request, res: Response) => {
     const totalReviewCommission = allOrders.reduce((s, o) => s + o.reviewCommission, 0);
     const totalRefund = allOrders.reduce((s, o) => s + o.totalRefund, 0);
     const refundedCount = allOrders.filter(o => o.isRefunded).length;
-    const goodReviewCount = allOrders.filter(o => o.isGoodReview).length;
+    // isGoodReview 是字符串状态（'pending' / 'reviewed' / 'creating' / 'returned'），
+    // 只有 'reviewed' 才算已好评；此前直接真值判断会把非空状态串全算进去，导致待好评恒为 0。
+    const goodReviewCount = allOrders.filter(o => o.isGoodReview === 'reviewed').length;
     const pendingRefund = totalOrders - refundedCount;
     const pendingReview = totalOrders - goodReviewCount;
 

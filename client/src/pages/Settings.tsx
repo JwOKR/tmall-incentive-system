@@ -584,6 +584,8 @@ export default function Settings() {
                             { key: 'intervals', label: '接单间隔' },
                             { key: 'commissions', label: '佣金分析' },
                             { key: 'logs', label: '操作日志' },
+                            { key: 'anomalies', label: '异常预警' },
+                            { key: 'export', label: '数据导出' },
                             { key: 'repeatDiscounts', label: '回头客立减' },
                           ].map(({ key, label }) => {
                             const perm = userForm.permissions?.[key] || { view: false, edit: false };
