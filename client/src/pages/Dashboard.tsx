@@ -7,7 +7,7 @@ import { getNotificationPermission, requestNotificationPermission, showSystemNot
 import { useToast } from '@/components/Toast';
 import { DashboardSkeleton } from '@/components/Skeleton';
 import RefundAlertModal from '@/components/RefundAlertModal';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   ShoppingCart,
   Users,
@@ -42,6 +42,8 @@ import {
   Filler,
 } from 'chart.js';
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
+import OptionalLink from '@/components/OptionalLink';
+import { usePermissions } from '@/lib/permissions';
 
 ChartJS.register(
   CategoryScale,
@@ -60,6 +62,12 @@ export default function AppleDashboard() {
   const { success: toastSuccess, error: toastError } = useToast();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  // 跳转入口按目标模块权限降级：无权时卡片保留展示、仅取消跳转（避免点进「权限不足」页）
+  const { canView } = usePermissions();
+  const canViewOrders = canView('orders');
+  const canViewTakers = canView('takers');
+  const canViewTasks = canView('tasks');
+  const canViewAnomalies = canView('anomalies');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -362,20 +370,20 @@ export default function AppleDashboard() {
               <span className="apple-text-headline text-amber-700 dark:text-amber-400">待办提醒</span>
             </div>
             {alerts.overdueOrders > 0 && (
-              <Link
-                to="/orders?refund=false"
-                className="text-sm font-medium text-amber-700 dark:text-amber-300 hover:underline tabular-nums"
+              <OptionalLink
+                to={canViewOrders ? '/orders?refund=false' : undefined}
+                className={`text-sm font-medium text-amber-700 dark:text-amber-300 tabular-nums ${canViewOrders ? 'hover:underline' : ''}`}
               >
                 超期未返款 {alerts.overdueOrders} 单
-              </Link>
+              </OptionalLink>
             )}
             {alerts.anomalies > 0 && (
-              <Link
-                to="/anomalies"
-                className="text-sm font-medium text-amber-700 dark:text-amber-300 hover:underline tabular-nums"
+              <OptionalLink
+                to={canViewAnomalies ? '/anomalies' : undefined}
+                className={`text-sm font-medium text-amber-700 dark:text-amber-300 tabular-nums ${canViewAnomalies ? 'hover:underline' : ''}`}
               >
                 数据异常 {alerts.anomalies} 条
-              </Link>
+              </OptionalLink>
             )}
             <span className="text-xs text-muted-foreground">每 5 分钟自动检查</span>
           </div>
@@ -637,9 +645,11 @@ export default function AppleDashboard() {
             </div>
           </div>
           <div className="space-y-4">
-            <Link
-              to="/orders?refund=false"
-              className="flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-950/20 rounded-2xl hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors group apple-card"
+            <OptionalLink
+              to={canViewOrders ? '/orders?refund=false' : undefined}
+              className={`flex items-center justify-between p-4 bg-amber-50 dark:bg-amber-950/20 rounded-2xl apple-card ${
+                canViewOrders ? 'hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors group' : ''
+              }`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center">
@@ -654,10 +664,12 @@ export default function AppleDashboard() {
                 <span className="apple-text-title-3 text-amber-600 dark:text-amber-400 tabular-nums">{stats?.pendingRefundCount || 0}</span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
               </div>
-            </Link>
-            <Link
-              to="/orders?review=false"
-              className="flex items-center justify-between p-4 bg-sky-50 dark:bg-sky-950/20 rounded-2xl hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors group apple-card"
+            </OptionalLink>
+            <OptionalLink
+              to={canViewOrders ? '/orders?review=false' : undefined}
+              className={`flex items-center justify-between p-4 bg-sky-50 dark:bg-sky-950/20 rounded-2xl apple-card ${
+                canViewOrders ? 'hover:bg-sky-100 dark:hover:bg-sky-900/30 transition-colors group' : ''
+              }`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-sky-100 dark:bg-sky-950/40 flex items-center justify-center">
@@ -672,10 +684,12 @@ export default function AppleDashboard() {
                 <span className="apple-text-title-3 text-sky-600 dark:text-sky-400 tabular-nums">{stats?.pendingReviewCount || 0}</span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
               </div>
-            </Link>
-            <Link
-              to="/tasks"
-              className="flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors group apple-card"
+            </OptionalLink>
+            <OptionalLink
+              to={canViewTasks ? '/tasks' : undefined}
+              className={`flex items-center justify-between p-4 bg-emerald-50 dark:bg-emerald-950/20 rounded-2xl apple-card ${
+                canViewTasks ? 'hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition-colors group' : ''
+              }`}
             >
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
@@ -690,7 +704,7 @@ export default function AppleDashboard() {
                 <span className="apple-text-title-3 text-emerald-600 dark:text-emerald-400 tabular-nums">{stats?.activeTasks || 0}</span>
                 <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
               </div>
-            </Link>
+            </OptionalLink>
           </div>
         </div>
 
@@ -706,13 +720,15 @@ export default function AppleDashboard() {
                 <p className="apple-text-footnote text-muted-foreground">{stats?.topTakersLabel || '按当前筛选统计'}</p>
               </div>
             </div>
-            <Link
-              to="/takers"
-              className="apple-text-footnote text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium"
+            <OptionalLink
+              to={canViewTakers ? '/takers' : undefined}
+              className={`apple-text-footnote text-indigo-600 dark:text-indigo-400 flex items-center gap-1 font-medium ${
+                canViewTakers ? 'hover:underline' : ''
+              }`}
             >
               查看全部
               <ArrowRight className="h-3 w-3" />
-            </Link>
+            </OptionalLink>
           </div>
           <div className="space-y-3">
             {stats?.topTakers?.slice(0, 5).map((taker: any, index: number) => (
@@ -766,7 +782,7 @@ export default function AppleDashboard() {
               </div>
               <div>
                 <h3 className="apple-text-title-3">接单趋势</h3>
-                <p className="apple-text-footnote text-muted-foreground">点击数据点查看当日订单</p>
+                <p className="apple-text-footnote text-muted-foreground">{canViewOrders ? '点击数据点查看当日订单' : '数据仅供查看'}</p>
               </div>
             </div>
             <button
@@ -782,7 +798,7 @@ export default function AppleDashboard() {
               <OrderTrendChart
                 data={[...stats.dailySummary].reverse()}
                 chartRef={trendChartRef}
-                onPointClick={(date) => navigate(`/orders?date=${date}`)}
+                onPointClick={canViewOrders ? (date) => navigate(`/orders?date=${date}`) : undefined}
               />
             </div>
           ) : (
@@ -824,7 +840,7 @@ export default function AppleDashboard() {
             </div>
             <div>
               <h3 className="apple-text-title-3">接单人 TOP5</h3>
-              <p className="apple-text-footnote text-muted-foreground">点击柱状条查看详情</p>
+              <p className="apple-text-footnote text-muted-foreground">{canViewTakers ? '点击柱状条查看详情' : '数据仅供查看'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -835,13 +851,15 @@ export default function AppleDashboard() {
               <Download className="h-3.5 w-3.5" />
               导出图片
             </button>
-            <Link
-              to="/takers"
-              className="apple-text-footnote text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1 font-medium"
+            <OptionalLink
+              to={canViewTakers ? '/takers' : undefined}
+              className={`apple-text-footnote text-indigo-600 dark:text-indigo-400 flex items-center gap-1 font-medium ${
+                canViewTakers ? 'hover:underline' : ''
+              }`}
             >
               查看全部
               <ArrowRight className="h-3 w-3" />
-            </Link>
+            </OptionalLink>
           </div>
         </div>
         {stats?.topTakers && stats.topTakers.length > 0 ? (
@@ -849,7 +867,7 @@ export default function AppleDashboard() {
             <TopTakersChart
               data={stats.topTakers.slice(0, 5)}
               chartRef={topTakersChartRef}
-              onBarClick={(takerId) => navigate(`/takers/${takerId}`)}
+              onBarClick={canViewTakers ? (takerId) => navigate(`/takers/${takerId}`) : undefined}
             />
           </div>
         ) : (

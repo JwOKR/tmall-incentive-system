@@ -35,42 +35,10 @@ import { usePermissions } from '@/lib/permissions';
 import { useQuery } from '@tanstack/react-query';
 import { anomalyApi } from '@/lib/api';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
+import OptionalLink from '@/components/OptionalLink';
 
 interface LayoutProps {
   children: ReactNode;
-}
-
-/**
- * 可选跳转容器：有 to 时渲染为可点击的 <Link>，无 to 时渲染为**不可点击的 <div>**
- * （同一份 children，避免复制两份 inner JSX）。
- *
- * 用途（都是「目标路由可能无权访问，需按权限降级为不可点击」的场景）：
- * - 账户入口卡片：`/settings` 已收紧为 admin-only（RequireAdmin），非管理员不给目标；
- * - 顶栏通知 Bell：按 anomalies / logs 权限决定去向，两者都无权限时不给目标。
- */
-function OptionalLink({
-  to,
-  className,
-  title,
-  children,
-}: {
-  to?: string;
-  className: string;
-  title?: string;
-  children: ReactNode;
-}) {
-  if (to) {
-    return (
-      <Link to={to} className={className} title={title}>
-        {children}
-      </Link>
-    );
-  }
-  return (
-    <div className={className} title={title}>
-      {children}
-    </div>
-  );
 }
 
 // 激励登记模块导航
