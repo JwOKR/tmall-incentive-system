@@ -25,6 +25,7 @@ import { useToast } from '@/components/Toast';
 import { useConfirm } from '@/components/ConfirmDialog';
 import { formatDate } from '@/lib/utils';
 import HelpDictionary from '@/components/HelpDictionary';
+import ChangePasswordForm from '@/components/ChangePasswordForm';
 
 type ModulePermission = { view: boolean; edit: boolean };
 type PermissionMap = Record<string, ModulePermission>;
@@ -75,10 +76,6 @@ export default function Settings() {
   const { success: toastSuccess, error: toastError } = useToast();
   const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState<'account' | 'password' | 'shortcuts' | 'backup' | 'users' | 'ai' | 'order'>('account');
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [changing, setChanging] = useState(false);
   const [backingUp, setBackingUp] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importMode, setImportMode] = useState<'merge' | 'overwrite'>('merge');
@@ -101,39 +98,6 @@ export default function Settings() {
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [userForm, setUserForm] = useState({ username: '', password: '', role: 'user', permissions: {} as Record<string, { view: boolean; edit: boolean }> });
-
-  const handleChangePassword = async () => {
-    if (!oldPassword || !newPassword) {
-      toastError('请填写旧密码和新密码');
-      return;
-    }
-    if (newPassword.length < 6) {
-      toastError('新密码至少6位');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      toastError('两次输入的新密码不一致');
-      return;
-    }
-
-    setChanging(true);
-    try {
-      const { default: api } = await import('@/lib/api');
-      const res: any = await api.put('/auth/password', { oldPassword, newPassword });
-      if (res.success) {
-        toastSuccess('密码修改成功');
-        setOldPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      } else {
-        toastError(res.message || '密码修改失败');
-      }
-    } catch (err: any) {
-      toastError(err?.response?.data?.message || '密码修改失败');
-    } finally {
-      setChanging(false);
-    }
-  };
 
   // 加载用户列表
   const loadUsers = async () => {
@@ -366,45 +330,8 @@ export default function Settings() {
         {activeTab === 'password' && (
           <div className="space-y-4">
             <h3 className="text-lg font-semibold">修改密码</h3>
-            <div className="max-w-md space-y-4">
-              <div>
-                <label className="text-sm font-medium">旧密码</label>
-                <input
-                  type="password"
-                  value={oldPassword}
-                  onChange={(e) => setOldPassword(e.target.value)}
-                  placeholder="请输入旧密码"
-                  className="apple-input rounded-lg mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">新密码</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="至少6位"
-                  className="apple-input rounded-lg mt-1"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">确认新密码</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="再次输入新密码"
-                  className="apple-input rounded-lg mt-1"
-                />
-              </div>
-              <button
-                onClick={handleChangePassword}
-                disabled={changing}
-                className="apple-btn inline-flex items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
-              >
-                {changing && <Loader2 className="h-4 w-4 animate-spin" />}
-                {changing ? '修改中...' : '确认修改'}
-              </button>
+            <div className="max-w-md">
+              <ChangePasswordForm />
             </div>
           </div>
         )}

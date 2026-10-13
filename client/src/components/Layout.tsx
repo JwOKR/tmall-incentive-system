@@ -1,4 +1,4 @@
-import { useState, ReactNode, useEffect, useCallback } from 'react';
+import { useState, ReactNode, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -26,12 +26,15 @@ import {
   ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
+  ChevronDown,
+  KeyRound,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/lib/permissions';
 import { useQuery } from '@tanstack/react-query';
 import { anomalyApi } from '@/lib/api';
+import ChangePasswordForm from '@/components/ChangePasswordForm';
 
 interface LayoutProps {
   children: ReactNode;
@@ -101,6 +104,10 @@ export default function AppleLayout({ children }: LayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  // 顶栏用户菜单 / 修改密码弹窗（A2）
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [pwdOpen, setPwdOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
 
   // P2-6 异常角标：取真实异常数（GET /api/anomalies → data.summary.totalAnomalies）。
   // 看板类查询：staleTime 0 + refetchOnMount 'always'（覆盖全局 5 分钟 staleTime）；
@@ -137,6 +144,42 @@ export default function AppleLayout({ children }: LayoutProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // 顶栏用户菜单：点击外部 / Esc 关闭（仅菜单打开时挂监听）
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setUserMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onMouseDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [userMenuOpen]);
+
+  // 路由变化时关闭用户菜单
+  useEffect(() => {
+    setUserMenuOpen(false);
+  }, [location.pathname]);
+
+  // 修改密码弹窗：Esc 关闭。
+  // 全局 useKeyboardShortcuts 对 Esc 是「直接 return、不拦截」，故两者不会打架；
+  // 本监听仅在弹窗打开时存在，关闭后即移除。
+  useEffect(() => {
+    if (!pwdOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPwdOpen(false);
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [pwdOpen]);
 
   const handleLogout = () => {
     logout();
@@ -456,22 +499,55 @@ export default function AppleLayout({ children }: LayoutProps) {
               )}
             </OptionalLink>
             
-            {/* User Avatar */}
-            <OptionalLink
-              to={isAdminUser ? '/settings' : undefined}
-              className={`flex items-center gap-2.5 p-1.5 rounded-lg ${
-                isAdminUser ? 'hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors' : ''
-              }`}
-              title={isAdminUser ? '个人设置' : (user?.username || '未知')}
-            >
-              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 flex items-center justify-center">
-                <User className="h-3.5 w-3.5 text-white" />
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-xs font-medium">{user?.username || '未知'}</p>
-                <p className="text-[10px] text-muted-foreground">{user?.role === 'admin' ? '管理员' : '普通用户'}</p>
-              </div>
-            </OptionalLink>
+            {/* User Menu（A2）：所有登录用户可点击，非 admin 也能改密码，顺带消掉断头路 */}
+            <div className="relative" ref={userMenuRef}>
+              <button
+                type="button"
+                onClick={() => setUserMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={userMenuOpen}
+                className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title={user?.username || '未知'}
+              >
+                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 flex items-center justify-center">
+                  <User className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div className="hidden sm:block text-left">
+                  <p className="text-xs font-medium">{user?.username || '未知'}</p>
+                  <p className="text-[10px] text-muted-foreground">{user?.role === 'admin' ? '管理员' : '普通用户'}</p>
+                </div>
+                <ChevronDown className={`hidden sm:block h-3.5 w-3.5 text-muted-foreground transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {userMenuOpen && (
+                <div
+                  role="menu"
+                  aria-label="用户菜单"
+                  className="dropdown-content absolute right-0 top-full mt-2 z-40 min-w-[11rem] rounded-xl border bg-card shadow-lg p-1"
+                >
+                  {isAdminUser && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => { setUserMenuOpen(false); navigate('/settings'); }}
+                      className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-left hover:bg-accent transition-colors"
+                    >
+                      <SettingsIcon className="h-4 w-4 text-muted-foreground" />
+                      系统设置
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setUserMenuOpen(false); setPwdOpen(true); }}
+                    className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-left hover:bg-accent transition-colors"
+                  >
+                    <KeyRound className="h-4 w-4 text-muted-foreground" />
+                    修改密码
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         
@@ -479,6 +555,30 @@ export default function AppleLayout({ children }: LayoutProps) {
           {children}
         </div>
       </main>
+
+      {/* 修改密码弹窗（A2）：所有登录用户可用。
+          用 .modal-overlay 会被全局 useBodyScrollLock 的 MutationObserver 识别并锁 body 滚动；
+          放在根 div 下（而非 sticky 顶栏内），避免落入顶栏 z-30 的层叠上下文而压不过侧栏(z-50)。 */}
+      {pwdOpen && (
+        <div
+          className="modal-overlay"
+          onClick={() => setPwdOpen(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setPwdOpen(false)}
+          tabIndex={-1}
+        >
+          <div className="modal-content modal-md p-6" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">修改密码</h3>
+              <button onClick={() => setPwdOpen(false)} className="p-1 hover:bg-accent rounded-md" title="关闭">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <ChangePasswordForm
+              onSuccess={() => { setPwdOpen(false); setUserMenuOpen(false); }}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
