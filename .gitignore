@@ -10,6 +10,10 @@ coverage/
 build/
 dist/
 
+# Vite 配置探测时生成的临时文件（含生成机器上的绝对路径，曾误入库一次）
+vite.config.ts.timestamp-*.mjs
+vite.config.ts.timestamp-*.mts
+
 # Environment
 .env
 .env.local
