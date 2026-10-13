@@ -102,4 +102,20 @@ export function requireViewPermission(module: string) {
   };
 }
 
+// 仅管理员可访问的中间件（真正的 admin-only 硬拒）。
+// 与 requireViewPermission / requireEditPermission 的语义区别：那两个只要非管理员
+// 在 permissions 里勾了对应模块就放行；本中间件**不看 permissions**，
+// 非管理员即使被授予了 settings 模块权限也一律 403。
+export function requireAdmin(req: AuthRequest, res: Response, next: NextFunction) {
+  if (req.userRole === 'admin') {
+    return next();
+  }
+
+  return res.status(403).json({
+    success: false,
+    message: '权限不足，仅管理员可操作',
+    code: 'FORBIDDEN',
+  });
+}
+
 export { JWT_SECRET };

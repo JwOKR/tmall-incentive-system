@@ -74,3 +74,28 @@ export function RequirePermission({ module, children }: { module: string; childr
   if (!canView(module)) return <NoPermission module={module} />;
   return <>{children}</>;
 }
+
+// 管理员专属守卫（admin-only 硬拒，与后端 requireAdmin 对齐）。
+// 注意：settings 模块权限在前后端都不再作为「系统设置」的放行条件 —— 普通用户即使被勾选了
+// settings，也进不去该页。判定只在路由层用本组件包裹，页面组件内不得写 if (!isAdmin()) return，
+// 否则会重新引入 React Hook 顺序违规。组件内只有 usePermissions 一个 hook，数量恒为 1。
+export function RequireAdmin({ children }: { children: ReactNode }) {
+  const { isAdmin } = usePermissions();
+  if (!isAdmin()) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <div className="rounded-full bg-destructive/10 p-4 mb-4">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+        </div>
+        <h3 className="text-lg font-semibold mb-2">权限不足</h3>
+        <p className="text-muted-foreground">
+          「系统设置」仅管理员可访问
+        </p>
+        <p className="text-sm text-muted-foreground mt-1">
+          请联系管理员开通权限
+        </p>
+      </div>
+    );
+  }
+  return <>{children}</>;
+}

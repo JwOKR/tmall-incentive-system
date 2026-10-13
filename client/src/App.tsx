@@ -8,7 +8,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { useBodyScrollLock } from './hooks/useBodyScrollLock';
 import Layout from './components/Layout';
-import { RequirePermission } from './lib/permissions';
+import { RequirePermission, RequireAdmin } from './lib/permissions';
 import { Loader2 } from 'lucide-react';
 
 // 路由懒加载
@@ -199,9 +199,9 @@ function AppRoutes() {
           path="/settings"
           element={
             <ProtectedLayout>
-              <RequirePermission module="settings">
+              <RequireAdmin>
                 <Settings />
-              </RequirePermission>
+              </RequireAdmin>
             </ProtectedLayout>
           }
         />
