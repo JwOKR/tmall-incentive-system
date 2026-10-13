@@ -37,6 +37,39 @@ interface LayoutProps {
   children: ReactNode;
 }
 
+/**
+ * 可选跳转容器：有 to 时渲染为可点击的 <Link>，无 to 时渲染为**不可点击的 <div>**
+ * （同一份 children，避免复制两份 inner JSX）。
+ *
+ * 用途（都是「目标路由可能无权访问，需按权限降级为不可点击」的场景）：
+ * - 账户入口卡片：`/settings` 已收紧为 admin-only（RequireAdmin），非管理员不给目标；
+ * - 顶栏通知 Bell：按 anomalies / logs 权限决定去向，两者都无权限时不给目标。
+ */
+function OptionalLink({
+  to,
+  className,
+  title,
+  children,
+}: {
+  to?: string;
+  className: string;
+  title?: string;
+  children: ReactNode;
+}) {
+  if (to) {
+    return (
+      <Link to={to} className={className} title={title}>
+        {children}
+      </Link>
+    );
+  }
+  return (
+    <div className={className} title={title}>
+      {children}
+    </div>
+  );
+}
+
 // 激励登记模块导航
 const incentiveNav = [
   { name: '数据汇总', href: '/dashboard', icon: LayoutDashboard, module: 'dashboard' },
@@ -60,7 +93,10 @@ export default function AppleLayout({ children }: LayoutProps) {
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { user, logout } = useAuth();
-  const { canView } = usePermissions();
+  const { canView, isAdmin } = usePermissions();
+  // 判定来源统一走 usePermissions().isAdmin()（单一数据源，见 lib/permissions.tsx 的 isAdmin 出口），
+  // 不再在 Layout 内散写 `user?.role === 'admin'`（角色文案展示除外）
+  const isAdminUser = isAdmin();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,6 +117,10 @@ export default function AppleLayout({ children }: LayoutProps) {
     refetchInterval: () => (document.hidden ? false : 5 * 60 * 1000),
   });
   const anomalyCount = Number((anomalyData as any)?.data?.summary?.totalAnomalies ?? 0);
+
+  // P2-6 通知 Bell 的去向：有 anomalies 权限 → /anomalies（角标语义即异常预警，最贴合）；
+  // 否则有 logs 权限 → /logs（保持原有「通知＝日志」习惯）；两者都无 → undefined（渲染为不可点击 Bell）。
+  const bellTarget = canView('anomalies') ? '/anomalies' : (canView('logs') ? '/logs' : undefined);
 
   // 键盘快捷键：[ 键折叠/展开侧边栏
   useEffect(() => {
@@ -320,11 +360,11 @@ export default function AppleLayout({ children }: LayoutProps) {
 
         {/* User info & logout */}
         <div className={`border-t p-3 space-y-1.5 ${sidebarCollapsed ? 'px-2' : ''}`}>
-          <Link
-            to="/settings"
-            className={`flex items-center gap-3 rounded-xl transition-colors duration-200 hover:bg-slate-100 dark:hover:bg-slate-800 ${
-              sidebarCollapsed ? 'justify-center p-3' : 'px-3 py-2.5'
-            }`}
+          <OptionalLink
+            to={isAdminUser ? '/settings' : undefined}
+            className={`flex items-center gap-3 rounded-xl ${
+              isAdminUser ? 'transition-colors duration-200 hover:bg-slate-100 dark:hover:bg-slate-800' : ''
+            } ${sidebarCollapsed ? 'justify-center p-3' : 'px-3 py-2.5'}`}
             title={sidebarCollapsed ? (user?.username || '未知') : undefined}
           >
             <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 shrink-0 shadow-sm">
@@ -336,8 +376,8 @@ export default function AppleLayout({ children }: LayoutProps) {
                 <p className="text-[10px] text-muted-foreground">{user?.role === 'admin' ? '管理员' : '普通用户'}</p>
               </div>
             )}
-            {!sidebarCollapsed && <SettingsIcon className="h-4 w-4 text-muted-foreground shrink-0" />}
-          </Link>
+            {!sidebarCollapsed && isAdminUser && <SettingsIcon className="h-4 w-4 text-muted-foreground shrink-0" />}
+          </OptionalLink>
           
           <button
             onClick={handleLogout}
@@ -396,11 +436,13 @@ export default function AppleLayout({ children }: LayoutProps) {
               <span>折叠侧边栏</span>
             </div>
             
-            {/* Notifications */}
-            <Link
-              to="/logs"
-              className="relative p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="操作日志"
+            {/* Notifications：按权限决定去向，无权限时降级为不可点击 */}
+            <OptionalLink
+              to={bellTarget}
+              className={`relative p-2 rounded-lg ${
+                bellTarget ? 'hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors' : ''
+              }`}
+              title={bellTarget === '/anomalies' ? '异常预警' : bellTarget === '/logs' ? '操作日志' : '通知'}
             >
               <Bell className="h-5 w-5" />
               {/* P2-6 真实异常数角标：>0 才显示；=0 或无权限时不渲染 */}
@@ -412,13 +454,15 @@ export default function AppleLayout({ children }: LayoutProps) {
                   {anomalyCount > 99 ? '99+' : anomalyCount}
                 </span>
               )}
-            </Link>
+            </OptionalLink>
             
             {/* User Avatar */}
-            <Link
-              to="/settings"
-              className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-              title="个人设置"
+            <OptionalLink
+              to={isAdminUser ? '/settings' : undefined}
+              className={`flex items-center gap-2.5 p-1.5 rounded-lg ${
+                isAdminUser ? 'hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors' : ''
+              }`}
+              title={isAdminUser ? '个人设置' : (user?.username || '未知')}
             >
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 flex items-center justify-center">
                 <User className="h-3.5 w-3.5 text-white" />
@@ -427,7 +471,7 @@ export default function AppleLayout({ children }: LayoutProps) {
                 <p className="text-xs font-medium">{user?.username || '未知'}</p>
                 <p className="text-[10px] text-muted-foreground">{user?.role === 'admin' ? '管理员' : '普通用户'}</p>
               </div>
-            </Link>
+            </OptionalLink>
           </div>
         </div>
         
