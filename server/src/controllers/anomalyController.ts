@@ -1,10 +1,11 @@
 import { Request, Response } from 'express';
 import prisma from '../utils/db';
+import { diffInDays } from '../utils/remindList';
 
 /**
  * 异常订单预警（**纯只读**，不在 GET 内改库）
  *
- * 检测项（共 7 类）：
+ * 检测项（共 8 类）：
  *   1. 双单号全空            —— 无法对账的废单（order.count 计数 + order.findMany 展示，同一 where）
  *   2. 超长间隔接单人        —— ≥14 天未接单的活跃接单人（与 bootstrap.autoCheckAnomalies 同口径，纯读取）
  *   3. 实付 ≤ 0              —— 历史脏数据（实付金额非正）
@@ -12,6 +13,7 @@ import prisma from '../utils/db';
  *   5. 同人同商品 30 天高频  —— 同接单人 + 同商品在近 30 天内接单次数超阈值
  *   6. 7 天间隔绕过          —— 同一接单人相邻两单间隔 < 7 天（force 绕过 7 天间隔的痕迹）
  *   7. 任务超限接单          —— Task.currentOrders > Task.maxOrders
+ *   8. 超期任务              —— 有 deadline、已过截止「日历日」且未进入终态的任务（口径见 §8）
  *
  * 只读硬约束（由 tests/anomalyReadOnly.test.ts 守护）：
  *   - 禁止任何写操作（create/update/updateMany/delete/deleteMany/upsert/$transaction）；
@@ -43,6 +45,16 @@ const INTERVAL_MIN_DAYS = 7; // 规则：同一接单人相邻两单间隔须 �
 const TASK_SCAN_LIMIT = 200; // 任务超限：最多扫描任务数
 const DRIFT_EPSILON = 0.01; // 返款漂移浮点容差
 const STALE_THRESHOLD_DAYS = 14; // 超长间隔接单人展示阈值
+const OVERDUE_TASK_LIMIT = 200; // 超期任务：最多扫描/展示任务数
+/**
+ * 任务终态：已完成 / 已取消。二者都不需要再推进，故**不判超期**。
+ * - 'completed'：见 taskController.refreshAllTaskStatus（任一订单已好评即置为 completed）；
+ * - 'cancelled'：见 taskController.refreshAllTaskStatus 以 `status: { not: 'cancelled' }` 取待处理任务，
+ *   即 cancelled 亦被视作终态。
+ * 枚举取值来源：prisma/schema.prisma 的 Task.status 注释。
+ * ⚠️ 勿删 'cancelled'：已取消任务的截止日无意义，计入终态不判超期（否则会误报噪音）。
+ */
+const TERMINAL_TASK_STATUSES: string[] = ['completed', 'cancelled'];
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -98,6 +110,16 @@ interface TaskRow {
   maxOrders: number;
   currentOrders: number;
   status: string;
+}
+/** 超期任务：task.findMany 结果（含 deadline） */
+interface OverdueTaskRow {
+  id: string;
+  productId: string;
+  productCode: string;
+  deadline: Date;
+  status: string;
+  currentOrders: number;
+  maxOrders: number;
 }
 interface TakerLite {
   id: string;
@@ -317,6 +339,47 @@ export const getAnomalies = async (req: Request, res: Response) => {
     );
     const taskOverLimitCount = overLimitTasks.length;
 
+    // ── 8. 超期任务：有截止日期、已过截止「日历日」、且未进入终态 ──────────────
+    //    判定口径（与前端 client/src/pages/Tasks.tsx 的 getDeadlineTone 保持一致）：
+    //      · 按**本地日历日**比较，不受时分秒影响（本仓自然日工具 utils/remindList.diffInDays
+    //        即「各自归零到本地 00:00 后取差」，与前端 getFullYear/getMonth/getDate 同口径）；
+    //      · deadline 为 null → **不判超期**（无截止日无法判定，历史任务即此类）；
+    //      · 截止日「当天」不算超期（含当天最后一刻）—— 只有 deadline < 今天本地 00:00 才算超期，
+    //        故前端显示为「临期（≤3 天）」的当天件不会被误报；
+    //      · 已完成（status='completed'）/ 已取消（status='cancelled'）为终态，不再判超期。
+    //    计数（count）与展示（findMany）**共用同一份 overdueTaskWhere**，保证口径一致（不写两遍）。
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const overdueTaskWhere = {
+      deadline: { not: null, lt: startOfToday },
+      status: { notIn: TERMINAL_TASK_STATUSES },
+    };
+    // 单次 readSafe 包住 count + findMany：任一失败只记一条结构化降级，不阻断其余检测。
+    const overdueTaskScan = await readSafe<{ count: number; rows: OverdueTaskRow[] }>(
+      'overdueTask',
+      async () => {
+        const count = await prisma.task.count({ where: overdueTaskWhere });
+        const rows = await prisma.task.findMany({
+          where: overdueTaskWhere,
+          select: {
+            id: true,
+            productId: true,
+            productCode: true,
+            deadline: true,
+            status: true,
+            currentOrders: true,
+            maxOrders: true,
+          },
+          orderBy: { deadline: 'asc' }, // 最早超期的排在最前
+          take: OVERDUE_TASK_LIMIT,
+        });
+        return { count, rows };
+      },
+      { count: 0, rows: [] }
+    );
+    const overdueTaskCount = overdueTaskScan.count;
+    const overdueTasks = overdueTaskScan.rows;
+
     // ── 接单人名称映射（供各展示数组复用，一次性读取，未命中则不查询）────────
     const takerIds = new Set<string>();
     for (const r of negativePaymentRows) if (r.takerId) takerIds.add(r.takerId);
@@ -350,7 +413,8 @@ export const getAnomalies = async (req: Request, res: Response) => {
         refundMismatchCount +
         highFrequencyCount +
         intervalBypassCount +
-        taskOverLimitCount,
+        taskOverLimitCount +
+        overdueTaskCount,
       missingOrderNo: missingOrderNoCount, // 双单号全空（总数，非展示数）
       staleTakers: staleTakerList.length,
       negativePayment: negativePaymentCount,
@@ -358,6 +422,7 @@ export const getAnomalies = async (req: Request, res: Response) => {
       highFrequency: highFrequencyCount,
       intervalBypass: intervalBypassCount,
       taskOverLimit: taskOverLimitCount,
+      overdueTask: overdueTaskCount,
     };
 
     res.json({
@@ -373,6 +438,7 @@ export const getAnomalies = async (req: Request, res: Response) => {
           highFrequency: `统计近 ${FREQ_WINDOW_DAYS} 天内同人同商品次数 > ${FREQ_THRESHOLD}（即 ≥${FREQ_THRESHOLD + 1}）的分组，最多扫描最近 ${FREQ_SCAN_LIMIT} 条订单`,
           intervalBypass: `统计近 ${INTERVAL_WINDOW_DAYS} 天内同一接单人相邻两单间隔 < ${INTERVAL_MIN_DAYS} 天，最多扫描最近 ${INTERVAL_SCAN_LIMIT} 条订单`,
           taskOverLimit: `仅扫描最近 ${TASK_SCAN_LIMIT} 个任务`,
+          overdueTask: `仅列出截止日早于今天且未完成/未取消的任务，最多 ${OVERDUE_TASK_LIMIT} 条`,
         },
         // 1. 双单号全空
         missingOrderNoOrders: missingOrderNoOrders.map((o: MissingOrderSource) => ({
@@ -425,6 +491,18 @@ export const getAnomalies = async (req: Request, res: Response) => {
         })),
         // 7. 任务超限
         overLimitTasks,
+        // 8. 超期任务（最早超期的在前）
+        overdueTasks: overdueTasks.map((t: OverdueTaskRow) => ({
+          id: t.id,
+          productId: t.productId,
+          productCode: t.productCode,
+          deadline: t.deadline.toISOString(),
+          status: t.status,
+          currentOrders: t.currentOrders,
+          maxOrders: t.maxOrders,
+          // 超期天数：截止「日历日」距今天的天数（≥1，见 diffInDays 口径）
+          daysOverdue: diffInDays(t.deadline, now),
+        })),
       },
     });
   } catch (error) {

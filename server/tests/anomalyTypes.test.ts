@@ -76,6 +76,11 @@ const state: {
   taskArgs: any;
   taskResult: any[];
   taskThrows: boolean;
+  // 第 8 批 A：新增「超期任务」检测（task.count + task.findMany，where 含 deadline 过滤）
+  overdueTaskResult: any[];
+  overdueTaskCountResult: number;
+  overdueFindManyArgs: any;
+  taskCountArgs: any;
 } = {
   writeAttempts: [],
   queryRawUnsafeCalls: 0,
@@ -94,6 +99,10 @@ const state: {
   taskArgs: null,
   taskResult: [],
   taskThrows: false,
+  overdueTaskResult: [],
+  overdueTaskCountResult: 0,
+  overdueFindManyArgs: null,
+  taskCountArgs: null,
 };
 
 function writeGuard(name: string) {
@@ -155,9 +164,21 @@ const fakePrisma: any = {
   },
   task: {
     findMany: async (args: any) => {
+      // 「超期任务」查询（where 含 deadline 过滤）单独记录并返回受控样例；
+      // 其余（任务超限）沿用 taskArgs / taskResult，保持既有断言口径不变。
+      if (args?.where?.deadline) {
+        state.overdueFindManyArgs = args;
+        if (state.taskThrows) throw new Error('task query failed (injected)');
+        return state.overdueTaskResult;
+      }
       state.taskArgs = args;
       if (state.taskThrows) throw new Error('task query failed (injected)');
       return state.taskResult;
+    },
+    count: async (args: any) => {
+      state.taskCountArgs = args;
+      if (state.taskThrows) throw new Error('task query failed (injected)');
+      return state.overdueTaskCountResult;
     },
     create: writeGuard('task.create'),
     update: writeGuard('task.update'),
@@ -354,15 +375,16 @@ function takeOf(kind: FindKind): number | undefined {
 
   // —— 扫描窗口说明（透明告知「仅扫描最近 N 条」）——
   check('[说明] scanNotes.refundMismatch 含「200」', /200/.test(p?.scanNotes?.refundMismatch ?? ''), true);
-  check('[说明] scanNotes 覆盖 5 类新检测', Object.keys(p?.scanNotes ?? {}).sort(),
-    ['highFrequency', 'intervalBypass', 'negativePayment', 'refundMismatch', 'taskOverLimit']);
+  check('[说明] scanNotes 覆盖 6 类新检测（第 8 批 A 增补 overdueTask）', Object.keys(p?.scanNotes ?? {}).sort(),
+    ['highFrequency', 'intervalBypass', 'negativePayment', 'overdueTask', 'refundMismatch', 'taskOverLimit']);
 
   /* ---------- 可见降级：任务检测失败，但整体仍渲染 ---------- */
   console.log('\n=== 可见降级：任务检测失败 → scanErrors 暴露，其它检测不受影响 ===');
   state.taskThrows = true;
   const resDeg = await runGetAnomalies();
   check('[降级] 仍返回 success = true（不整体 500）', resDeg.payload?.success, true);
-  check('[降级] scanErrors 含 taskOverLimit 一条', resDeg.payload?.data?.scanErrors?.map((e: any) => e.type), ['taskOverLimit']);
+  check('[降级] scanErrors 含 taskOverLimit 与 overdueTask 各一条（两者同因 task 查询失败而降级）',
+    resDeg.payload?.data?.scanErrors?.map((e: any) => e.type), ['taskOverLimit', 'overdueTask']);
   check('[降级] scanErrors 带可读 message', typeof resDeg.payload?.data?.scanErrors?.[0]?.message, 'string');
   check('[降级] 该类型计数归零（taskOverLimit = 0）', resDeg.payload?.data?.summary?.taskOverLimit, 0);
   check('[降级] 其它检测照常（negativePayment 仍 = 2）', resDeg.payload?.data?.summary?.negativePayment, 2);

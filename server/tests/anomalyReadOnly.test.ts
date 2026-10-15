@@ -60,6 +60,28 @@ function isDoubleNullWhere(w: unknown): boolean {
   return JSON.stringify(w) === JSON.stringify(DOUBLE_NULL_WHERE);
 }
 
+/**
+ * 按「超期任务」的真实 where 形状过滤候选任务 —— 让 F 段测试**行为化**：
+ * controller 传下来的 where 会真正驱动本过滤器，若口径写错（边界/终态过滤），结果即错。
+ */
+function matchesOverdueWhere(t: any, where: any): boolean {
+  const d = t?.deadline;
+  if (!d) return false; // deadline 为 null → 不命中（无截止日无法判超期）
+  const lt = where?.deadline?.lt;
+  if (!(lt && new Date(d).getTime() < new Date(lt).getTime())) return false; // 当天不算超期
+  const notIn = where?.status?.notIn;
+  if (Array.isArray(notIn) && notIn.includes(t.status)) return false; // 终态不判超期
+  return true;
+}
+
+/** 构造「本地日历日」偏移的 Date（避免 UTC 跨日：一律走本地 setHours/setDate） */
+function localDayAt(dayOffset: number, h = 0, mi = 0, s = 0, ms = 0): Date {
+  const d = new Date();
+  d.setHours(h, mi, s, ms);
+  d.setDate(d.getDate() + dayOffset);
+  return d;
+}
+
 const state: {
   writeAttempts: string[];
   queryRawUnsafeCalls: number;
@@ -76,6 +98,9 @@ const state: {
   countResult: number;
   ordersResult: any[];
   takersResult: any[];
+  overdueCandidates: any[];
+  taskCountArgsList: any[];
+  taskFindManyArgsList: any[];
 } = {
   writeAttempts: [],
   queryRawUnsafeCalls: 0,
@@ -92,6 +117,9 @@ const state: {
   countResult: 3,
   ordersResult: [],
   takersResult: [],
+  overdueCandidates: [],
+  taskCountArgsList: [],
+  taskFindManyArgsList: [],
 };
 
 function writeGuard(name: string) {
@@ -136,10 +164,27 @@ const fakePrisma: any = {
     updateMany: writeGuard('orderTaker.updateMany'),
     deleteMany: writeGuard('orderTaker.deleteMany'),
   },
-  // 任务 delegate：第 5 批 A3 新增「任务超限」检测会读取 task。
-  // 必须显式实现（返回空），不得让检测因「缺少方法」被静默降级 —— 那会造成假绿。
+  // 任务 delegate：第 5 批 A3 新增「任务超限」检测会读取 task；第 8 批 A 新增「超期任务」检测
+  // 会读取 task.count + task.findMany（where 含 deadline 过滤）。
+  // 必须显式实现（返回受控样例），不得让检测因「缺少方法」被静默降级 —— 那会造成假绿。
   task: {
-    findMany: async () => [],
+    findMany: async (args: any) => {
+      state.taskFindManyArgsList.push(args);
+      // 仅「超期任务」查询（where 含 deadline 过滤）返回按 where 过滤后的样例；其余（任务超限）返回空
+      if (args?.where?.deadline) {
+        return state.overdueCandidates
+          .filter((c: any) => matchesOverdueWhere(c, args.where))
+          .slice(0, args?.take);
+      }
+      return [];
+    },
+    count: async (args: any) => {
+      state.taskCountArgsList.push(args);
+      if (args?.where?.deadline) {
+        return state.overdueCandidates.filter((c: any) => matchesOverdueWhere(c, args.where)).length;
+      }
+      return 0;
+    },
     create: writeGuard('task.create'),
     update: writeGuard('task.update'),
     delete: writeGuard('task.delete'),
@@ -210,6 +255,8 @@ function resetSpies(): void {
   state.countArgsList = [];
   state.orderFindManyCalls = 0;
   state.findManyArgsList = [];
+  state.taskCountArgsList = [];
+  state.taskFindManyArgsList = [];
 }
 
 async function runGetAnomalies() {
@@ -318,6 +365,79 @@ async function runGetAnomalies() {
       'duplicate19Nos' in (resE.payload?.data?.summary ?? {}),
     ],
     [false, false, false]);
+
+  /* ---------- F. 超期任务（Task.deadline 接入异常页）---------- */
+  console.log('\n=== F. 超期任务检测（deadline 口径 + count/findMany 同 where）===');
+  // 隔离环境：其余检测全部置空，只留「超期任务」候选
+  state.countResult = 0; // 双单号
+  state.ordersResult = [];
+  state.takersResult = []; // 超长间隔接单人
+  state.overdueCandidates = [
+    // ① 有 deadline 且已过期（3 天前）且未完成（active）→ 命中
+    { id: 'od1', productId: 'p1', productCode: 'P001', deadline: localDayAt(-3), status: 'active', currentOrders: 1, maxOrders: 3 },
+    // ② deadline 为 null → 不命中
+    { id: 'od2', productId: 'p2', productCode: 'P002', deadline: null, status: 'active', currentOrders: 1, maxOrders: 3 },
+    // ③ 已完成（completed）但 deadline 已过期 → 不命中（终态）
+    { id: 'od3', productId: 'p3', productCode: 'P003', deadline: localDayAt(-3), status: 'completed', currentOrders: 3, maxOrders: 3 },
+    // ④ deadline 在将来（3 天后）→ 不命中
+    { id: 'od4', productId: 'p4', productCode: 'P004', deadline: localDayAt(3), status: 'active', currentOrders: 0, maxOrders: 3 },
+    // ⑤a 日边界：deadline 恰为「今天」最后一刻 → 不命中（当天不算超期）
+    { id: 'od5', productId: 'p5', productCode: 'P005', deadline: localDayAt(0, 23, 59, 59, 999), status: 'active', currentOrders: 0, maxOrders: 3 },
+    // ⑤b 日边界：deadline 恰为「今天」第一刻（本地 00:00）→ 不命中
+    { id: 'od6', productId: 'p6', productCode: 'P006', deadline: localDayAt(0, 0, 0, 0, 0), status: 'active', currentOrders: 0, maxOrders: 3 },
+    // ⑤c 日边界：昨天最后一刻 → 命中（只有严格早于今天才算超期）
+    { id: 'od7', productId: 'p7', productCode: 'P007', deadline: localDayAt(-1, 23, 59, 59, 999), status: 'active', currentOrders: 0, maxOrders: 3 },
+    // ⑥ 已取消（cancelled）且已过期 → 不命中（终态）
+    { id: 'od8', productId: 'p8', productCode: 'P008', deadline: localDayAt(-3), status: 'cancelled', currentOrders: 0, maxOrders: 3 },
+  ];
+  const resF = await runGetAnomalies();
+  const pF = resF.payload?.data;
+  check('[F] GET 仍无写副作用（纯只读）', state.writeAttempts, []);
+  check('[F] 零裸 SQL', [state.queryRawUnsafeCalls, state.queryRawCalls], [0, 0]);
+  check('[F] 无检测因环境缺方法被降级（scanErrors 为空）', pF?.scanErrors, []);
+
+  // ① 命中 + ②③④⑤⑥ 不命中（行为化：由 controller 真实下发的 where 驱动过滤）
+  check('[F①] 有 deadline 且已过期且未完成 → 命中',
+    pF?.overdueTasks?.map((t: any) => t.id).sort(), ['od1', 'od7']);
+  check('[F②] deadline 为 null → 不命中', pF?.overdueTasks?.some((t: any) => t.id === 'od2'), false);
+  check('[F③] 已完成（completed）但已过期 → 不命中', pF?.overdueTasks?.some((t: any) => t.id === 'od3'), false);
+  check('[F④] deadline 在将来 → 不命中', pF?.overdueTasks?.some((t: any) => t.id === 'od4'), false);
+  check('[F⑤-a] deadline 为「今天最后一刻」→ 不命中（当天不算超期）', pF?.overdueTasks?.some((t: any) => t.id === 'od5'), false);
+  check('[F⑤-b] deadline 为「今天第一刻」→ 不命中', pF?.overdueTasks?.some((t: any) => t.id === 'od6'), false);
+  check('[F⑤-c] deadline 为「昨天最后一刻」→ 命中', pF?.overdueTasks?.some((t: any) => t.id === 'od7'), true);
+  check('[F⑥c] 已取消（cancelled）且已过期 → 不命中', pF?.overdueTasks?.some((t: any) => t.id === 'od8'), false);
+
+  check('[F] summary.overdueTask = 2（来自 count）', pF?.summary?.overdueTask, 2);
+  check('[F] count 与展示数组同源（口径一致）', pF?.summary?.overdueTask, pF?.overdueTasks?.length);
+  check('[F] daysOverdue：od1 = 3', pF?.overdueTasks?.find((t: any) => t.id === 'od1')?.daysOverdue, 3);
+  check('[F] daysOverdue：od7 = 1', pF?.overdueTasks?.find((t: any) => t.id === 'od7')?.daysOverdue, 1);
+  check('[F] deadline 以 ISO 字符串返回', typeof pF?.overdueTasks?.find((t: any) => t.id === 'od1')?.deadline, 'string');
+
+  // ⑥ count 与 findMany 使用同一份 where（结构相同）
+  const overdueCountArgs = state.taskCountArgsList.filter((a: any) => a?.where?.deadline);
+  const overdueFindArgs = state.taskFindManyArgsList.filter((a: any) => a?.where?.deadline);
+  check('[F⑥] 超期任务 count 恰 1 次', overdueCountArgs.length, 1);
+  check('[F⑥] 超期任务 findMany 恰 1 次', overdueFindArgs.length, 1);
+  check('[F⑥] count.where 结构正确（not null + lt + notIn）', overdueCountArgs[0]?.where, {
+    deadline: { not: null, lt: overdueCountArgs[0]?.where?.deadline?.lt },
+    status: { notIn: ['completed', 'cancelled'] },
+  });
+  check('[F⑥] count 与 findMany 用同一份 where（深比较相等）',
+    JSON.stringify(overdueCountArgs[0]?.where), JSON.stringify(overdueFindArgs[0]?.where));
+  check('[F⑥] where.deadline.not = null（显式排除空截止日）', overdueCountArgs[0]?.where?.deadline?.not, null);
+  check('[F⑥] where.status.notIn = [completed, cancelled]（终态不判超期）',
+    overdueCountArgs[0]?.where?.status?.notIn, ['completed', 'cancelled']);
+  const ltBoundary = new Date(overdueCountArgs[0]?.where?.deadline?.lt);
+  check('[F⑥] where.deadline.lt 归零到本地 00:00（时/分/秒/毫秒 = 0）',
+    [ltBoundary.getHours(), ltBoundary.getMinutes(), ltBoundary.getSeconds(), ltBoundary.getMilliseconds()],
+    [0, 0, 0, 0]);
+  check('[F⑥] where.deadline.lt 的日历日 = 今天',
+    [ltBoundary.getFullYear(), ltBoundary.getMonth(), ltBoundary.getDate()],
+    [new Date().getFullYear(), new Date().getMonth(), new Date().getDate()]);
+  check('[F⑥] findMany take = 200（限量）', overdueFindArgs[0]?.take, 200);
+  check('[F⑥] findMany orderBy = { deadline: asc }', overdueFindArgs[0]?.orderBy, { deadline: 'asc' });
+  check('[F⑦] scanNotes.overdueTask 为字符串（透明告知扫描窗口）', typeof pF?.scanNotes?.overdueTask, 'string');
+  check('[F⑦] totalAnomalies 含超期数（= 0 + 2）', pF?.summary?.totalAnomalies, 2);
 
   console.log(`\n========== 结果：PASS=${passed}  FAIL=${failed} ==========`);
   process.exit(failed > 0 ? 1 : 0);

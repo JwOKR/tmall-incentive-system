@@ -4,6 +4,7 @@ import { anomalyApi } from '@/lib/api';
 import { formatDate, formatCurrency } from '@/lib/utils';
 import {
   AlertTriangle,
+  AlarmClock,
   Banknote,
   CalendarClock,
   CheckCircle,
@@ -90,6 +91,7 @@ export default function AnomalyAlerts() {
   const highFrequencyGroups: any[] = anomalies?.highFrequencyGroups || [];
   const intervalBypassPairs: any[] = anomalies?.intervalBypassPairs || [];
   const overLimitTasks: any[] = anomalies?.overLimitTasks || [];
+  const overdueTasks: any[] = anomalies?.overdueTasks || [];
 
   const cards = [
     { title: '双单号全空', value: summary.missingOrderNo || 0, icon: Hash, tone: 'rose' as const },
@@ -99,6 +101,7 @@ export default function AnomalyAlerts() {
     { title: '同人同商品高频', value: summary.highFrequency || 0, icon: Flame, tone: 'amber' as const },
     { title: '7天间隔绕过', value: summary.intervalBypass || 0, icon: CalendarClock, tone: 'amber' as const },
     { title: '任务超限接单', value: summary.taskOverLimit || 0, icon: Layers, tone: 'rose' as const },
+    { title: '超期任务', value: summary.overdueTask || 0, icon: AlarmClock, tone: 'rose' as const },
     { title: '异常总数', value: summary.totalAnomalies || 0, icon: AlertTriangle, tone: 'orange' as const },
   ];
 
@@ -366,13 +369,45 @@ export default function AnomalyAlerts() {
             </AnomalyTable>
           )}
 
+          {/* 8. 超期任务（有截止日、已过截止日且未完成/未取消） */}
+          {overdueTasks.length > 0 && (
+            <AnomalyTable
+              icon={AlarmClock}
+              iconClass="text-rose-500"
+              title="超期任务"
+              count={summary.overdueTask || 0}
+              note={scanNotes.overdueTask}
+              columns={['商品编号', '商品ID', '截止日期', '超期天数', '已接/限接', '状态']}
+              footer={
+                (summary.overdueTask || 0) > overdueTasks.length && (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    仅显示最早超期的 {overdueTasks.length} 条，共 {summary.overdueTask} 条
+                  </p>
+                )
+              }
+            >
+              {overdueTasks.map((t: any) => (
+                <tr key={t.id} className="table-row-hover table-row-zebra">
+                  <td className="px-4 py-3 font-medium">{t.productCode || '-'}</td>
+                  <td className="px-4 py-3 text-muted-foreground">{t.productId || '-'}</td>
+                  <td className="px-4 py-3">{t.deadline ? formatDate(t.deadline) : '-'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <span className="font-bold tabular-nums text-rose-600 dark:text-rose-400">{t.daysOverdue}天</span>
+                  </td>
+                  <td className="px-4 py-3 text-right tabular-nums">{t.currentOrders}/{t.maxOrders}</td>
+                  <td className="px-4 py-3 text-right">{t.status}</td>
+                </tr>
+              ))}
+            </AnomalyTable>
+          )}
+
           {/* No Anomalies（仅当确无异常且无检测降级时才显示「一切正常」） */}
           {summary.totalAnomalies === 0 && scanErrors.length === 0 && (
             <div className="rounded-2xl apple-card p-12 text-center">
               <CheckCircle className="h-12 w-12 text-emerald-500 mx-auto mb-3" />
               <p className="text-lg font-medium">一切正常</p>
               <p className="text-sm text-muted-foreground mt-1">
-                未检测到无效订单、金额异常、超长间隔接单人、高频接单或任务超限
+                未检测到无效订单、金额异常、超长间隔接单人、高频接单、任务超限或超期任务
               </p>
             </div>
           )}
