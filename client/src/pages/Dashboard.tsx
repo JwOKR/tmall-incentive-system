@@ -44,6 +44,11 @@ import {
 import { Line, Doughnut, Bar } from 'react-chartjs-2';
 import OptionalLink from '@/components/OptionalLink';
 import { usePermissions } from '@/lib/permissions';
+import {
+  deriveDashboardAlertCounts,
+  deriveDashboardAlertLinks,
+  type DashboardAlertCounts,
+} from '@/lib/dashboardAlerts';
 
 ChartJS.register(
   CategoryScale,
@@ -146,7 +151,7 @@ export default function AppleDashboard() {
    * 无权限时回退为页面内提醒条。权限请求只由用户点击按钮触发。 */
   const ALERT_POLL_INTERVAL_MS = 5 * 60 * 1000;
 
-  const [alerts, setAlerts] = useState<{ overdueOrders: number; overdueAmount: number; anomalies: number } | null>(null);
+  const [alerts, setAlerts] = useState<DashboardAlertCounts | null>(null);
   const [showAlertBanner, setShowAlertBanner] = useState(true);
   const [notifyPermission, setNotifyPermission] = useState(getNotificationPermission());
   const lastNotifiedRef = useRef<{ overdue: number; anomalies: number }>({ overdue: -1, anomalies: -1 });
@@ -161,11 +166,8 @@ export default function AppleDashboard() {
           anomalyApi.getAnomalies(),
         ]);
         if (cancelled) return;
-        const next = {
-          overdueOrders: (refundRes as any)?.data?.summary?.totalOrders ?? 0,
-          overdueAmount: (refundRes as any)?.data?.summary?.totalAmount ?? 0,
-          anomalies: (anomalyRes as any)?.data?.summary?.totalAnomalies ?? 0,
-        };
+        // 派生逻辑抽到 lib/dashboardAlerts.ts（纯函数），本 effect 不再内联判断
+        const next = deriveDashboardAlertCounts(refundRes, anomalyRes);
         setAlerts(next);
         if (notifyPermission === 'granted') {
           const parts: string[] = [];
@@ -369,22 +371,19 @@ export default function AppleDashboard() {
               <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <span className="apple-text-headline text-amber-700 dark:text-amber-400">待办提醒</span>
             </div>
-            {alerts.overdueOrders > 0 && (
+            {/* 链接派生（含权限门控）抽到 lib/dashboardAlerts.ts 纯函数：无权时 link=undefined → 保留展示、取消跳转 */}
+            {deriveDashboardAlertLinks(alerts, {
+              orders: canViewOrders,
+              anomalies: canViewAnomalies,
+            }).map((item) => (
               <OptionalLink
-                to={canViewOrders ? '/orders?refund=false' : undefined}
-                className={`text-sm font-medium text-amber-700 dark:text-amber-300 tabular-nums ${canViewOrders ? 'hover:underline' : ''}`}
+                key={item.key}
+                to={item.link}
+                className={`text-sm font-medium text-amber-700 dark:text-amber-300 tabular-nums ${item.link ? 'hover:underline' : ''}`}
               >
-                超期未返款 {alerts.overdueOrders} 单
+                {item.text}
               </OptionalLink>
-            )}
-            {alerts.anomalies > 0 && (
-              <OptionalLink
-                to={canViewAnomalies ? '/anomalies' : undefined}
-                className={`text-sm font-medium text-amber-700 dark:text-amber-300 tabular-nums ${canViewAnomalies ? 'hover:underline' : ''}`}
-              >
-                数据异常 {alerts.anomalies} 条
-              </OptionalLink>
-            )}
+            ))}
             <span className="text-xs text-muted-foreground">每 5 分钟自动检查</span>
           </div>
           <div className="flex items-center gap-3">
