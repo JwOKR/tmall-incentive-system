@@ -1,4 +1,4 @@
-import { useState, ReactNode, useEffect, useCallback, useRef } from 'react';
+import { useState, ReactNode, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -10,24 +10,18 @@ import {
   Sun,
   Moon,
   LogOut,
-  User,
   Sparkles,
   Clock,
   DollarSign,
   Menu,
   X,
-  Settings as SettingsIcon,
   AlertTriangle,
   TrendingDown,
   Home,
   Search,
   Bell,
-  ChevronLeft,
-  ChevronRight,
   PanelLeftClose,
   PanelLeftOpen,
-  ChevronDown,
-  KeyRound,
 } from 'lucide-react';
 import { useTheme } from '@/hooks/useTheme';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +30,7 @@ import { useQuery } from '@tanstack/react-query';
 import { anomalyApi } from '@/lib/api';
 import ChangePasswordForm from '@/components/ChangePasswordForm';
 import OptionalLink from '@/components/OptionalLink';
+import UserMenu from '@/components/UserMenu';
 
 interface LayoutProps {
   children: ReactNode;
@@ -63,19 +58,15 @@ export default function AppleLayout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-  const { user, logout } = useAuth();
-  const { canView, isAdmin } = usePermissions();
-  // 判定来源统一走 usePermissions().isAdmin()（单一数据源，见 lib/permissions.tsx 的 isAdmin 出口），
-  // 不再在 Layout 内散写 `user?.role === 'admin'`（角色文案展示除外）
-  const isAdminUser = isAdmin();
+  const { logout } = useAuth();
+  const { canView } = usePermissions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
-  // 顶栏用户菜单 / 修改密码弹窗（A2）
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  // 修改密码弹窗（A2）：菜单本体已抽到 <UserMenu/>（顶栏/侧栏共用），
+  // 弹窗仍需在根 div 下渲染，故弹窗开关保留在此。
   const [pwdOpen, setPwdOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
 
   // P2-6 异常角标：取真实异常数（GET /api/anomalies → data.summary.totalAnomalies）。
   // 看板类查询：staleTime 0 + refetchOnMount 'always'（覆盖全局 5 分钟 staleTime）；
@@ -113,29 +104,8 @@ export default function AppleLayout({ children }: LayoutProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // 顶栏用户菜单：点击外部 / Esc 关闭（仅菜单打开时挂监听）
-  useEffect(() => {
-    if (!userMenuOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
-      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
-        setUserMenuOpen(false);
-      }
-    };
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setUserMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onMouseDown);
-    document.addEventListener('keydown', onKeyDown);
-    return () => {
-      document.removeEventListener('mousedown', onMouseDown);
-      document.removeEventListener('keydown', onKeyDown);
-    };
-  }, [userMenuOpen]);
-
-  // 路由变化时关闭用户菜单
-  useEffect(() => {
-    setUserMenuOpen(false);
-  }, [location.pathname]);
+  // 顶栏用户菜单的「点击外部 / Esc / 路由变化关闭」逻辑已随菜单抽到 <UserMenu/>，
+  // 此处不再重复维护。
 
   // 修改密码弹窗：Esc 关闭。
   // 全局 useKeyboardShortcuts 对 Esc 是「直接 return、不拦截」，故两者不会打架；
@@ -371,24 +341,18 @@ export default function AppleLayout({ children }: LayoutProps) {
 
         {/* User info & logout */}
         <div className={`border-t p-3 space-y-1.5 ${sidebarCollapsed ? 'px-2' : ''}`}>
-          <OptionalLink
-            to={isAdminUser ? '/settings' : undefined}
-            className={`flex items-center gap-3 rounded-xl ${
-              isAdminUser ? 'transition-colors duration-200 hover:bg-slate-100 dark:hover:bg-slate-800' : ''
-            } ${sidebarCollapsed ? 'justify-center p-3' : 'px-3 py-2.5'}`}
-            title={sidebarCollapsed ? (user?.username || '未知') : undefined}
-          >
-            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 shrink-0 shadow-sm">
-              <User className="h-4 w-4 text-white" />
-            </div>
-            {!sidebarCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{user?.username || '未知'}</p>
-                <p className="text-[10px] text-muted-foreground">{user?.role === 'admin' ? '管理员' : '普通用户'}</p>
-              </div>
-            )}
-            {!sidebarCollapsed && isAdminUser && <SettingsIcon className="h-4 w-4 text-muted-foreground shrink-0" />}
-          </OptionalLink>
+          {/*
+            侧栏用户卡：所有登录用户均可点开同一个 <UserMenu/>（与顶栏共用同一实现）。
+            此处不再使用 OptionalLink —— 它的语义是「入口按权限降级」（有 to → <Link>，
+            无 to → 不可点击 <div>）；而用户菜单对「所有登录用户」都可用（原对非 admin
+            降级成不可点击造成侧栏/顶栏不对称）。既然不存在「无权限即降级」的需求，
+            就不应再引入 OptionalLink，避免后续有人误判为「按权限可点」而补回降级逻辑。
+          */}
+          <UserMenu
+            variant="sidebar"
+            collapsed={sidebarCollapsed}
+            onRequestChangePassword={() => setPwdOpen(true)}
+          />
           
           <button
             onClick={handleLogout}
@@ -467,55 +431,12 @@ export default function AppleLayout({ children }: LayoutProps) {
               )}
             </OptionalLink>
             
-            {/* User Menu（A2）：所有登录用户可点击，非 admin 也能改密码，顺带消掉断头路 */}
-            <div className="relative" ref={userMenuRef}>
-              <button
-                type="button"
-                onClick={() => setUserMenuOpen((v) => !v)}
-                aria-haspopup="menu"
-                aria-expanded={userMenuOpen}
-                className="flex items-center gap-2.5 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                title={user?.username || '未知'}
-              >
-                <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-500/80 to-violet-500/60 flex items-center justify-center">
-                  <User className="h-3.5 w-3.5 text-white" />
-                </div>
-                <div className="hidden sm:block text-left">
-                  <p className="text-xs font-medium">{user?.username || '未知'}</p>
-                  <p className="text-[10px] text-muted-foreground">{user?.role === 'admin' ? '管理员' : '普通用户'}</p>
-                </div>
-                <ChevronDown className={`hidden sm:block h-3.5 w-3.5 text-muted-foreground transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
-              </button>
-
-              {userMenuOpen && (
-                <div
-                  role="menu"
-                  aria-label="用户菜单"
-                  className="dropdown-content absolute right-0 top-full mt-2 z-40 min-w-[11rem] rounded-xl border bg-card shadow-lg p-1"
-                >
-                  {isAdminUser && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => { setUserMenuOpen(false); navigate('/settings'); }}
-                      className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-left hover:bg-accent transition-colors"
-                    >
-                      <SettingsIcon className="h-4 w-4 text-muted-foreground" />
-                      系统设置
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    role="menuitem"
-                    onClick={() => { setUserMenuOpen(false); setPwdOpen(true); }}
-                    className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-left hover:bg-accent transition-colors"
-                  >
-                    <KeyRound className="h-4 w-4 text-muted-foreground" />
-                    修改密码
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* User Menu（A2）：所有登录用户可点击，非 admin 也能改密码，顺带消掉断头路。
+                菜单实现与侧栏用户卡共用 <UserMenu/>（同一份 JSX，不在本文件重复）。 */}
+            <UserMenu
+              variant="topbar"
+              onRequestChangePassword={() => setPwdOpen(true)}
+            />
           </div>
         </div>
         
@@ -542,7 +463,7 @@ export default function AppleLayout({ children }: LayoutProps) {
               </button>
             </div>
             <ChangePasswordForm
-              onSuccess={() => { setPwdOpen(false); setUserMenuOpen(false); }}
+              onSuccess={() => { setPwdOpen(false); }}
             />
           </div>
         </div>

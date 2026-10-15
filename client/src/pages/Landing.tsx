@@ -8,6 +8,8 @@ export default function Landing() {
   const { canView } = usePermissions();
   const canDashboard = canView('dashboard');
   const canRepeatDiscounts = canView('repeatDiscounts');
+  // 授权卡片数量：用于按数量决定容器，避免「只授权一张时卡片落在左格、右侧留白」。
+  const cardCount = (canDashboard ? 1 : 0) + (canRepeatDiscounts ? 1 : 0);
 
   return (
     <div className="min-h-[85vh] flex flex-col items-center justify-center ambient-bg page-enter">
@@ -25,8 +27,16 @@ export default function Landing() {
         </p>
       </div>
 
-      {/* Module Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-3xl w-full px-4 relative z-10">
+      {/* Module Cards
+          容器按卡片数量动态选择：
+          - 1 张：单列 + max-w-xl mx-auto，让唯一卡片居中，避免右侧大片留白；
+          - 2 张：md 双列（max-w-3xl）；
+          - 0 张：沿用双列容器，使空态凭 md:col-span-2 占满整行（空态不因收窄而回退）。 */}
+      <div
+        className={`grid grid-cols-1 gap-5 w-full px-4 relative z-10 ${
+          cardCount === 1 ? 'max-w-xl mx-auto' : 'md:grid-cols-2 max-w-3xl'
+        }`}
+      >
         {canDashboard && (
           /* 激励登记 */
           <Link

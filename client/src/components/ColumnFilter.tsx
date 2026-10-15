@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo } from 'react';
 
 interface ColumnFilterProps {
   value: string;

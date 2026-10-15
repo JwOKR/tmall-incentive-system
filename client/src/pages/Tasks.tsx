@@ -121,6 +121,7 @@ function HoverPreview({ content, children, className = '' }: { content: string; 
 }
 import { useConfirm } from '@/components/ConfirmDialog';
 import { taskColumns } from '@/lib/export';
+import { copyToClipboard } from '@/lib/clipboard';
 import {
   COMPLIANCE_META,
   describeComplianceReason,
@@ -132,40 +133,6 @@ import {
 interface EditingCell {
   taskId: string;
   field: string;
-}
-
-/**
- * 复制文本到剪贴板。
- * 优先使用 navigator.clipboard API（仅在 HTTPS / localhost 安全上下文可用）；
- * 若该 API 不存在或调用失败，则回退到 document.execCommand('copy') 方案，
- * 以兼容 HTTP 环境下的复制需求。
- * 返回 Promise<boolean>，true 表示复制成功，绝不抛出未捕获异常。
- */
-async function copyToClipboard(text: string): Promise<boolean> {
-  // 优先尝试 Clipboard API（安全上下文：HTTPS 或 localhost）
-  try {
-    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {
-    // Clipboard API 不可用或被拒绝，继续尝试回退方案
-  }
-
-  // 回退方案：execCommand('copy')，兼容 HTTP 环境
-  try {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.select();
-    const success = document.execCommand('copy');
-    document.body.removeChild(textarea);
-    return success;
-  } catch {
-    return false;
-  }
 }
 
 export default function Tasks() {
@@ -707,7 +674,7 @@ export default function Tasks() {
     batchCreateMutation.mutate(newTasks);
   };
 
-  const handleQuickOrder = (task: any, event: React.MouseEvent) => {
+  const handleQuickOrder = (task: any) => {
     setSelectedTask(task);
     setInlineOrderId(task.id);
     setTakerSearch('');
@@ -1276,7 +1243,7 @@ export default function Tasks() {
                   <td className="px-4 py-2 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button
-                        onClick={(e) => handleQuickOrder(task, e)}
+                        onClick={() => handleQuickOrder(task)}
                         disabled={task.currentOrders >= task.maxOrders || (task.status !== 'active' && task.status !== 'pending')}
                         className="apple-btn p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
                         title="快速接单"

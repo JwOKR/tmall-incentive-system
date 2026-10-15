@@ -1215,7 +1215,6 @@ export default function RepeatDiscounts() {
       const totalItems = rec.g1.paymentItems + rec.g2.paymentItems;
       const perBuyerCost = totalBuyers > 0 ? t.grant / totalBuyers : 0;
       const perItemPay = totalItems > 0 ? t.pay / totalItems : 0;
-      const grantPayRatio = t.grant > 0 ? t.pay / t.grant : 0;
 
       // 综合评估 - 多维度判断
       let overall = '';
@@ -1236,7 +1235,6 @@ export default function RepeatDiscounts() {
       // 人群效率 - 深度对比
       let crowd = '';
       const roiDiff = Math.abs(g1R - g2R);
-      const buyerDiff = rec.g1.paymentBuyers - rec.g2.paymentBuyers;
       if (g1R > g2R && roiDiff > 0.5) {
         crowd = `已购人群ROI（${fmtR(g1R)}）显著高于沉睡人群（${fmtR(g2R)}），差距${roiDiff.toFixed(2)}。已购人群带来${rec.g1.paymentBuyers}位买家，沉睡人群${rec.g2.paymentBuyers}位。老客复购意愿更强，建议将预算向已购人群倾斜。`;
       } else if (g2R > g1R && roiDiff > 0.5) {

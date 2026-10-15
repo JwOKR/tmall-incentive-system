@@ -48,7 +48,6 @@ export default function Orders() {
   const [drawerOrderId, setDrawerOrderId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [datePreset, setDatePreset] = useState<'today' | 'yesterday' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'custom' | 'clear'>('clear');
   const [editingCell, setEditingCell] = useState<EditingCell | null>(null);
   const [editValue, setEditValue] = useState<any>('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -525,7 +524,6 @@ export default function Orders() {
 
   // 快捷日期筛选
   const applyDatePreset = (preset: 'today' | 'yesterday' | '7days' | '30days' | 'thisMonth' | 'lastMonth' | 'custom' | 'clear') => {
-    setDatePreset(preset);
     if (preset === 'custom') return;
     const now = new Date();
     const fmt = (d: Date) => {
@@ -963,7 +961,7 @@ export default function Orders() {
             <input
               type="date"
               value={startDate}
-              onChange={(e) => { setStartDate(e.target.value); setDatePreset('custom'); setPage(1); }}
+              onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
               className="apple-input rounded-xl border bg-card px-3 py-2 text-sm"
               placeholder="开始日期"
             />
@@ -971,7 +969,7 @@ export default function Orders() {
             <input
               type="date"
               value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); setDatePreset('custom'); setPage(1); }}
+              onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
               className="apple-input rounded-xl border bg-card px-3 py-2 text-sm"
               placeholder="结束日期"
             />

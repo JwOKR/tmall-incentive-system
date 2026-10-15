@@ -2,7 +2,11 @@ import type { ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { AlertTriangle } from 'lucide-react';
 
-// 模块名称映射
+// 模块名称映射。
+// 唯一消费点：下方 NoPermission 的 `moduleMap[module] || module` 文案回退。
+// NoPermission 只由 RequirePermission 触发，而 RequirePermission 从未以
+// module="settings" 被调用（/settings 已改由 RequireAdmin 硬门控），
+// 前后端亦零处引用 'settings' 权限键 —— 故此处不列出 settings，避免死条目。
 export const moduleMap: Record<string, string> = {
   orders: '订单明细',
   takers: '接单人',
@@ -14,7 +18,6 @@ export const moduleMap: Record<string, string> = {
   anomalies: '异常预警',
   export: '数据导出',
   dashboard: '数据汇总',
-  settings: '系统设置',
 };
 
 // ─── Hooks（必须在组件顶层调用） ─────────────────────────
