@@ -165,20 +165,15 @@ export default function RepeatDiscounts() {
   useEffect(() => {
     let cancelled = false;
     setOverallAiError('');
-    console.log('[OverallAI] Loading saved analysis for:', { startDate, endDate });
     repeatDiscountApi.getSavedOverallAnalysis(startDate || undefined, endDate || undefined).then((res: any) => {
       if (cancelled) return;
-      console.log('[OverallAI] Raw response:', res);
       // axios 拦截器已解包一层
       const data = res?.data ?? res;
-      console.log('[OverallAI] Parsed data:', data);
       if (data && data.sections) {
-        console.log('[OverallAI] Found saved analysis, sections count:', data.sections.length);
         setOverallAiSections(data.sections);
         setOverallAiSource(data.source);
         setOverallAiModel(data.model || '');
       } else {
-        console.log('[OverallAI] No saved analysis found');
         setOverallAiSections(null);
         setOverallAiSource(null);
         setOverallAiModel('');
@@ -308,20 +303,15 @@ export default function RepeatDiscounts() {
     }
     let cancelled = false;
     setAiError('');
-    console.log('[AI] Loading saved analysis for recordId:', previewRecord.id);
     repeatDiscountApi.getSavedAnalysis(previewRecord.id).then((res: any) => {
       if (cancelled) return;
-      console.log('[AI] Raw response:', res);
       // axios 拦截器已解包一层，res 就是 { success, data }
       const data = res?.data ?? res;
-      console.log('[AI] Parsed data:', data);
       if (data && data.sections) {
-        console.log('[AI] Found saved analysis, sections count:', data.sections.length);
         setAiSections(data.sections);
         setAiSource(data.source);
         setAiModel(data.model || '');
       } else {
-        console.log('[AI] No saved analysis found');
         setAiSections(null);
         setAiSource(null);
         setAiModel('');

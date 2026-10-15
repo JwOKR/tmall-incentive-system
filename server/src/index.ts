@@ -31,8 +31,13 @@ import { startScheduler, stopScheduler } from './utils/scheduler';
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Trust proxy (nginx/Docker reverse proxy)
-app.set('trust proxy', true);
+// Trust proxy（nginx/Docker 反向代理）。
+// 旧值是 true = 「信任 X-Forwarded-For 里的全部跳」→ XFF 最左侧一条被无条件采信，
+// 任何人发一个 `X-Forwarded-For: 8.8.8.8` 就能把审计日志的 IP 写成任意值。
+// 改为显式跳数：默认的 1 对应前端容器的那一跳 nginx（见 client/nginx.conf 的 /api 反代）。
+// 若实际链路前面还有 Cloudflare Tunnel 之类多一跳，用 TRUST_PROXY_HOPS=2 覆盖即可。
+const trustProxyHops = Number(process.env.TRUST_PROXY_HOPS ?? 1);
+app.set('trust proxy', Number.isInteger(trustProxyHops) && trustProxyHops >= 0 ? trustProxyHops : 1);
 
 // Middleware
 app.use(helmet({ crossOriginResourcePolicy: false, contentSecurityPolicy: false }));

@@ -13,7 +13,6 @@ async function saveAnalysis(
   rawText: string | null,
   recordId?: string,
 ) {
-  console.log('[AI-Save] Saving analysis:', { type, scopeKey, source, sectionsCount: sections.length });
   const result = await prisma.repeatDiscountAnalysis.upsert({
     where: { scopeKey },
     create: {
@@ -32,7 +31,6 @@ async function saveAnalysis(
       rawText: rawText || null,
     },
   });
-  console.log('[AI-Save] Saved successfully, id:', result.id);
   return result;
 }
 
@@ -193,7 +191,6 @@ async function callAIApi(prompt: string): Promise<string> {
 // 通用AI分析解析函数
 // ──────────────────────────────────────
 function parseAnalysisBySection(rawText: string, sectionTitleMap: { keys: string[]; display: string }[], label: string) {
-  console.log(`[AI-Parse] ${label} raw text:`, rawText);
 
   // 预处理：去掉粗体标记和Markdown标题标记
   const cleaned = rawText.replace(/\*\*/g, '').replace(/^#{1,3}\s+/gm, '').trim();
@@ -256,7 +253,6 @@ function parseAnalysisBySection(rawText: string, sectionTitleMap: { keys: string
     result.push({ title: sectionTitleMap[i].display, content: content || `${sectionTitleMap[i].display}分析数据暂不可用` });
   }
 
-  console.log(`[AI-Parse] ${label} parsed result:`, result.map(r => `${r.title}: ${r.content.substring(0, 40)}...`));
   return result;
 }
 
