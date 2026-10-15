@@ -58,6 +58,8 @@ export const create = async (req: AuthRequest, res: Response) => {
       detail: `创建回头客立减: ${date}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'repeatDiscount',
+      entityId: item.id,
     });
     
     res.json({ success: true, data: item, message: '创建成功' });
@@ -84,6 +86,8 @@ export const update = async (req: AuthRequest, res: Response) => {
       detail: `更新回头客立减: ${date}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'repeatDiscount',
+      entityId: req.params.id,
     });
     
     res.json({ success: true, data: item, message: '更新成功' });
@@ -110,6 +114,8 @@ export const remove = async (req: AuthRequest, res: Response) => {
       detail: `删除回头客立减: ${date}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'repeatDiscount',
+      entityId: req.params.id,
     });
     
     res.json({ success: true, message: '删除成功' });

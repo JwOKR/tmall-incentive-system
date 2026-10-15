@@ -46,7 +46,15 @@ function check(name: string, actual: unknown, expected: unknown): void {
 /* ============================================================
  * fake db / logger：本测试不查库，但 routes → controllers → utils/db 的
  * 模块加载链需要一个不会真连库的 prisma 替身。
+ * captured 用于断言写入入库的 permissions 字符串（P2-2 校验回归）。
  * ============================================================ */
+const captured: {
+  existingUser: any;
+  createArgs: any;
+  updateArgs: any;
+  logArgs: any;
+} = { existingUser: null, createArgs: null, updateArgs: null, logArgs: null };
+
 const fakePrisma: any = {
   $transaction: async (arg: any) => (typeof arg === 'function' ? arg(fakePrisma) : Promise.all(arg)),
   systemSetting: {
@@ -54,8 +62,42 @@ const fakePrisma: any = {
     findUnique: async () => null,
     upsert: async () => ({}),
   },
-  user: { findMany: async () => [], findUnique: async () => null, count: async () => 0 },
-  log: { findMany: async () => [], create: async () => ({}) },
+  user: {
+    findMany: async () => [],
+    // 可配置：createUser 场景期望 null（用户名未被占用）；updateUser 场景期望一条既有用户。
+    // 需忠实模拟 Prisma 的 where 语义：按 id / username 过滤，避免「用户名查重」把既有用户误判为重复。
+    findUnique: async (args: any) => {
+      const u = captured.existingUser;
+      if (!u) return null;
+      const where = args?.where ?? {};
+      if (where.id !== undefined && where.id !== u.id) return null;
+      if (where.username !== undefined && where.username !== u.username) return null;
+      return u;
+    },
+    count: async () => 0,
+    create: async (args: any) => {
+      captured.createArgs = args;
+      return {
+        id: 'new-user-id',
+        username: args?.data?.username,
+        role: args?.data?.role,
+        permissions: args?.data?.permissions,
+        createdAt: new Date(),
+      };
+    },
+    update: async (args: any) => {
+      captured.updateArgs = args;
+      return {
+        id: args?.where?.id,
+        username: args?.data?.username ?? captured.existingUser?.username,
+        role: args?.data?.role ?? captured.existingUser?.role,
+        permissions: args?.data?.permissions,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+    },
+  },
+  log: { findMany: async () => [], create: async (args: any) => { captured.logArgs = args; return {}; } },
   $use: () => { /* noop */ },
 };
 
@@ -89,6 +131,8 @@ const { requireAdmin, requireViewPermission, requireEditPermission } = require('
 const settingsRouter = require('../src/routes/settings').default;
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const adminRouter = require('../src/routes/admin').default;
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { createUser, updateUser } = require('../src/controllers/adminController');
 
 /* ============================================================
  * express req/res/next 桩（记录调用，用于断言「未被调用」）
@@ -286,6 +330,111 @@ function sectionE(): void {
 }
 
 /* ============================================================
+ * F. adminController 写入权限模块白名单校验（P2-2）
+ * ============================================================ */
+const VALID_MODULES = ['dashboard', 'orders', 'takers', 'tasks', 'intervals', 'commissions', 'logs', 'anomalies', 'export', 'repeatDiscounts'];
+
+function buildValid10(): Record<string, { view: boolean; edit: boolean }> {
+  const map: Record<string, { view: boolean; edit: boolean }> = {};
+  for (const m of VALID_MODULES) map[m] = { view: true, edit: false };
+  return map;
+}
+
+async function callCreateUser(body: any): Promise<any> {
+  captured.existingUser = null;
+  captured.createArgs = null;
+  const res = makeRes();
+  await createUser({ body, headers: {}, ip: '127.0.0.1' } as any, res);
+  return res;
+}
+
+async function callUpdateUser(id: string, body: any): Promise<any> {
+  captured.existingUser = { id, username: 'bob', role: 'user', permissions: null };
+  captured.updateArgs = null;
+  const res = makeRes();
+  await updateUser({ params: { id }, body, userId: 'someone-else', headers: {}, ip: '127.0.0.1' } as any, res);
+  return res;
+}
+
+async function sectionFAsync(): Promise<void> {
+  console.log('\n=== F. 权限模块白名单校验（写入前） ===');
+
+  // F1. 合法 10 模块 → 通过；入库内容与输入等价（不丢字段、不加字段）
+  const valid = buildValid10();
+  const f1 = await callCreateUser({ username: 'newu', password: 'secret1', role: 'user', permissions: valid });
+  check('[F1] 合法 10 模块 → 201', f1.statusCode, 201);
+  check('[F1] 入库 permissions = JSON.stringify(输入)', captured.createArgs?.data?.permissions, JSON.stringify(valid));
+  check('[F1] 入库内容与输入等价（深比较）',
+    JSON.parse(captured.createArgs?.data?.permissions || 'null'), valid);
+  check('[F1] 入库键集合恰为 10 个模块',
+    Object.keys(JSON.parse(captured.createArgs?.data?.permissions || '{}')).sort(), [...VALID_MODULES].sort());
+
+  // F2. settings 模块 → 400（settings 不在可勾选集）
+  const f2 = await callCreateUser({ username: 'x1', password: 'secret1', permissions: { settings: { view: true, edit: true } } });
+  check('[F2] settings:{view,edit} → 400', f2.statusCode, 400);
+  check('[F2] 错误信息含 "settings"', String(f2.payload?.message || '').includes('settings'), true);
+  check('[F2] 被拒时未写库', captured.createArgs, null);
+
+  // F3. 未知模块名 → 400，且错误信息回显非法键名
+  const f3 = await callCreateUser({ username: 'x2', password: 'secret1', permissions: { unknownModule: { view: true, edit: true } } });
+  check('[F3] unknownModule → 400', f3.statusCode, 400);
+  check('[F3] 错误信息含 "unknownModule"', String(f3.payload?.message || '').includes('unknownModule'), true);
+  check('[F3] 被拒时未写库', captured.createArgs, null);
+
+  // F4. 值类型错误：dashboard: 'yes'（应为对象）
+  const f4 = await callCreateUser({ username: 'x3', password: 'secret1', permissions: { dashboard: 'yes' } });
+  check('[F4] dashboard: "yes" → 400', f4.statusCode, 400);
+  check('[F4] 被拒时未写库', captured.createArgs, null);
+
+  // F4b. 内层值类型错误：view 传字符串
+  const f4b = await callCreateUser({ username: 'x3b', password: 'secret1', permissions: { dashboard: { view: 'yes', edit: true } } });
+  check('[F4b] dashboard.view 字符串 → 400', f4b.statusCode, 400);
+  check('[F4b] 被拒时未写库', captured.createArgs, null);
+
+  // F4c. 顶层为数组 → 400
+  const f4c = await callCreateUser({ username: 'x3c', password: 'secret1', permissions: [1, 2, 3] });
+  check('[F4c] permissions 为数组 → 400', f4c.statusCode, 400);
+
+  // F5. permissions undefined → 行为与改前一致（创建成功、落 null）
+  const f5 = await callCreateUser({ username: 'x5', password: 'secret1' });
+  check('[F5] createUser 不带 permissions → 201', f5.statusCode, 201);
+  check('[F5] createUser 不带 permissions → 落 null', captured.createArgs?.data?.permissions, null);
+
+  // F6. permissions null → 行为与改前一致（落 null）
+  const f6 = await callCreateUser({ username: 'x6', password: 'secret1', permissions: null });
+  check('[F6] createUser permissions=null → 201', f6.statusCode, 201);
+  check('[F6] createUser permissions=null → 落 null', captured.createArgs?.data?.permissions, null);
+
+  // F7. updateUser：undefined → 不触碰 permissions（updateData 不含该键）
+  const f7 = await callUpdateUser('u1', { username: 'bob2' });
+  check('[F7] updateUser 不带 permissions → 成功', f7.payload?.success, true);
+  check('[F7] updateUser 不带 permissions → updateData 不含 permissions 键', 'permissions' in (captured.updateArgs?.data || {}), false);
+
+  // F8. updateUser：null → 落 null
+  const f8 = await callUpdateUser('u1', { permissions: null });
+  check('[F8] updateUser permissions=null → updateData.permissions = null', captured.updateArgs?.data?.permissions, null);
+
+  // F9. updateUser：未知模块 → 400，未写库
+  const f9 = await callUpdateUser('u1', { permissions: { bogusKey: { view: true, edit: true } } });
+  check('[F9] updateUser 未知模块 → 400', f9.statusCode, 400);
+  check('[F9] updateUser 未知模块 → 错误信息含键名', String(f9.payload?.message || '').includes('bogusKey'), true);
+  check('[F9] updateUser 未知模块 → 未写库', captured.updateArgs, null);
+
+  // F10. updateUser：合法 10 模块 → 入库字符串与输入等价
+  const valid2 = buildValid10();
+  const f10 = await callUpdateUser('u1', { permissions: valid2 });
+  check('[F10] updateUser 合法 10 模块 → 成功', f10.payload?.success, true);
+  check('[F10] updateUser 入库内容与输入等价', JSON.parse(captured.updateArgs?.data?.permissions || 'null'), valid2);
+
+  // F11. 管理员不被豁免（校验是数据卫生，与 role 无关）：admin + 合法 → 201；admin + settings → 400
+  const f11a = await callCreateUser({ username: 'adm1', password: 'secret1', role: 'admin', permissions: buildValid10() });
+  check('[F11] admin + 合法 10 模块 → 201（不因角色豁免）', f11a.statusCode, 201);
+  const f11b = await callCreateUser({ username: 'adm2', password: 'secret1', role: 'admin', permissions: { settings: { view: true, edit: true } } });
+  check('[F11] admin + settings → 400（管理员无豁免）', f11b.statusCode, 400);
+  check('[F11] admin + settings 被拒时未写库', captured.createArgs, null);
+}
+
+/* ============================================================
  * 主流程
  * ============================================================ */
 (async () => {
@@ -295,6 +444,7 @@ function sectionE(): void {
     sectionC();
     sectionD();
     sectionE();
+    await sectionFAsync();
   } catch (e) {
     failed++;
     console.error(`\n  FAIL  测试主流程抛出未捕获异常: ${(e as Error).stack}`);

@@ -165,6 +165,8 @@ export const createTask = async (req: AuthRequest, res: Response) => {
       detail: `创建任务: ${productId || '未填写'} (${productCode || '未填写'})`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'task',
+      entityId: task.id,
     });
 
     res.status(201).json({
@@ -285,6 +287,7 @@ export const batchCreateTasks = async (req: AuthRequest, res: Response) => {
       detail: `批量创建任务: ${createdTasks.count}个，跳过${skipped}条重复`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'task',
     });
 
     res.status(201).json({
@@ -415,6 +418,8 @@ export const updateTask = async (req: AuthRequest, res: Response) => {
       detail,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'task',
+      entityId: id,
     });
 
     res.json({
@@ -465,6 +470,8 @@ export const deleteTask = async (req: AuthRequest, res: Response) => {
       detail: `删除任务: ${existingTask.productId} (${existingTask.productCode})`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'task',
+      entityId: id,
     });
 
     res.json({
@@ -640,6 +647,8 @@ export const quickOrder = async (req: AuthRequest, res: Response) => {
       detail: `接单成功: ${orderNo} by ${taker.wechatName}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'order',
+      entityId: order.id,
     });
 
     res.status(201).json({

@@ -62,6 +62,7 @@ router.post('/ai-analysis-overall', requireEditPermission('repeatDiscounts'), as
       detail: `生成总体AI分析: ${startDate || '全部'} ~ ${endDate || '全部'}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'repeatDiscount',
     });
     
     res.json({ success: true, data: result });
@@ -85,6 +86,8 @@ router.post('/ai-analysis', requireEditPermission('repeatDiscounts'), async (req
       detail: `生成单日AI分析: ${result.recordDate ? new Date(result.recordDate).toISOString().slice(0, 10) : recordId}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'repeatDiscount',
+      entityId: recordId,
     });
     
     res.json({ success: true, data: result });

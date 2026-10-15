@@ -340,6 +340,8 @@ export const createTaker = async (req: AuthRequest, res: Response) => {
       action: 'create',
       detail: `创建接单人: ${wechatName} (${wechatId})${accountDetail ? ` | ${accountDetail}` : ''}`,
       ipAddress: getClientIp(req),
+      entityType: 'taker',
+      entityId: taker.id,
     });
 
     res.status(201).json({
@@ -429,6 +431,8 @@ export const updateTaker = async (req: AuthRequest, res: Response) => {
       action: 'update',
       detail: `更新接单人: ${wechatName}${accountDetail ? ` | ${accountDetail}` : ''}`,
       ipAddress: getClientIp(req),
+      entityType: 'taker',
+      entityId: id,
     });
 
     res.json({
@@ -507,6 +511,7 @@ export const batchCreateTakers = async (req: AuthRequest, res: Response) => {
       detail: `批量导入接单人: 成功${success}条，重复${duplicates}条，失败${failed}条`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'taker',
     });
 
     res.json({
@@ -563,6 +568,8 @@ export const deleteTaker = async (req: AuthRequest, res: Response) => {
       action: 'delete',
       detail: `删除接单人: ${existingTaker.wechatName} (${existingTaker.wechatId})`,
       ipAddress: getClientIp(req),
+      entityType: 'taker',
+      entityId: id,
     });
 
     res.json({

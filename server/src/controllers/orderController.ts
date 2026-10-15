@@ -86,6 +86,8 @@ export const updateOrder = async (req: AuthRequest, res: Response) => {
         : `更新订单: ${existingOrder.orderNo || req.params.id}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'order',
+      entityId: req.params.id,
     });
 
     res.json({ success: true, data: order });
@@ -110,6 +112,7 @@ export const batchCreateOrders = async (req: AuthRequest, res: Response) => {
       detail: `批量导入订单: 成功${result.success}条，跳过${result.skipped}条，失败${result.failed}条`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'order',
     });
 
     res.json({
@@ -164,6 +167,7 @@ export const batchUpdateOrders = async (req: AuthRequest, res: Response) => {
       detail: `批量修改订单: 成功${result.success}条，未找到${result.notFound}条，失败${result.failed}条`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'order',
     });
 
     res.json({
@@ -216,6 +220,7 @@ export const batchUpdateStatus = async (req: AuthRequest, res: Response) => {
       detail: `批量标记${updated}个订单为${statusLabel}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'order',
     });
 
     res.json({ success: true, data: { updated, total: ids.length }, message: `成功更新${updated}条订单` });
@@ -257,6 +262,7 @@ export const undoLastBatch = async (req: AuthRequest, res: Response) => {
       detail: `撤销批量操作(${actionLabel[result.action] || result.action}): 还原${result.restored}条${result.failed > 0 ? `，失败${result.failed}条` : ''}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'order',
     });
 
     res.json({
@@ -292,6 +298,8 @@ export const deleteOrder = async (req: AuthRequest, res: Response) => {
       detail: `删除订单: ${order.orderNo || req.params.id}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'order',
+      entityId: req.params.id,
     });
 
     await orderService.deleteOrder(req.params.id);

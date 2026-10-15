@@ -94,6 +94,8 @@ export const ordersApi = {
 // Logs API
 export const logsApi = {
   getAll: (params?: any) => api.get('/logs', { params }),
+  // 操作人名单（轻量只读，权限与 /logs 一致）。用于操作日志页「操作人」下拉。
+  getOperators: () => api.get('/logs/operators'),
 };
 
 // Interval Stats API
@@ -129,11 +131,17 @@ export const backupApi = {
 };
 
 // Admin API
+// 说明：后端 createUser/updateUser（server/src/controllers/adminController.ts）实际接收并落库
+// permissions 字段（permissions ? JSON.stringify(permissions) : null），前端调用处也一直传该字段；
+// 此前的类型定义漏了 permissions，属类型与实现不一致，这里补齐以对齐后端契约。
+type ModulePermission = { view: boolean; edit: boolean };
+type PermissionMap = Record<string, ModulePermission>;
+
 export const adminApi = {
   getAllUsers: () => api.get('/admin'),
-  createUser: (data: { username: string; password: string; role?: string }) =>
+  createUser: (data: { username: string; password: string; role?: string; permissions?: PermissionMap | null }) =>
     api.post('/admin', data),
-  updateUser: (id: string, data: { username?: string; password?: string; role?: string }) =>
+  updateUser: (id: string, data: { username?: string; password?: string; role?: string; permissions?: PermissionMap | null }) =>
     api.put(`/admin/${id}`, data),
   deleteUser: (id: string) => api.delete(`/admin/${id}`),
 };

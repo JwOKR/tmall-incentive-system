@@ -29,6 +29,7 @@ router.post('/login', async (req, res) => {
         action: 'login_failed',
         detail: `登录失败: ${username} (用户不存在)`,
         ipAddress: getClientIp(req),
+        entityType: 'user',
       });
       return res.status(401).json({
         success: false,
@@ -44,6 +45,8 @@ router.post('/login', async (req, res) => {
         detail: `登录失败: ${username} (密码错误)`,
         ipAddress: getClientIp(req),
         userId: user.id,
+        entityType: 'user',
+        entityId: user.id,
       });
       return res.status(401).json({
         success: false,
@@ -64,6 +67,8 @@ router.post('/login', async (req, res) => {
       detail: `用户登录: ${username}`,
       ipAddress: getClientIp(req),
       userId: user.id,
+      entityType: 'user',
+      entityId: user.id,
     });
 
     res.json({
@@ -142,6 +147,8 @@ router.put('/password', authMiddleware, async (req: AuthRequest, res) => {
       detail: `修改密码: ${user.username}`,
       ipAddress: getClientIp(req),
       userId: req.userId,
+      entityType: 'user',
+      entityId: req.userId,
     });
 
     res.json({

@@ -43,6 +43,9 @@ const state: {
   countArgs: any;
   countResult: number;
   logsResult: any[];
+  userFindManyCalls: number;
+  userFindManyArgs: any;
+  usersResult: any[];
 } = {
   writeAttempts: [],
   queryRawUnsafeCalls: 0,
@@ -52,6 +55,9 @@ const state: {
   countArgs: null,
   countResult: 0,
   logsResult: [],
+  userFindManyCalls: 0,
+  userFindManyArgs: null,
+  usersResult: [],
 };
 
 function writeGuard(name: string) {
@@ -81,7 +87,22 @@ const fakePrisma: any = {
     deleteMany: writeGuard('log.deleteMany'),
   },
   user: {
-    findMany: async () => [],
+    // 模拟 Prisma 的 select 投影：只回 select 白名单内的字段，
+    // 以便对「controller 是否真的传了白名单 select」做**有效**验证（否则假数据会原样漏出敏感字段）。
+    findMany: async (args: any) => {
+      state.userFindManyCalls++;
+      state.userFindManyArgs = args;
+      const rows: any[] = state.usersResult;
+      if (args?.select && typeof args.select === 'object') {
+        const keys = Object.keys(args.select).filter((k) => args.select[k]);
+        return rows.map((r) => {
+          const projected: any = {};
+          keys.forEach((k) => { if (k in r) projected[k] = r[k]; });
+          return projected;
+        });
+      }
+      return rows;
+    },
     findUnique: async () => null,
     create: writeGuard('user.create'),
     update: writeGuard('user.update'),
@@ -124,8 +145,15 @@ function injectFake(modulePath: string, exportsObj: any): void {
 
 injectFake('../src/utils/db', { __esModule: true, default: fakePrisma });
 
+// middleware/auth.ts 顶层会读 JWT_SECRET（未设置时打 ERROR 日志），这里预置以免噪声
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'log-filter-test-secret';
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const { getAllLogs } = require('../src/controllers/logController');
+const { getAllLogs, getLogOperators } = require('../src/controllers/logController');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { requireViewPermission } = require('../src/middleware/auth');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const logsRouter = require('../src/routes/logs').default;
 
 function makeRes() {
   const res: any = {
@@ -144,6 +172,8 @@ function resetSpies(): void {
   state.findManyCalls = 0;
   state.findManyArgs = null;
   state.countArgs = null;
+  state.userFindManyCalls = 0;
+  state.userFindManyArgs = null;
 }
 
 async function runGetAllLogs(query: Record<string, unknown>) {
@@ -151,6 +181,32 @@ async function runGetAllLogs(query: Record<string, unknown>) {
   const res = makeRes();
   await getAllLogs({ query } as any, res);
   return res;
+}
+
+/** 跑 /api/logs/operators 控制器（fake user 表） */
+async function runGetLogOperators() {
+  resetSpies();
+  const res = makeRes();
+  await getLogOperators({} as any, res);
+  return res;
+}
+
+/** 只跑单个中间件：返回 { res, nextCalls } */
+function runMiddleware(mw: any, req: any) {
+  const res = makeRes();
+  let nextCalls = 0;
+  mw(req, res, () => { nextCalls++; });
+  return { res, nextCalls };
+}
+
+/** 从 router.stack 按 method+path 找中间件链（保持注册顺序） */
+function findRoute(router: any, method: string, routePath: string): any[] | null {
+  for (const layer of router.stack) {
+    if (layer.route && layer.route.path === routePath && layer.route.methods?.[method]) {
+      return layer.route.stack.map((s: any) => s.handle);
+    }
+  }
+  return null;
 }
 
 /* ============================================================
@@ -240,6 +296,72 @@ async function runGetAllLogs(query: Record<string, unknown>) {
   check('[F] $queryRawUnsafe 调用次数 = 0', state.queryRawUnsafeCalls, 0);
   check('[F] $queryRaw 调用次数 = 0', state.queryRawCalls, 0);
   check('[F] findMany 恰好调用 1 次（Promise.all 内一次）', state.findManyCalls, 1);
+
+  /* ---------- G. /api/logs/operators：路由装配与权限（真实中间件） ---------- */
+  console.log('\n=== G. /api/logs/operators 路由与权限 ===');
+  const operatorsRoute = findRoute(logsRouter, 'get', '/operators');
+  check('[G] GET /api/logs/operators 已注册', !!operatorsRoute, true);
+  check('[G] 链长 2（中间件 + handler）', operatorsRoute?.length, 2);
+
+  // 无 logs 视图权限 → 403
+  const gNoPerm = runMiddleware(requireViewPermission('logs'), { userRole: 'user', userPermissions: {} });
+  check('[G] 无 logs 视图权限 → 403', gNoPerm.res.statusCode, 403);
+  check('[G] 无权限时 next 零调用', gNoPerm.nextCalls, 0);
+  check('[G] 403 响应 code = FORBIDDEN', gNoPerm.res.payload?.code, 'FORBIDDEN');
+
+  // 有 logs 视图权限 → 放行
+  const gView = runMiddleware(requireViewPermission('logs'), { userRole: 'user', userPermissions: { logs: { view: true, edit: false } } });
+  check('[G] 有 logs 视图权限 → next 1 次', gView.nextCalls, 1);
+  const gAdmin = runMiddleware(requireViewPermission('logs'), { userRole: 'admin' });
+  check('[G] admin → next 1 次', gAdmin.nextCalls, 1);
+
+  // 真实路由链首个 handler 行为一致（与同模块视图守卫语义相同）
+  const gChainNoPerm = runMiddleware(operatorsRoute?.[0], { userRole: 'user', userPermissions: {} });
+  check('[G] 路由链首个 handler：无权限 → 403', gChainNoPerm.res.statusCode, 403);
+  const gChainView = runMiddleware(operatorsRoute?.[0], { userRole: 'user', userPermissions: { logs: { view: true, edit: false } } });
+  check('[G] 路由链首个 handler：有权限 → next 1 次', gChainView.nextCalls, 1);
+
+  /* ---------- H. /api/logs/operators：白名单 select 与敏感字段阴性断言 ---------- */
+  console.log('\n=== H. /api/logs/operators 返回体 ===');
+  // 空数据
+  state.usersResult = [];
+  const hEmpty = await runGetLogOperators();
+  check('[H] 空数据 → success true', hEmpty.payload?.success, true);
+  check('[H] 空数据 → data 为 []', hEmpty.payload?.data, []);
+
+  // 单条
+  state.usersResult = [{ id: 'u1', username: 'alice' }];
+  const hOne = await runGetLogOperators();
+  check('[H] 单条 → 长度 1', hOne.payload?.data?.length, 1);
+  check('[H] 单条 → 每项 key 集合恰为 {id, username}', Object.keys(hOne.payload?.data?.[0] || {}).sort(), ['id', 'username']);
+
+  // 多条 + 伪造敏感字段：controller 传了白名单 select → fake 按 select 投影，敏感字段不得漏出
+  state.usersResult = [
+    { id: 'u1', username: 'alice', password: 'BCRYPT_HASH', role: 'admin', permissions: '{"logs":{"view":true}}' },
+    { id: 'u2', username: 'bob', password: 'BCRYPT_HASH2', role: 'user' },
+  ];
+  const hMulti = await runGetLogOperators();
+  check('[H] 多条 → 长度 2', hMulti.payload?.data?.length, 2);
+  check('[H] 多条 → 每项 key 集合恰为 {id, username}',
+    hMulti.payload?.data.map((u: any) => Object.keys(u).sort()),
+    [['id', 'username'], ['id', 'username']]);
+
+  // controller 传给 prisma 的 select 白名单恰为 {id, username}
+  check('[H] select 只含 id 与 username', Object.keys(state.userFindManyArgs?.select || {}).sort(), ['id', 'username']);
+  // 上限保护与排序
+  check('[H] take 为正整数（上限保护）', Number.isInteger(state.userFindManyArgs?.take) && state.userFindManyArgs.take > 0, true);
+  check('[H] orderBy 已指定', !!state.userFindManyArgs?.orderBy, true);
+
+  // 敏感字段阴性断言（真实 User 模型字段名：password / role / permissions + 通用 apiKey 词族）
+  const hSerialized = JSON.stringify(hMulti.payload).toLowerCase();
+  ['password', 'hash', 'permissions', 'apikey', 'aiapikey', 'deepseekapikey'].forEach((f) => {
+    check(`[H] 响应体不含敏感字段 "${f}"`, hSerialized.includes(f), false);
+  });
+
+  // 只读性
+  check('[H] operators 无任何写方法被调用', state.writeAttempts, []);
+  check('[H] operators 未触发裸 SQL', [state.queryRawUnsafeCalls, state.queryRawCalls], [0, 0]);
+  check('[H] user.findMany 恰调用 1 次', state.userFindManyCalls, 1);
 
   console.log(`\n========== 结果：PASS=${passed}  FAIL=${failed} ==========`);
   process.exit(failed > 0 ? 1 : 0);

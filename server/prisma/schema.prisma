@@ -142,6 +142,13 @@ model Log {
   action      String   // create, update, delete, status_change
   detail      String
   ipAddress   String?
+  // P2-2 补结构化「被操作实体」：
+  //   entityType = 实体类别（order / task / taker / user / repeatDiscount）
+  //   entityId   = 实体主键（本仓所有模型主键均为 String @default(cuid())，故为 String?）
+  // ⚠️ 逻辑外键，无 DB 层约束：被引用实体是多态的（同一列可指向 Order/Task/...），
+  //    无法建立 Prisma relation / 真外键。均为可空字段（加字段不触发 --accept-data-loss）。
+  entityType  String?
+  entityId    String?
   createdAt   DateTime @default(now())
   
   order       Order?   @relation(fields: [orderId], references: [id])
@@ -150,6 +157,7 @@ model Log {
   @@index([orderId])
   @@index([action])
   @@index([createdAt])
+  @@index([entityType, entityId])
   @@map("logs")
 }
 

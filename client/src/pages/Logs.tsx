@@ -35,8 +35,23 @@ export default function Logs() {
   const logs = (data as any)?.data?.list || [];
   const total = (data as any)?.data?.total || 0;
 
-  // 操作人下拉数据源：复用管理员用户列表接口（GET /api/admin，仅管理员可访问）。
-  // 非管理员访问返回 403 → 退化为「从当前已加载日志中去重出的操作人」，并在 UI 上注明。
+  // 操作人下拉数据源（优先级递减）：
+  //   1) GET /api/logs/operators —— 轻量只读，权限与 /logs 一致，非管理员也能拿到完整名单（首选）；
+  //   2) 旧路径 GET /api/admin（仅管理员可访问）—— 非管理员 403 时静默失败；
+  //   3) 最后兜底：从「当前已加载日志」去重出的操作人（翻页会漏，UI 上注明）。
+  const { data: operatorsResp } = useQuery({
+    queryKey: ['log-operators'],
+    queryFn: async () => {
+      const res: any = await logsApi.getOperators();
+      return res?.data || [];
+    },
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  const operators: any[] = Array.isArray(operatorsResp) ? operatorsResp : [];
+
+  // 旧路径保留（不删）：管理员用户列表接口（GET /api/admin，仅管理员可访问）。
+  // 非管理员访问返回 403 → 静默失败，交由下面的「已加载日志去重」兜底。
   const { data: usersResp } = useQuery({
     queryKey: ['admin-users-for-logs'],
     queryFn: async () => {
@@ -54,8 +69,8 @@ export default function Logs() {
     });
     return [...map.entries()].map(([id, username]) => ({ id, username }));
   }, [logs]);
-  const userOptions = adminUsers.length > 0 ? adminUsers : fallbackUsers;
-  const isUserListLimited = adminUsers.length === 0;
+  const userOptions = operators.length > 0 ? operators : (adminUsers.length > 0 ? adminUsers : fallbackUsers);
+  const isUserListLimited = operators.length === 0 && adminUsers.length === 0;
 
   // 本地搜索详情
   const searchedLogs = useMemo(() => {
@@ -72,6 +87,7 @@ export default function Logs() {
       if (key === 'createdAt') return item.createdAt ? formatDate(item.createdAt) : '';
       if (key === 'action') return actionLabels[item.action] || item.action || '';
       if (key === 'orderInfo') return item.order ? `${item.order.orderNo || ''} ${item.order.productName || ''}`.trim() : '';
+      if (key === 'entityInfo') return item.entityType ? `${item.entityType} ${item.entityId || ''}`.trim() : '';
       if (key === 'username') return item.user?.username || '';
       return String(item[key] ?? '');
     });
@@ -185,7 +201,7 @@ export default function Logs() {
             value={userIdFilter}
             onChange={(e) => { setUserIdFilter(e.target.value); setPage(1); }}
             className="apple-input rounded-lg pl-10"
-            title={isUserListLimited ? '受权限限制，仅列出当前已加载日志中出现过的操作人' : '按操作人筛选'}
+            title={isUserListLimited ? '完整名单获取失败，仅列出当前已加载日志中出现过的操作人' : '按操作人筛选'}
           >
             <option value="">全部操作人</option>
             {userOptions.map((u: any) => (
@@ -195,7 +211,7 @@ export default function Logs() {
         </div>
         {isUserListLimited && (
           <span className="text-xs text-muted-foreground">
-            受权限限制，操作人选项来自当前已加载日志
+            完整操作人名单获取失败，选项来自当前已加载日志
           </span>
         )}
         <div className="relative max-w-xs">
@@ -264,6 +280,10 @@ export default function Logs() {
                 <ColumnFilter type="select" value={columnFilters['action'] || ''} onChange={(v) => setColFilter('action', v)} options={[{ value: '创建', label: '创建' }, { value: '更新', label: '更新' }, { value: '删除', label: '删除' }, { value: '状态变更', label: '状态变更' }, { value: '批量创建', label: '批量创建' }, { value: '批量更新', label: '批量更新' }]} />
               </th>
               <th className="px-4 py-2 text-left text-sm font-medium">
+                <div>实体</div>
+                <ColumnFilter value={columnFilters['entityInfo'] || ''} onChange={(v) => setColFilter('entityInfo', v)} />
+              </th>
+              <th className="px-4 py-2 text-left text-sm font-medium">
                 <div>详细信息</div>
                 <ColumnFilter value={columnFilters['detail'] || ''} onChange={(v) => setColFilter('detail', v)} />
               </th>
@@ -280,13 +300,13 @@ export default function Logs() {
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   加载中...
                 </td>
               </tr>
             ) : filteredLogs.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   暂无匹配数据
                 </td>
               </tr>
@@ -316,6 +336,9 @@ export default function Logs() {
                       <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${actionColors[log.action] || 'badge-neutral'}`}>
                         {actionLabels[log.action] || log.action}
                       </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground max-w-[12rem] truncate" title={log.entityType ? `${log.entityType}${log.entityId ? ` #${log.entityId}` : ''}` : ''}>
+                      {log.entityType ? `${log.entityType}${log.entityId ? ` #${log.entityId}` : ''}` : '-'}
                     </td>
                     <td className="px-4 py-3 text-sm max-w-md">
                       {isExpanded && changes ? (

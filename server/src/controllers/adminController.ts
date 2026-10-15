@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../utils/db';
 import { createAuditLog, getClientIp } from '../utils/auditLog';
 import { AuthRequest } from '../middleware/auth';
+import { validatePermissions } from '../utils/permissionModules';
 
 // 获取所有用户列表（仅管理员）
 export const getAllUsers = async (req: Request, res: Response) => {
@@ -39,6 +40,15 @@ export const createUser = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: '密码至少6位' });
     }
 
+    // P2-2：写入前校验权限键（未知模块名/错误形状一律 400，不静默裁剪）。
+    // permissions 缺省/null 时保持既有行为（不校验、落 null）。
+    if (permissions !== undefined && permissions !== null) {
+      const permError = validatePermissions(permissions);
+      if (permError) {
+        return res.status(400).json({ success: false, message: permError });
+      }
+    }
+
     const existing = await prisma.user.findUnique({ where: { username } });
     if (existing) {
       return res.status(400).json({ success: false, message: '用户名已存在' });
@@ -59,6 +69,8 @@ export const createUser = async (req: Request, res: Response) => {
       action: 'create',
       detail: `创建用户: ${username} (${role})`,
       ipAddress: getClientIp(req),
+      entityType: 'user',
+      entityId: user.id,
     });
 
     res.status(201).json({ success: true, data: user });
@@ -92,6 +104,15 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       }
     }
 
+    // P2-2：写入前校验权限键（未知模块名/错误形状一律 400，不静默裁剪）。
+    // permissions 缺省（undefined）/ null 时保持既有行为（undefined 不动、null 落 null）。
+    if (permissions !== undefined && permissions !== null) {
+      const permError = validatePermissions(permissions);
+      if (permError) {
+        return res.status(400).json({ success: false, message: permError });
+      }
+    }
+
     const updateData: any = {};
     if (username) updateData.username = username;
     if (role) updateData.role = role;
@@ -113,6 +134,8 @@ export const updateUser = async (req: AuthRequest, res: Response) => {
       action: 'update',
       detail: `更新用户: ${existing.username} → ${username || existing.username} ${role ? `(${role})` : ''}`,
       ipAddress: getClientIp(req),
+      entityType: 'user',
+      entityId: id,
     });
 
     res.json({ success: true, data: user });
@@ -151,6 +174,8 @@ export const deleteUser = async (req: AuthRequest, res: Response) => {
       action: 'delete',
       detail: `删除用户: ${existing.username} (${existing.role})`,
       ipAddress: getClientIp(req),
+      entityType: 'user',
+      entityId: id,
     });
 
     res.json({ success: true, message: '用户已删除' });
