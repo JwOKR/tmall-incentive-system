@@ -2,123 +2,21 @@ import { useState, useRef, useEffect, useLayoutEffect, useCallback, useMemo, Fra
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { tasksApi, takersApi } from '@/lib/api';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatDate } from '@/lib/utils';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
-import { Plus, Search, Zap, Copy, Save, Trash2, CheckSquare, Square, RefreshCw } from 'lucide-react';
+import { Plus, RefreshCw } from 'lucide-react';
 import ExportDialog from '@/components/ExportDialog';
 import ImportDialog from '@/components/ImportDialog';
-import ColumnFilter, { filterData } from '@/components/ColumnFilter';
+import { filterData } from '@/components/ColumnFilter';
 import { useToast } from '@/components/Toast';
+import { BatchFormModal, TaskBatchActions } from '@/components/tasks/TaskBatchPanels';
+import { TaskFilters, TaskPagination } from '@/components/tasks/TaskFilters';
+import NewTaskRow from '@/components/tasks/NewTaskRow';
+import TaskRow from '@/components/tasks/TaskRow';
+import TaskTableHead from '@/components/tasks/TaskTableHead';
+import { renderTaskDeadlineCell, renderTaskEditableCell, renderTaskStatusSelect, renderTaskTaoTokenCell } from '@/components/tasks/TaskCells';
+import { PREVIEW_SAFE_MARGIN, type EditingCell } from '@/lib/taskPreview';
 
-/** 悬停浮层距视口四边的安全边距（px） */
-const PREVIEW_SAFE_MARGIN = 12;
-/** 悬停浮层与触发元素之间的间距（px） */
-const PREVIEW_TRIGGER_OFFSET = 8;
-
-/**
- * 悬停预览组件（淘口令等长文本）。
- *
- * 定位策略：先以 (0,0) 渲染一帧但保持 visibility:hidden（visibility:hidden 的元素
- * 依然参与布局，因此可以测到真实尺寸），随后在 useLayoutEffect 中读取浮层实际
- * getBoundingClientRect() 做二次校正，把四边都 clamp 进视口安全边距内，
- * 浏览器绘制前完成，用户看不到定位跳变。
- *
- * 另外：浮层通过 createPortal 挂到 document.body，而不是留在原地。原因是
- * .apple-card:hover 会施加 transform: translateY(-2px)，带 transform 的祖先会成为
- * position: fixed 的包含块，同时表格外层还有 overflow-x-auto —— 浮层会被重新锚定到
- * 卡片坐标系并被裁掉（这正是淘口令预览「超出/被截断」的根因之一）。
- */
-function HoverPreview({ content, children, className = '' }: { content: string; children: React.ReactNode; className?: string }) {
-  const [show, setShow] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [positioned, setPositioned] = useState(false);
-  const triggerRef = useRef<HTMLDivElement>(null);
-  const previewRef = useRef<HTMLDivElement>(null);
-
-  const handleMouseEnter = () => {
-    setPositioned(false);
-    setShow(true);
-  };
-
-  const handleMouseLeave = () => {
-    setShow(false);
-    setPositioned(false);
-  };
-
-  // 渲染后实测浮层真实尺寸再校正位置，避免用估算值判断导致溢出视口
-  useLayoutEffect(() => {
-    if (!show) return;
-    const triggerEl = triggerRef.current;
-    const previewEl = previewRef.current;
-    if (!triggerEl || !previewEl) return;
-
-    const triggerRect = triggerEl.getBoundingClientRect();
-    // 量浮层自身必须用 offsetWidth/offsetHeight（布局盒），不能用 getBoundingClientRect：
-    // 浮层带 animate-in zoom-in-95，首帧 transform: scale(.95)，而 getBoundingClientRect
-    // 返回的是**变换后**的视觉矩形，会量到 95% 尺寸；动画还原到 100% 后底部会多溢出约 5%
-    // （320px 高的浮层约 16px）。offsetWidth/offsetHeight 不受 transform 影响。
-    const previewWidth = previewEl.offsetWidth;
-    const previewHeight = previewEl.offsetHeight;
-    // 用 clientWidth/clientHeight 而非 innerWidth/innerHeight，排除滚动条占位
-    const viewportWidth = document.documentElement.clientWidth;
-    const viewportHeight = document.documentElement.clientHeight;
-
-    /** 把坐标限制在 [SAFE_MARGIN, max] 区间内 */
-    const clamp = (value: number, max: number): number =>
-      Math.min(Math.max(PREVIEW_SAFE_MARGIN, value), Math.max(PREVIEW_SAFE_MARGIN, max));
-
-    // 纵向：默认在触发元素下方展开；下方放不下则翻到上方；上下都放不下则贴住视口
-    let y = triggerRect.bottom + PREVIEW_TRIGGER_OFFSET;
-    if (y + previewHeight > viewportHeight - PREVIEW_SAFE_MARGIN) {
-      const above = triggerRect.top - PREVIEW_TRIGGER_OFFSET - previewHeight;
-      y = above >= PREVIEW_SAFE_MARGIN ? above : viewportHeight - PREVIEW_SAFE_MARGIN - previewHeight;
-    }
-
-    // 横向：默认与触发元素左对齐；右侧放不下则改为右对齐
-    let x = triggerRect.left;
-    if (x + previewWidth > viewportWidth - PREVIEW_SAFE_MARGIN) {
-      x = viewportWidth - PREVIEW_SAFE_MARGIN - previewWidth;
-    }
-
-    setPosition({
-      x: clamp(x, viewportWidth - PREVIEW_SAFE_MARGIN - previewWidth),
-      y: clamp(y, viewportHeight - PREVIEW_SAFE_MARGIN - previewHeight),
-    });
-    setPositioned(true);
-  }, [show, content]);
-
-  if (!content) return <>{children}</>;
-
-  // 尺寸上限用与上面 clamp 完全相同的口径（documentElement.clientWidth/Height，
-  // 不含经典滚动条）。若这里改用 CSS 的 100vw（含滚动条），两个口径会差一个滚动条
-  // 宽度，窄窗口下浮层右边缘会被推出 layout viewport。
-  const viewportWidth = document.documentElement.clientWidth;
-  const viewportHeight = document.documentElement.clientHeight;
-  const previewMaxWidth = Math.max(120, Math.min(400, viewportWidth - PREVIEW_SAFE_MARGIN * 2));
-  const previewMaxHeight = Math.max(80, Math.min(320, Math.floor(viewportHeight * 0.5)));
-
-  return (
-    <div ref={triggerRef} onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} className={`relative ${className}`}>
-      {children}
-      {show && createPortal(
-        <div
-          ref={previewRef}
-          className="fixed z-[60] overflow-y-auto overscroll-contain p-3 bg-popover border rounded-xl shadow-lg text-sm break-all animate-in fade-in-0 zoom-in-95"
-          style={{
-            left: position.x,
-            top: position.y,
-            maxWidth: previewMaxWidth,
-            maxHeight: previewMaxHeight,
-            visibility: positioned ? 'visible' : 'hidden',
-          }}
-        >
-          {content}
-        </div>,
-        document.body,
-      )}
-    </div>
-  );
-}
 import { useConfirm } from '@/components/ConfirmDialog';
 import { taskColumns } from '@/lib/export';
 import { copyToClipboard } from '@/lib/clipboard';
@@ -129,11 +27,6 @@ import {
   type ComplianceStatus,
   type TakerCompliance,
 } from '@/lib/takerConstants';
-
-interface EditingCell {
-  taskId: string;
-  field: string;
-}
 
 export default function Tasks() {
   const queryClient = useQueryClient();
@@ -481,89 +374,27 @@ export default function Tasks() {
     return editingCell?.taskId === taskId && editingCell?.field === field;
   };
 
-  const renderEditableCell = (task: any, field: string, type: 'text' | 'number' | 'integer' = 'text') => {
-    const editing = isEditing(task.id, field);
-    const value = task[field];
-    
-    if (editing) {
-      return (
-        <div className="flex items-center gap-1">
-          <input
-            ref={inputRef}
-            type={type === 'integer' ? 'number' : type}
-            step={type === 'number' ? '0.01' : undefined}
-            min={type === 'integer' ? '0' : undefined}
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onBlur={() => handleSave(task.id)}
-            onKeyDown={(e) => handleKeyDown(e, task.id)}
-            className="w-full rounded border border-primary px-2 py-1 text-sm bg-background"
-          />
-          <button
-            onClick={() => handleSave(task.id)}
-            className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded"
-          >
-            <Save className="h-3 w-3" />
-          </button>
-        </div>
-      );
-    }
-    
-    const displayValue = () => {
-      if (type === 'number') return formatCurrency(value);
-      if (type === 'integer') return value || '0';
-      return value || '-';
-    };
-    
-    return (
-      <div
-        onClick={() => handleCellClick(task.id, field, value)}
-        className="cursor-pointer hover:bg-accent px-2 py-1 rounded min-h-[28px] flex items-center"
-        title="点击编辑"
-      >
-        {displayValue()}
-      </div>
-    );
-  };
+  const renderEditableCell = (task: any, field: string, type: 'text' | 'number' | 'integer' = 'text') =>
+    renderTaskEditableCell(task, field, type, {
+      isEditing,
+      inputRef,
+      editValue,
+      setEditValue,
+      handleSave,
+      handleKeyDown,
+      handleCellClick,
+    });
 
-  const renderStatusSelect = (task: any) => {
-    const editing = isEditing(task.id, 'status');
-    const statusOptions = [
-      { value: 'pending', label: '待接单', color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' },
-      { value: 'active', label: '进行中', color: 'bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400' },
-      { value: 'refunded', label: '已返款', color: 'bg-amber-100 text-amber-600 dark:bg-amber-950/30 dark:text-amber-400' },
-      { value: 'completed', label: '已完成', color: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400' },
-      { value: 'cancelled', label: '已取消', color: 'bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400' },
-    ];
-    const currentOption = statusOptions.find(opt => opt.value === task.status);
-    
-    if (editing) {
-      return (
-        <select
-          ref={selectRef}
-          value={editValue}
-          onChange={(e) => handleSelectChange(task.id, 'status', e.target.value)}
-          onBlur={() => setEditingCell(null)}
-          onKeyDown={(e) => e.key === 'Escape' && handleCancel()}
-          className="rounded border border-primary px-2 py-1 text-sm bg-background w-full"
-        >
-          {statusOptions.map(opt => (
-            <option key={opt.value} value={opt.value}>{opt.label}</option>
-          ))}
-        </select>
-      );
-    }
-    
-    return (
-      <div
-        onClick={() => handleCellClick(task.id, 'status', task.status)}
-        className={`cursor-pointer hover:opacity-80 px-2 py-1 rounded text-xs font-medium inline-flex items-center ${currentOption?.color || ''}`}
-        title="点击切换状态"
-      >
-        {currentOption?.label || '-'}
-      </div>
-    );
-  };
+  const renderStatusSelect = (task: any) =>
+    renderTaskStatusSelect(task, {
+      isEditing,
+      selectRef,
+      editValue,
+      handleSelectChange,
+      handleCellClick,
+      setEditingCell,
+      handleCancel,
+    });
 
   const resetNewRow = () => {
     setNewRowData({
@@ -708,6 +539,18 @@ export default function Tasks() {
     });
   };
 
+  const renderTaoTokenCell = (task: any) =>
+    renderTaskTaoTokenCell(task, {
+      isEditing,
+      inputRef,
+      editValue,
+      setEditValue,
+      handleSave,
+      handleKeyDown,
+      handleCellClick,
+      handleCopyTaoToken,
+    });
+
   const filteredTasks = useMemo(() => {
     return filterData(tasks, columnFilters, (item: any, key: string) => {
       if (key === 'publishDate') return item.publishDate ? formatDate(item.publishDate) : '';
@@ -725,67 +568,16 @@ export default function Tasks() {
   };
 
   // ── P2-5 任务超时提醒 ──────────────────────────────────────
-  /** 把任意日期值转成 <input type="date"> 需要的 YYYY-MM-DD（空/非法 → ''） */
-  const toDateInputValue = (value: any): string => {
-    if (!value) return '';
-    const d = new Date(value);
-    if (isNaN(d.getTime())) return '';
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  };
-
-  /**
-   * 截止日期的紧急程度（按「日历日」比较，不受时刻影响）：
-   *   overdue = 已超期（红）；soon = 临期（≤3 天，琥珀）；无 deadline → null。
-   */
-  const getDeadlineTone = (deadline: any): 'overdue' | 'soon' | null => {
-    if (!deadline) return null;
-    const d = new Date(deadline);
-    if (isNaN(d.getTime())) return null;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const day = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const diffDays = Math.round((day.getTime() - today.getTime()) / 86400000);
-    if (diffDays < 0) return 'overdue';
-    if (diffDays <= 3) return 'soon';
-    return null;
-  };
-
-  /** 截止日期单元格：临期（≤3 天）琥珀色 / 超期红色；点击进入行内编辑（date 输入） */
-  const renderDeadlineCell = (task: any) => {
-    const editing = isEditing(task.id, 'deadline');
-    if (editing) {
-      return (
-        <input
-          ref={inputRef}
-          type="date"
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={() => handleSave(task.id)}
-          onKeyDown={(e) => handleKeyDown(e, task.id)}
-          className="w-full rounded border border-primary px-2 py-1 text-sm bg-background"
-        />
-      );
-    }
-    const tone = getDeadlineTone(task.deadline);
-    const toneClass = tone === 'overdue'
-      ? 'text-rose-600 dark:text-rose-400 font-medium'
-      : tone === 'soon'
-        ? 'text-amber-600 dark:text-amber-400 font-medium'
-        : '';
-    return (
-      <div
-        onClick={() => {
-          setEditingCell({ taskId: task.id, field: 'deadline' });
-          setEditValue(toDateInputValue(task.deadline));
-        }}
-        className={`cursor-pointer hover:bg-accent px-2 py-1 rounded min-h-[28px] flex items-center ${toneClass}`}
-        title={tone === 'overdue' ? '已超期' : tone === 'soon' ? '临期（3 天内到期）' : '点击编辑'}
-      >
-        {task.deadline ? formatDate(task.deadline) : '-'}
-      </div>
-    );
-  };
+  const renderDeadlineCell = (task: any) =>
+    renderTaskDeadlineCell(task, {
+      isEditing,
+      inputRef,
+      editValue,
+      setEditValue,
+      handleSave,
+      handleKeyDown,
+      setEditingCell,
+    });
 
   return (
     <div className="space-y-6">
@@ -860,278 +652,50 @@ export default function Tasks() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="搜索商品ID、产品编号..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="apple-input w-full rounded-xl border bg-card pl-10 pr-4 py-2 text-sm"
-          />
-        </div>
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="apple-input rounded-xl border bg-card px-3 py-2 text-sm"
-        >
-          <option value="">全部状态</option>
-          <option value="pending">待接单</option>
-          <option value="active">进行中</option>
-          <option value="refunded">已返款</option>
-          <option value="completed">已完成</option>
-          <option value="cancelled">已取消</option>
-        </select>
-      </div>
+      <TaskFilters search={search} setSearch={setSearch} statusFilter={statusFilter} setStatusFilter={setStatusFilter} />
 
       {/* Batch Form Modal */}
       {showBatchForm && (
-        <div
-          className="modal-overlay"
-          onClick={() => { setShowBatchForm(false); setBatchProductCodes(''); }}
-          onKeyDown={(e) => e.key === 'Escape' && (setShowBatchForm(false), setBatchProductCodes(''))}
-          tabIndex={-1}
-          ref={batchFormModalRef}
-        >
-          <div
-            className="modal-content modal-md p-6"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-lg font-semibold mb-4">批量新增任务</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-medium">商品编号（支持换行、空格、逗号、顿号、分号分隔）</label>
-                <textarea
-                  value={batchProductCodes}
-                  onChange={(e) => setBatchProductCodes(e.target.value)}
-                  className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm apple-input"
-                  rows={10}
-                  placeholder="SKU-001，SKU-002\nSKU-003; SKU-004"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                将根据商品编号创建任务，默认基础返佣5元，限接1人
-              </p>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowBatchForm(false);
-                    setBatchProductCodes('');
-                  }}
-                  className="apple-btn rounded-xl border px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={handleBatchCreate}
-                  disabled={batchCreateMutation.isPending}
-                  className="apple-btn rounded-xl bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50 transition-colors"
-                >
-                  {batchCreateMutation.isPending ? '创建中...' : '批量创建'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <BatchFormModal
+          setShowBatchForm={setShowBatchForm}
+          setBatchProductCodes={setBatchProductCodes}
+          batchFormModalRef={batchFormModalRef}
+          batchProductCodes={batchProductCodes}
+          handleBatchCreate={handleBatchCreate}
+          batchCreateMutation={batchCreateMutation}
+        />
       )}
 
       {/* Batch Actions */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-4 p-4 bg-indigo-50/80 dark:bg-indigo-950/20 rounded-xl border border-indigo-100 dark:border-indigo-900/30 flex-wrap animate-fade-up">
-          <span className="text-sm text-muted-foreground">
-            已选择 <span className="font-bold text-indigo-600 dark:text-indigo-400">{selectedIds.size}</span> 项
-          </span>
-          <button
-            onClick={handleBatchDelete}
-            disabled={batchDeleteMutation.isPending}
-            className="apple-btn inline-flex items-center gap-2 rounded-lg bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 disabled:opacity-50 transition-colors shadow-sm"
-          >
-            <Trash2 className="h-4 w-4" />
-            {batchDeleteMutation.isPending ? '删除中...' : '批量删除'}
-          </button>
-          <button
-            onClick={() => setSelectedIds(new Set())}
-            className="apple-btn text-sm text-muted-foreground hover:text-foreground"
-          >
-            取消选择
-          </button>
-        </div>
+        <TaskBatchActions
+          selectedIds={selectedIds}
+          handleBatchDelete={handleBatchDelete}
+          batchDeleteMutation={batchDeleteMutation}
+          setSelectedIds={setSelectedIds}
+        />
       )}
 
       {/* Table */}
       <div className="rounded-2xl border bg-card shadow-sm overflow-x-auto apple-card">
         <table className="w-full">
-          <thead>
-            <tr className="table-header">
-              <th className="px-4 py-3 text-left">
-                <button
-                  onClick={handleSelectAll}
-                  className="p-1 hover:bg-accent rounded"
-                  title={selectedIds.size === filteredTasks.length ? '取消全选' : '全选'}
-                >
-                  {selectedIds.size === filteredTasks.length && filteredTasks.length > 0 ? (
-                    <CheckSquare className="h-4 w-4 text-indigo-500" />
-                  ) : (
-                    <Square className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </button>
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium">
-                <div>商品ID</div>
-                <ColumnFilter value={columnFilters['productId'] || ''} onChange={(v) => setColFilter('productId', v)} />
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium">
-                <div>产品编号</div>
-                <ColumnFilter value={columnFilters['productCode'] || ''} onChange={(v) => setColFilter('productCode', v)} />
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium">
-                <div>淘口令</div>
-                <ColumnFilter value={columnFilters['taoToken'] || ''} onChange={(v) => setColFilter('taoToken', v)} />
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium">
-                <div>价格</div>
-                <ColumnFilter value={columnFilters['price'] || ''} onChange={(v) => setColFilter('price', v)} />
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium">
-                <div>基础返佣</div>
-                <ColumnFilter value={columnFilters['baseCommission'] || ''} onChange={(v) => setColFilter('baseCommission', v)} />
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium">
-                <div>好评返佣</div>
-                <ColumnFilter value={columnFilters['reviewReward'] || ''} onChange={(v) => setColFilter('reviewReward', v)} />
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium">
-                <div>限接人数</div>
-                <ColumnFilter value={columnFilters['maxOrders'] || ''} onChange={(v) => setColFilter('maxOrders', v)} />
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium">
-                <div>已接人数</div>
-                <ColumnFilter value={columnFilters['currentOrders'] || ''} onChange={(v) => setColFilter('currentOrders', v)} />
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium">
-                <div>状态</div>
-                <ColumnFilter type="select" value={columnFilters['status'] || ''} onChange={(v) => setColFilter('status', v)} options={[{ value: 'pending', label: '待接单' }, { value: 'active', label: '进行中' }, { value: 'refunded', label: '已返款' }, { value: 'completed', label: '已完成' }, { value: 'cancelled', label: '已取消' }]} />
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium">
-                <div>发布日期</div>
-                <ColumnFilter value={columnFilters['publishDate'] || ''} onChange={(v) => setColFilter('publishDate', v)} />
-              </th>
-              <th className="px-4 py-2 text-left text-sm font-medium">
-                <div>截止日期</div>
-                <ColumnFilter value={columnFilters['deadline'] || ''} onChange={(v) => setColFilter('deadline', v)} />
-              </th>
-              <th className="px-4 py-2 text-right text-sm font-medium"><div>操作</div></th>
-            </tr>
-          </thead>
+          <TaskTableHead
+            selectedIds={selectedIds}
+            filteredTasks={filteredTasks}
+            handleSelectAll={handleSelectAll}
+            columnFilters={columnFilters}
+            setColFilter={setColFilter}
+          />
           <tbody>
             {/* New Row */}
             {addingNewRow && (
-              <tr className="border-b bg-indigo-50/50 dark:bg-indigo-950/20">
-                <td className="px-4 py-2"></td>
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    value={newRowData.productId}
-                    onChange={(e) => setNewRowData({ ...newRowData, productId: e.target.value })}
-                    className="w-full rounded border px-2 py-1 text-sm"
-                    placeholder="商品ID"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    value={newRowData.productCode}
-                    onChange={(e) => setNewRowData({ ...newRowData, productCode: e.target.value })}
-                    className="w-full rounded border px-2 py-1 text-sm"
-                    placeholder="产品编号"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="text"
-                    value={newRowData.taoToken}
-                    onChange={(e) => setNewRowData({ ...newRowData, taoToken: e.target.value })}
-                    className="w-full rounded border px-2 py-1 text-sm"
-                    placeholder="淘口令"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newRowData.price}
-                    onChange={(e) => setNewRowData({ ...newRowData, price: e.target.value })}
-                    className="w-24 rounded border px-2 py-1 text-sm"
-                    placeholder="价格"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newRowData.baseCommission}
-                    onChange={(e) => setNewRowData({ ...newRowData, baseCommission: e.target.value })}
-                    className="w-20 rounded border px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={newRowData.reviewReward}
-                    onChange={(e) => setNewRowData({ ...newRowData, reviewReward: e.target.value })}
-                    className="w-20 rounded border px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-4 py-2">
-                  <div className="flex items-center gap-1">
-                    <input
-                      type="number"
-                      min="1"
-                      value={newRowData.maxOrders}
-                      onChange={(e) => setNewRowData({ ...newRowData, maxOrders: e.target.value })}
-                      className="w-16 rounded border px-2 py-1 text-sm"
-                    />
-                    <span className="text-xs text-muted-foreground">人</span>
-                  </div>
-                </td>
-                <td className="px-4 py-2 text-muted-foreground">0人</td>
-                <td className="px-4 py-2">
-                  <span className="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">
-                    待接单
-                  </span>
-                </td>
-                <td className="px-4 py-2 text-muted-foreground">
-                  {formatDate(new Date())}
-                </td>
-                <td className="px-4 py-2">
-                  <input
-                    type="date"
-                    value={newRowData.deadline}
-                    onChange={(e) => setNewRowData({ ...newRowData, deadline: e.target.value })}
-                    className="w-full rounded border px-2 py-1 text-sm"
-                  />
-                </td>
-                <td className="px-4 py-2 text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <button
-                      onClick={handleSaveNewRow}
-                      disabled={createMutation.isPending}
-                      className="apple-btn px-3 py-1 bg-indigo-500 text-white rounded-lg text-sm hover:bg-indigo-600 disabled:opacity-50"
-                    >
-                      {createMutation.isPending ? '保存中...' : '保存'}
-                    </button>
-                    <button
-                      onClick={handleCancelNewRow}
-                      className="apple-btn px-3 py-1 border rounded-lg text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
-                    >
-                      取消
-                    </button>
-                  </div>
-                </td>
-              </tr>
+              <NewTaskRow
+                newRowData={newRowData}
+                setNewRowData={setNewRowData}
+                handleSaveNewRow={handleSaveNewRow}
+                createMutation={createMutation}
+                handleCancelNewRow={handleCancelNewRow}
+              />
             )}
             
             {/* Data Rows */}
@@ -1150,116 +714,18 @@ export default function Tasks() {
             ) : (
               filteredTasks.map((task: any) => (
                 <Fragment key={task.id}>
-                <tr className={`table-row-hover table-row-zebra ${selectedIds.has(task.id) ? 'table-row-selected' : ''} ${inlineOrderId === task.id ? 'bg-indigo-50/30 dark:bg-indigo-950/10' : ''}`}>
-                  <td className="px-4 py-2">
-                    <button
-                      onClick={() => handleSelectOne(task.id)}
-                      className="p-1 hover:bg-accent rounded"
-                    >
-                      {selectedIds.has(task.id) ? (
-                        <CheckSquare className="h-4 w-4 text-indigo-500" />
-                      ) : (
-                        <Square className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </button>
-                  </td>
-                  <td className="px-4 py-2">
-                    {renderEditableCell(task, 'productId')}
-                  </td>
-                  <td className="px-4 py-2">
-                    {renderEditableCell(task, 'productCode')}
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1 max-w-[200px]">
-                      <HoverPreview content={task.taoToken || ''} className="flex-1 min-w-0 overflow-hidden">
-                        {isEditing(task.id, 'taoToken') ? (
-                          <div className="flex items-center gap-1">
-                            <input
-                              ref={inputRef}
-                              type="text"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              onBlur={() => handleSave(task.id)}
-                              onKeyDown={(e) => handleKeyDown(e, task.id)}
-                              className="w-full rounded border border-primary px-2 py-1 text-sm bg-background"
-                            />
-                            <button
-                              onClick={() => handleSave(task.id)}
-                              className="p-1 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded shrink-0"
-                            >
-                              <Save className="h-3 w-3" />
-                            </button>
-                          </div>
-                        ) : (
-                          <div
-                            onClick={() => handleCellClick(task.id, 'taoToken', task.taoToken)}
-                            className="cursor-pointer hover:bg-accent px-2 py-1 rounded min-h-[28px] flex items-center overflow-hidden text-ellipsis whitespace-nowrap"
-                            title="点击编辑"
-                          >
-                            {task.taoToken || '-'}
-                          </div>
-                        )}
-                      </HoverPreview>
-                      {task.taoToken && (
-                        <button
-                          onClick={() => handleCopyTaoToken(task.taoToken)}
-                          className="p-1 hover:bg-accent rounded shrink-0"
-                          title="复制淘口令"
-                        >
-                          <Copy className="h-3 w-3" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 font-medium">
-                    {renderEditableCell(task, 'price', 'number')}
-                  </td>
-                  <td className="px-4 py-2">
-                    {renderEditableCell(task, 'baseCommission', 'number')}
-                  </td>
-                  <td className="px-4 py-2">
-                    {renderEditableCell(task, 'reviewReward', 'number')}
-                  </td>
-                  <td className="px-4 py-2">
-                    <div className="flex items-center gap-1">
-                      {renderEditableCell(task, 'maxOrders', 'integer')}
-                      <span className="text-xs text-muted-foreground">人</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-2 text-sm">
-                    <span className={task.currentOrders >= task.maxOrders ? 'text-rose-500 font-medium' : ''}>
-                      {task.currentOrders}人
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    {renderStatusSelect(task)}
-                  </td>
-                  <td className="px-4 py-2 text-sm text-muted-foreground">
-                    {formatDate(task.publishDate)}
-                  </td>
-                  <td className="px-4 py-2 text-sm">
-                    {renderDeadlineCell(task)}
-                  </td>
-                  <td className="px-4 py-2 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => handleQuickOrder(task)}
-                        disabled={task.currentOrders >= task.maxOrders || (task.status !== 'active' && task.status !== 'pending')}
-                        className="apple-btn p-1.5 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                        title="快速接单"
-                      >
-                        <Zap className="h-4 w-4 text-emerald-500" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(task.id)}
-                        className="apple-btn p-1.5 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg transition-colors"
-                        title="删除任务"
-                      >
-                        <Trash2 className="h-4 w-4 text-rose-500" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                <TaskRow
+                  task={task}
+                  selectedIds={selectedIds}
+                  inlineOrderId={inlineOrderId}
+                  handleSelectOne={handleSelectOne}
+                  renderEditableCell={renderEditableCell}
+                  renderTaoTokenCell={renderTaoTokenCell}
+                  renderStatusSelect={renderStatusSelect}
+                  renderDeadlineCell={renderDeadlineCell}
+                  handleQuickOrder={handleQuickOrder}
+                  handleDelete={handleDelete}
+                />
                 {inlineOrderId === task.id && (
                   <tr className="border-b bg-indigo-50/50 dark:bg-indigo-950/20">
                     <td colSpan={13} className="px-6 py-4">
@@ -1423,25 +889,7 @@ export default function Tasks() {
 
       {/* Pagination */}
       {total > 20 && (
-        <div className="flex justify-center items-center gap-3">
-          <button
-            onClick={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-            className="apple-btn rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            上一页
-          </button>
-          <span className="flex items-center px-4 text-sm text-muted-foreground tabular-nums">
-            第 {page} 页 / 共 {Math.ceil(total / 20)} 页
-          </span>
-          <button
-            onClick={() => setPage(p => p + 1)}
-            disabled={page >= Math.ceil(total / 20)}
-            className="apple-btn rounded-xl border bg-card px-4 py-2 text-sm font-medium disabled:opacity-40 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-          >
-            下一页
-          </button>
-        </div>
+        <TaskPagination page={page} total={total} setPage={setPage} />
       )}
     </div>
   );
